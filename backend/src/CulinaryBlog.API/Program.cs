@@ -1,7 +1,6 @@
+﻿using CulinaryBlog.API.Endpoints;
 using CulinaryBlog.Application;
-using CulinaryBlog.Application.System.Queries.GetBaseStatus;
 using CulinaryBlog.Infrastructure;
-using MediatR;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,16 +16,8 @@ app.MapGet("/", () => Results.Ok(new
     status = "running"
 }));
 
-app.MapGet("/api/v1/system/base-status", async (
-    ISender sender,
-    IWebHostEnvironment environment,
-    CancellationToken cancellationToken) =>
-{
-    var result = await sender.Send(
-        new GetBaseStatusQuery(environment.EnvironmentName),
-        cancellationToken);
-
-    return Results.Ok(result);
-});
+app.MapSystemEndpoints();
 
 app.Run();
+
+public partial class Program;

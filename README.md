@@ -78,7 +78,7 @@
 
 | Thành viên | Vai trò chính | Module phụ trách chính | Yêu cầu FR / NFR đáp ứng |
 | :--- | :--- | :--- | :--- |
-| **Phú Nam** | Team Lead / Auth & Infra | FR-AUTH, Base Infrastructure, Auth UI | FR-AUTH-001 → 007, NFR-SEC-001 → 003 |
+| **Phú Nam** | Auth & Infra | FR-AUTH, Base Infrastructure, Auth UI | FR-AUTH-001 → 007, NFR-SEC-001 → 003 |
 | **Văn Minh** | Backend Core & Data | FR-RCP (Core), FR-SRCH, Caching | FR-RCP-001 → 007, 009, 010, FR-SRCH-001 → 004, NFR-PERF-003/004 |
 | **Phan Lâm** | Frontend Lead UI/UX | Frontend Core Pages & Dashboard | Màn hình Public & Dashboard, NFR-USE-001 → 004, NFR-SEO |
 | **Phước** | Services & Admin Fullstack | FR-CAT, FR-FILE, FR-JOB, FR-OBS | FR-CAT-001 → 005, FR-FILE-001/002, FR-JOB-001 → 003, FR-OBS-001 → 003 |

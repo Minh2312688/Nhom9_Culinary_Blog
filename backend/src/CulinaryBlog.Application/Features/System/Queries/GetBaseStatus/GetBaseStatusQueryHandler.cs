@@ -1,7 +1,7 @@
-using CulinaryBlog.Application.Common.Models;
+﻿using CulinaryBlog.Application.DTOs.System;
 using MediatR;
 
-namespace CulinaryBlog.Application.System.Queries.GetBaseStatus;
+namespace CulinaryBlog.Application.Features.System.Queries.GetBaseStatus;
 
 public sealed class GetBaseStatusQueryHandler : IRequestHandler<GetBaseStatusQuery, BaseStatusDto>
 {

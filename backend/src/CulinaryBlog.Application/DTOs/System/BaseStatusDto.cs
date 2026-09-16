@@ -1,4 +1,4 @@
-namespace CulinaryBlog.Application.Common.Models;
+﻿namespace CulinaryBlog.Application.DTOs.System;
 
 public sealed record BaseStatusDto(
     string Application,

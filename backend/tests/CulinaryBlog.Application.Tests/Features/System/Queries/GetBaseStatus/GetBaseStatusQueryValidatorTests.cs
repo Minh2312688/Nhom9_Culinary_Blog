@@ -1,7 +1,7 @@
-﻿using CulinaryBlog.Application.System.Queries.GetBaseStatus;
+﻿using CulinaryBlog.Application.Features.System.Queries.GetBaseStatus;
 using Xunit;
 
-namespace CulinaryBlog.Application.Tests.System.Queries.GetBaseStatus;
+namespace CulinaryBlog.Application.Tests.Features.System.Queries.GetBaseStatus;
 
 public sealed class GetBaseStatusQueryValidatorTests
 {

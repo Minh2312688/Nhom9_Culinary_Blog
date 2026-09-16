@@ -1,6 +1,6 @@
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace CulinaryBlog.Application.System.Queries.GetBaseStatus;
+namespace CulinaryBlog.Application.Features.System.Queries.GetBaseStatus;
 
 public sealed class GetBaseStatusQueryValidator : AbstractValidator<GetBaseStatusQuery>
 {

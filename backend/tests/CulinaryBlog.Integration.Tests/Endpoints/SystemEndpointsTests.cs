@@ -1,6 +1,6 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
-using CulinaryBlog.Application.Common.Models;
+using CulinaryBlog.Application.DTOs.System;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 

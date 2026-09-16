@@ -1,4 +1,4 @@
-﻿using CulinaryBlog.Application.System.Queries.GetBaseStatus;
+﻿using CulinaryBlog.Application.Features.System.Queries.GetBaseStatus;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;

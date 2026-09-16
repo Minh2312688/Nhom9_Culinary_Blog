@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+﻿FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 COPY ["CulinaryBlog.sln", "./"]
@@ -8,6 +8,9 @@ COPY ["src/CulinaryBlog.Domain/CulinaryBlog.Domain.csproj", "src/CulinaryBlog.Do
 COPY ["src/CulinaryBlog.Application/CulinaryBlog.Application.csproj", "src/CulinaryBlog.Application/"]
 COPY ["src/CulinaryBlog.Infrastructure/CulinaryBlog.Infrastructure.csproj", "src/CulinaryBlog.Infrastructure/"]
 COPY ["src/CulinaryBlog.API/CulinaryBlog.API.csproj", "src/CulinaryBlog.API/"]
+COPY ["tests/CulinaryBlog.Application.Tests/CulinaryBlog.Application.Tests.csproj", "tests/CulinaryBlog.Application.Tests/"]
+COPY ["tests/CulinaryBlog.Integration.Tests/CulinaryBlog.Integration.Tests.csproj", "tests/CulinaryBlog.Integration.Tests/"]
+COPY ["tests/CulinaryBlog.ArchitectureTests/CulinaryBlog.ArchitectureTests.csproj", "tests/CulinaryBlog.ArchitectureTests/"]
 RUN dotnet restore "CulinaryBlog.sln"
 
 COPY . .

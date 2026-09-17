@@ -89,18 +89,26 @@
 
 ## 4. Quy trình Triển khai khuyến nghị (Tránh nghẽn tiến độ)
 
-### Giai đoạn 1 (Tuần 1 - Khởi tạo Base)
+### Giai đoạn 1 (Khởi tạo Base)
 * **Phú Nam**: Dựng base Clean Architecture & Docker Compose (Postgres, Redis, MinIO).
 * **Văn Minh**: Tạo DB Schemas / Entities cơ bản (Recipe, User, Category).
 * **Phan Lâm**: Dựng Next.js layout, UI Components nền tảng.
 * **Phước**: Tích hợp MinIO Service & Hangfire base.
 
-### Giai đoạn 2 (Tuần 2 & 3 - Phát triển Chức năng Lõi)
+### Giai đoạn 2 (Phát triển Chức năng Lõi)
 * Các thành viên phát triển Backend API song song theo từng Module đã chia.
 * **Phú Nam & Phước**: Làm xong Auth & File Service sẽ hỗ trợ Phan Lâm ghép API vào Frontend.
 * **Văn Minh**: Tập trung viết FTS PostgreSQL và Caching.
 
-### Giai đoạn 3 (Tuần 4 - Tích hợp, Test & NFRs)
+### Giai đoạn 3 (Tích hợp, Test & NFRs)
 * **Phan Lâm**: Hoàn thiện UI Form Wizard tạo công thức.
 * **Phước**: Hoàn thiện Health Checks, Logging, Sitemap.
 * Cả nhóm viết Unit Test / Integration Test và kiểm thử luồng end-to-end.
+## 5. Phân công theo tuần
+|Tuần 2|
+| STT | Họ và tên | Nhiệm vụ | 
+| :---: | :--- | :--- | 
+|1|Dương Văn Minh|FR-RCP-1,2,3,4,5,6,7|
+|2|Nguyễn Phạm Phú Nam|FR-Auth-1,2,3, làm màn hình /auth/login, auth/register|
+|3|Mai Quý Phước|FR-CAT-1,2,3,4,5|
+|4|Trần Hữu Phan Lâm|làm màn hình  /, /recipes, /recipes/[slug], /categories, /categories/[slug]|

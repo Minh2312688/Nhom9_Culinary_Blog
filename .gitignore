@@ -21,6 +21,11 @@ Thumbs.db
 # Docker local overrides
 docker-compose.override.yml
 
+# Test results
+**/TestResults/
+test-results/
+playwright-report/
+
 
 # Other
 docs/TV4/

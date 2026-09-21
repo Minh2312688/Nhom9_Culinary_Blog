@@ -1,4 +1,5 @@
-﻿using CulinaryBlog.API.Endpoints;
+using System.Threading.RateLimiting;
+using CulinaryBlog.API.Endpoints;
 using CulinaryBlog.Application;
 using CulinaryBlog.Infrastructure;
 using Scalar.AspNetCore;
@@ -6,41 +7,107 @@ using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 // Đăng ký các service của các layer
 builder.Services.AddApplication();
-builder.Services.AddInfrastructure(builder.Configuration);
-// Đăng ký OpenAPI — .NET 10 native, không cần Swashbuckle
-builder.Services.AddOpenApi(options =>
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
+
+// CORS for Frontend (Next.js) - SRS NFR-SEC-005: Configured origins only, never wildcard.
+// Development allows local defaults (3000/3001); Non-Development strictly requires configured origins.
+var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+var allowedOrigins = configuredOrigins ??
+    (builder.Environment.IsDevelopment()
+        ? new[] { "http://localhost:3000", "http://localhost:3001" }
+        : Array.Empty<string>());
+
+builder.Services.AddCors(options =>
 {
- options.AddDocumentTransformer((document, context, ct) =>
- {
- // Thông tin cơ bản của API
- document.Info = new()
- {
- Title = "Culinary Blog API",
-Version = "v1",
- Description = "API cho ứng dụng Blog ẩm thực và nấu ăn",
- };
- return Task.CompletedTask;
- });
+    options.AddDefaultPolicy(policy =>
+    {
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+    });
 });
-var app = builder.Build();
-if (app.Environment.IsDevelopment())
+
+// NFR-SEC-003: Rate Limiting for /auth/* (10 requests / minute / IP with Sliding Window)
+builder.Services.AddRateLimiter(options =>
 {
- // Endpoint phục vụ OpenAPI spec (JSON/YAML)
- app.MapOpenApi();
- // Scalar UI — thay thế Swagger UI trong .NET 10
- app.MapScalarApiReference(options =>
- {
- options
- .WithTitle("Culinary Blog API")
- .WithTheme(ScalarTheme.Purple) // Giao diện tím phù hợp với food blog
- .WithDefaultHttpClient(ScalarTarget.CSharp,
-ScalarClient.HttpClient);
- });
-}
-app.UseHttpsRedirection();
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+        }
+        else
+        {
+            context.HttpContext.Response.Headers.RetryAfter = "60";
+        }
+
+        context.HttpContext.Response.ContentType = "application/problem+json";
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            type = "https://tools.ietf.org/html/rfc6585#section-4",
+            title = "Too Many Requests",
+            status = 429,
+            detail = "Rate limit exceeded. Please try again later."
+        }, cancellationToken: token);
+    };
+
+    // Security (NFR-SEC-003): Do not trust raw X-Forwarded-For from untrusted clients.
+    // Use connection's resolved RemoteIpAddress.
+    // TEST-ONLY TECHNICAL DEBT: In Development/Testing only, allow isolated test runs via X-Test-Client-IP.
+    // This cannot execute in Staging/Production.
+    options.AddPolicy("AuthRateLimitPolicy", httpContext =>
+    {
+        var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+
+        if (builder.Environment.IsDevelopment() &&
+            httpContext.Request.Headers.TryGetValue("X-Test-Client-IP", out var testIp))
+        {
+            ipAddress = testIp.ToString();
+        }
+
+        return RateLimitPartition.GetSlidingWindowLimiter(ipAddress, _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1),
+            SegmentsPerWindow = 6,
+            QueueLimit = 0
+        });
+    });
+});
+
+var app = builder.Build();
+
+app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
-// Đăng ký tất cả endpoints
-app.MapCategoryEndpoints();
-// app.MapRecipeEndpoints();
+
+app.MapGet("/", () => Results.Ok(new
+{
+    service = "CulinaryBlog.API",
+    phase = "TV1 - Giai doan 2 Auth",
+    status = "running"
+}));
+
+app.MapSystemEndpoints();
+app.MapAuthEndpoints();
+
+// TEMPORARY LOCAL AUTH SCHEMA BOOTSTRAP
+// EnsureCreated is a temporary Development-only bootstrap.
+// It does not affect Staging/Production, but the development database
+// may need to be recreated when TV2 integrates consolidated EF Core
+// migrations because EnsureCreated does not create EF migration history.
+// TV2 owns final migrations.
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var authDb = scope.ServiceProvider.GetRequiredService<CulinaryBlog.Infrastructure.Persistence.AuthDbContext>();
+    authDb.Database.EnsureCreated();
+}
+
 app.Run();

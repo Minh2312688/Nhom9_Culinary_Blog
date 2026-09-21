@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using CulinaryBlog.Application.DTOs.System;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -6,11 +6,11 @@ using Xunit;
 
 namespace CulinaryBlog.Integration.Tests.Endpoints;
 
-public sealed class SystemEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class SystemEndpointsTests : IClassFixture<CustomAuthWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public SystemEndpointsTests(WebApplicationFactory<Program> factory)
+    public SystemEndpointsTests(CustomAuthWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }

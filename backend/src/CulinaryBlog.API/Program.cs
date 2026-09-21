@@ -2,6 +2,7 @@ using System.Threading.RateLimiting;
 using CulinaryBlog.API.Endpoints;
 using CulinaryBlog.Application;
 using CulinaryBlog.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -96,17 +97,19 @@ app.MapGet("/", () => Results.Ok(new
 app.MapSystemEndpoints();
 app.MapAuthEndpoints();
 
-// TEMPORARY LOCAL AUTH SCHEMA BOOTSTRAP
-// EnsureCreated is a temporary Development-only bootstrap.
-// It does not affect Staging/Production, but the development database
-// may need to be recreated when TV2 integrates consolidated EF Core
-// migrations because EnsureCreated does not create EF migration history.
-// TV2 owns final migrations.
+// LAB-02 DATABASE MIGRATION & SEEDING (DEVELOPMENT ONLY)
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var authDb = scope.ServiceProvider.GetRequiredService<CulinaryBlog.Infrastructure.Persistence.AuthDbContext>();
-    authDb.Database.EnsureCreated();
+    var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<CulinaryBlog.Infrastructure.Identity.ApplicationUser>>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    if (authDb.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory")
+    {
+        authDb.Database.Migrate();
+        await CulinaryBlog.Infrastructure.Persistence.Seed.Lab02DataSeeder.SeedAsync(authDb, userManager, logger);
+    }
 }
 
 app.Run();

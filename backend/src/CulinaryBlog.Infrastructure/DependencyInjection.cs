@@ -1,5 +1,6 @@
 using System.Text;
 using CulinaryBlog.Application.Contracts.Authentication;
+using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Infrastructure.Authentication;
 using CulinaryBlog.Infrastructure.Identity;
 using CulinaryBlog.Infrastructure.Notifications;
@@ -30,6 +31,10 @@ public static class DependencyInjection
 
         services.AddDbContext<AuthDbContext>(options =>
             options.UseNpgsql(postgresConnection));
+        services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseNpgsql(postgresConnection));
+        services.AddScoped<IApplicationDbContext>(serviceProvider =>
+            serviceProvider.GetRequiredService<ApplicationDbContext>());
 
         // ASP.NET Core Identity configuration
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>

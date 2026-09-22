@@ -96,6 +96,7 @@ app.MapGet("/", () => Results.Ok(new
 
 app.MapSystemEndpoints();
 app.MapAuthEndpoints();
+app.MapCategoryEndpoints();
 
 // TEMPORARY LOCAL AUTH SCHEMA BOOTSTRAP
 // EnsureCreated is a temporary Development-only bootstrap.

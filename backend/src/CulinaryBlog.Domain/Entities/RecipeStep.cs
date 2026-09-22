@@ -8,6 +8,6 @@ public class RecipeStep : BaseEntity
     public int StepNumber { get; set; }
     public string? Title { get; set; }
     public string Description { get; set; } = string.Empty;
-    public int? TimerMinutes { get; set; }
+    public int? DurationMinutes { get; set; }
     public string? ImageUrl { get; set; }
 }

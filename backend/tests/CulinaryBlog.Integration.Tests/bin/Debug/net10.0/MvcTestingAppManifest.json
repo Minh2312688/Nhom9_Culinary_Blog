@@ -1,0 +1,6 @@
+{
+  "CulinaryBlog.API, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "D:\\Nhom9_Culinary_Blog\\backend\\src\\CulinaryBlog.API",
+  "CulinaryBlog.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "D:\\Nhom9_Culinary_Blog\\backend\\src\\CulinaryBlog.Application",
+  "CulinaryBlog.Domain, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "D:\\Nhom9_Culinary_Blog\\backend\\src\\CulinaryBlog.Domain",
+  "CulinaryBlog.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "D:\\Nhom9_Culinary_Blog\\backend\\src\\CulinaryBlog.Infrastructure"
+}

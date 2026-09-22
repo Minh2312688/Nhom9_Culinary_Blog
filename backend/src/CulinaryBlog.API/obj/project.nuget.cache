@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "dgSpecHash": "ZWq+J02nXGY=",
+  "success": false,
+  "projectFilePath": "d:\\Nhom9_Culinary_Blog\\backend\\src\\CulinaryBlog.API\\CulinaryBlog.API.csproj",
+  "expectedPackageFiles": [],
+  "logs": [
+    {
+      "code": "NU1105",
+      "level": "Error",
+      "message": "Unable to read project information for 'CulinaryBlog.API': Invalid framework identifier ''.",
+      "projectPath": "d:\\Nhom9_Culinary_Blog\\backend\\src\\CulinaryBlog.API\\CulinaryBlog.API.csproj",
+      "filePath": "d:\\Nhom9_Culinary_Blog\\backend\\src\\CulinaryBlog.API\\CulinaryBlog.API.csproj",
+      "targetGraphs": []
+    }
+  ]
+}

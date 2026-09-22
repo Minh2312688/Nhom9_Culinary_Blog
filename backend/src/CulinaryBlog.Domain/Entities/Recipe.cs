@@ -6,8 +6,8 @@ public class Recipe : BaseEntity
     public string Slug { get; set; } = string.Empty;
     public string? Description { get; set; }
 
-    public int PrepTime { get; set; }
-    public int CookTime { get; set; }
+    public int PrepTimeMinutes { get; set; }
+    public int CookTimeMinutes { get; set; }
     public int Servings { get; set; }
     public string Difficulty { get; set; } = string.Empty;
 
@@ -21,6 +21,6 @@ public class Recipe : BaseEntity
 
     public ICollection<RecipeIngredient> Ingredients { get; set; } = new List<RecipeIngredient>();
     public ICollection<RecipeStep> Steps { get; set; } = new List<RecipeStep>();
+    public ICollection<RecipeImage> Images { get; set; } = new List<RecipeImage>();
+    public RecipeNutrition? Nutrition { get; set; }
 }
-
-// app.MapRecipeEndpoints();

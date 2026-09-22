@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Contracts.Persistence;
+using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -14,10 +15,20 @@ public static class DependencyInjection
  services.AddDbContext<ApplicationDbContext>(options =>
  {
  options.UseNpgsql(
- configuration.GetConnectionString("DefaultConnection"),
+	configuration.GetConnectionString("Postgres") ?? configuration.GetConnectionString("DefaultConnection"),
  npgsql => npgsql.MigrationsAssembly(
  typeof(ApplicationDbContext).Assembly.FullName));
  });
+ var redisConnection = configuration["Redis:ConnectionString"];
+ if (!string.IsNullOrWhiteSpace(redisConnection))
+ {
+  services.AddStackExchangeRedisCache(options => options.Configuration = redisConnection);
+ }
+ else
+ {
+  services.AddDistributedMemoryCache();
+ }
+ services.AddScoped<IRecipeCache, Persistence.DistributedRecipeCache>();
  // Đăng ký IApplicationDbContext → ApplicationDbContext
  // Scoped: mỗi HTTP request có một DbContext instance riêng
  services.AddScoped<IApplicationDbContext, ApplicationDbContext>();

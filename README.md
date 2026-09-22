@@ -1,120 +1,114 @@
-# Culinary Blog - TV1 Giai đoạn 1
+@@ -1 +1,104 @@
+# Nhom9_Culinary_Blog
+# Nhom9_Culinary_Blog
+# THÀNH VIÊN VÀ PHÂN CÔNG CÔNG VIỆC NHÓM 9
 
-Starter base cho Thành viên 1 theo phân công: **Clean Architecture + MediatR Pipeline + Docker Compose (PostgreSQL, Redis, MinIO)**.
+## 1. Thành viên
 
-## 1. Phạm vi đúng của Giai đoạn 1
+| STT | Họ và tên | MSSV | Email | SĐT |
+| :---: | :--- | :--- | :--- | :--- |
+|1|Dương Văn Minh|2312688|2312688@dlu.edu.vn|0352183984
+|2|Nguyễn Phạm Phú Nam|2312695|2312695@dlu.edu.vn|0917707902
+|3|Mai Quý Phước|2312716|2312716@dlu.edu.vn|097100756
+|4|Trần Hữu Phan Lâm|2312656|2312656@dlu.edu.vn|0562144990
 
-Giai đoạn này chỉ dựng nền tảng để các thành viên phát triển song song. Chưa triển khai FR-AUTH-001..007 và chưa làm UI đăng nhập/đăng ký/profile.
+---
 
-Backend có 4 tầng:
+## 2. Chi tiết phân công việc cho từng thành viên
 
-```text
-CulinaryBlog.Domain
-        ^
-        |
-CulinaryBlog.Application
-        ^
-        |
-CulinaryBlog.Infrastructure
-        ^
-        |
-CulinaryBlog.API (Presentation)
-```
+### 👤 Thành viên 1: Fullstack – Nền tảng Hệ thống & Module Xác thực (Auth)
 
-`API` được phép reference `Application` + `Infrastructure`. `Infrastructure` reference `Application`. `Application` reference `Domain`. `Domain` không reference layer khác.
+**Phạm vi Backend:**
+* Dựng khung dự án Clean Architecture (Domain, Application, Infrastructure, Presentation) và cấu hình MediatR Pipeline (Logging, Validation).
+* Hiện thực Module Xác thực (FR-AUTH-001 đến FR-AUTH-007): Đăng ký, đăng nhập Local JWT, Google OAuth 2.0, Refresh Token Rotation, Logout, Xem/Sửa Profile.
+* Cấu hình Rate Limiting middleware cho các endpoint nhạy cảm.
 
-## 2. Yêu cầu máy phát triển
+**Phạm vi Frontend:**
+* Dựng khung ứng dụng Next.js App Router, cài đặt Tailwind CSS, cấu hình Auth.js v5 / JWT Client State.
+* Xây dựng màn hình Đăng ký (`/auth/register`), Đăng nhập (`/auth/login`), Trang cá nhân (`/profile`).
 
-- .NET 10 SDK
-- Docker Engine/Desktop + Docker Compose v2
-- Git 2.40+
+**Hạ tầng & DevOps:**
+* Dựng cấu hình `docker-compose.yml` nền tảng (App, Postgres, Redis, MinIO).
 
-## 3. Chạy local bằng Docker
+---
 
-Từ thư mục gốc:
+### 👤 Thành viên 2: Backend Core Developer – Module Công thức Nấu ăn & Cơ sở Dữ liệu
 
-```bash
-cp .env.example .env
-docker compose config
-docker compose up -d --build
-docker compose ps
-```
+**Phạm vi Backend:**
+* Thiết kế Entity Framework Core Data Models, Migrations và Seeding dữ liệu mẫu.
+* Hiện thực lõi Module Công thức (FR-RCP-001 đến FR-RCP-007, FR-RCP-009, FR-RCP-010): Tạo/Sửa/Xóa công thức, quản lý Nguyên liệu, các Bước thực hiện, chuyển trạng thái Draft / Published / Archive.
+* Xử lý Optimistic Concurrency qua `RowVersion` và Resource-Based Authorization (chỉ tác giả mới được sửa bài của mình).
 
-Windows PowerShell:
+**Tìm kiếm & Caching:**
+* Hiện thực Module Tìm kiếm (FR-SRCH-001 đến FR-SRCH-004): Tìm kiếm toàn văn bản tiếng Việt không dấu (PostgreSQL Full-Text Search với `tsvector`, `unaccent`).
+* Cấu hình chiến lược Caching với Redis (Output Cache / Cache-Aside) cho danh sách và chi tiết công thức.
 
-```powershell
-Copy-Item .env.example .env
-docker compose config
-docker compose up -d --build
-docker compose ps
-```
+---
 
-API:
+### 👤 Thành viên 3: Frontend Lead Developer – UI/UX & Giao diện Công thức Nấu ăn
 
-```text
-http://localhost:5000/
-http://localhost:5000/api/v1/system/base-status
-```
+**Phạm vi Frontend (Giao diện Người dùng):**
+* Thiết kế layout responsive (Mobile/Tablet/Desktop) sử dụng Tailwind CSS.
+* Tích hợp TanStack Query (React Query) để kết nối REST API phía Backend.
 
-MinIO Console:
+**Màn hình công khai (Guest/Public):**
+* Trang chủ (`/`) & Danh sách công thức có Bộ lọc/Sắp xếp/Phân trang (`/recipes`).
+* Trang Chi tiết công thức (`/recipes/[slug]`): Tích hợp chuẩn JSON-LD Schema.org Recipe cho SEO.
+* Trang Tìm kiếm (`/search`).
 
-```text
-http://localhost:9001
-```
+**Màn hình Tác giả (Author Dashboard):**
+* Màn hình quản lý danh sách công thức cá nhân (`/dashboard/recipes`).
+* Form tạo/chỉnh sửa công thức dạng Wizard nhiều bước sử dụng React Hook Form + Zod (`/dashboard/recipes/new`, `/[id]/edit`).
 
-## 4. Chạy backend không Docker
+---
 
-```bash
-cd backend
-dotnet restore CulinaryBlog.sln
-dotnet build CulinaryBlog.sln -c Debug
-dotnet run --project src/CulinaryBlog.API/CulinaryBlog.API.csproj
-```
+### 👤 Thành viên 4: Fullstack / Services Specialist – Danh mục, Lưu trữ File, Background Jobs & Observability
 
-> PostgreSQL/Redis/MinIO chưa được gọi trực tiếp trong Phase 1, nên API base có thể chạy để kiểm tra Clean Architecture + MediatR trước khi các infrastructure adapter được tích hợp.
+**Phạm vi Backend:**
+* Module Danh mục (FR-CAT-001 đến FR-CAT-005): CRUD danh mục, sinh slug tự động, cache `IMemoryCache`.
+* Module Quản lý Tệp tin (FR-FILE-001, FR-FILE-002, FR-RCP-008): Upload/xóa ảnh trên MinIO S3, validate dung lượng (≤5MB) và Magic Bytes.
+* Module Background Jobs (FR-JOB-001 đến FR-JOB-003): Cấu hình Hangfire xử lý gửi email chào mừng, tự động sinh thumbnail/medium image, và job tạo `sitemap.xml` tự động.
+* Module Quan sát Hệ thống (FR-OBS-001 đến FR-OBS-003): Cấu hình Serilog structured logging, OpenTelemetry tracing và các endpoint Health Checks (`/health`, `/health/ready`, `/health/live`).
 
-## 5. MediatR Pipeline
+**Phạm vi Frontend:**
+* Màn hình Quản lý Danh mục dành cho Admin (`/dashboard/categories`).
+* Component Upload ảnh (Drag & Drop + Progress bar) phía Client.
 
-Đã đăng ký theo thứ tự:
+---
 
-1. `LoggingBehavior<TRequest,TResponse>`
-2. `ValidationBehavior<TRequest,TResponse>`
-3. Handler
+## 3. Bảng Tổng hợp Phân công Task Matrix
 
-Endpoint `/api/v1/system/base-status` đi qua MediatR để kiểm tra pipeline nền tảng.
+| Thành viên | Vai trò chính | Module phụ trách chính | Yêu cầu FR / NFR đáp ứng |
+| :--- | :--- | :--- | :--- |
+| **Phú Nam** | Auth & Infra | FR-AUTH, Base Infrastructure, Auth UI | FR-AUTH-001 → 007, NFR-SEC-001 → 003 |
+| **Văn Minh** | Backend Core & Data | FR-RCP (Core), FR-SRCH, Caching | FR-RCP-001 → 007, 009, 010, FR-SRCH-001 → 004, NFR-PERF-003/004 |
+| **Phan Lâm** | Frontend Lead UI/UX | Frontend Core Pages & Dashboard | Màn hình Public & Dashboard, NFR-USE-001 → 004, NFR-SEO |
+| **Phước** | Services & Admin Fullstack | FR-CAT, FR-FILE, FR-JOB, FR-OBS | FR-CAT-001 → 005, FR-FILE-001/002, FR-JOB-001 → 003, FR-OBS-001 → 003 |
 
-## 6. Kiểm tra trước khi commit/merge
+---
 
-```bash
-cd backend
-dotnet restore CulinaryBlog.sln
-dotnet build CulinaryBlog.sln -c Release
-cd ..
-docker compose config
-```
+## 4. Quy trình Triển khai khuyến nghị (Tránh nghẽn tiến độ)
 
-Checklist:
+### Giai đoạn 1 (Khởi tạo Base)
+* **Phú Nam**: Dựng base Clean Architecture & Docker Compose (Postgres, Redis, MinIO).
+* **Văn Minh**: Tạo DB Schemas / Entities cơ bản (Recipe, User, Category).
+* **Phan Lâm**: Dựng Next.js layout, UI Components nền tảng.
+* **Phước**: Tích hợp MinIO Service & Hangfire base.
 
-- Build không warning/error.
-- API container chạy cổng 5000.
-- PostgreSQL healthy.
-- Redis healthy.
-- MinIO mở được cổng 9000/9001.
-- `/api/v1/system/base-status` trả HTTP 200.
-- Không commit `.env` hoặc secret thật.
+### Giai đoạn 2 (Phát triển Chức năng Lõi)
+* Các thành viên phát triển Backend API song song theo từng Module đã chia.
+* **Phú Nam & Phước**: Làm xong Auth & File Service sẽ hỗ trợ Phan Lâm ghép API vào Frontend.
+* **Văn Minh**: Tập trung viết FTS PostgreSQL và Caching.
 
-## 7. Bước kế tiếp - Giai đoạn 2
-
-Trên chính base này mới triển khai Auth:
-
-- FR-AUTH-001 Register
-- FR-AUTH-002 Local Login
-- FR-AUTH-003 Google OAuth 2.0
-- FR-AUTH-004 Refresh Token Rotation
-- FR-AUTH-005 Logout
-- FR-AUTH-006 View Profile
-- FR-AUTH-007 Update Profile
-- Rate Limiting cho `/auth/*`
-- Auth UI trên Next.js base do nhóm frontend dựng
-
-Xem thêm `docs/architecture/PHASE-1-BOUNDARIES.md` để tránh conflict khi merge.
+### Giai đoạn 3 (Tích hợp, Test & NFRs)
+* **Phan Lâm**: Hoàn thiện UI Form Wizard tạo công thức.
+* **Phước**: Hoàn thiện Health Checks, Logging, Sitemap.
+* Cả nhóm viết Unit Test / Integration Test và kiểm thử luồng end-to-end.
+## 5. Phân công theo tuần
+|Tuần 2|
+| STT | Họ và tên | Nhiệm vụ | 
+| :---: | :--- | :--- | 
+|1|Dương Văn Minh|FR-RCP-1,2,3,4,5,6,7|
+|2|Nguyễn Phạm Phú Nam|FR-Auth-1,2,3, làm màn hình /auth/login, auth/register|
+|3|Mai Quý Phước|FR-CAT-1,2,3,4,5|
+|4|Trần Hữu Phan Lâm|làm màn hình  /, /recipes, /recipes/[slug], /categories, /categories/[slug]|

@@ -5,7 +5,7 @@ using CulinaryBlog.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
-
+// Đăng ký các service của các layer
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 
@@ -93,7 +93,10 @@ app.MapGet("/", () => Results.Ok(new
     phase = "TV1 - Giai doan 2 Auth",
     status = "running"
 }));
-
+app.UseAuthentication();
+app.UseAuthorization();
+// Đăng ký tất cả endpoints
+app.MapCategoryEndpoints();
 app.MapSystemEndpoints();
 app.MapAuthEndpoints();
 
@@ -113,5 +116,3 @@ if (app.Environment.IsDevelopment())
 }
 
 app.Run();
-
-public partial class Program;

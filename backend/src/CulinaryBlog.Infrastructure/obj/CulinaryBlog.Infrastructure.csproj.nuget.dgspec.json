@@ -1,0 +1,18 @@
+{
+  "format": 1,
+  "restore": {
+    "d:\\Nhom9_Culinary_Blog\\backend\\src\\CulinaryBlog.Infrastructure\\CulinaryBlog.Infrastructure.csproj": {}
+  },
+  "projects": {
+    "d:\\Nhom9_Culinary_Blog\\backend\\src\\CulinaryBlog.Infrastructure\\CulinaryBlog.Infrastructure.csproj": {
+      "restore": {
+        "projectUniqueName": "d:\\Nhom9_Culinary_Blog\\backend\\src\\CulinaryBlog.Infrastructure\\CulinaryBlog.Infrastructure.csproj",
+        "projectPath": "d:\\Nhom9_Culinary_Blog\\backend\\src\\CulinaryBlog.Infrastructure\\CulinaryBlog.Infrastructure.csproj",
+        "packagesPath": "",
+        "outputPath": "d:\\Nhom9_Culinary_Blog\\backend\\src\\CulinaryBlog.Infrastructure\\obj\\",
+        "projectStyle": "PackageReference",
+        "UsingMicrosoftNETSdk": false
+      }
+    }
+  }
+}

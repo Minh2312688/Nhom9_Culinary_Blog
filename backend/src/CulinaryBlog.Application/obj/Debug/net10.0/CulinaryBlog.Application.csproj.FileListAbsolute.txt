@@ -1,0 +1,16 @@
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\obj\Debug\net10.0\CulinaryBlog.Application.csproj.AssemblyReference.cache
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\obj\Debug\net10.0\CulinaryBlog.Application.GeneratedMSBuildEditorConfig.editorconfig
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\obj\Debug\net10.0\CulinaryBlog.Application.AssemblyInfoInputs.cache
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\obj\Debug\net10.0\CulinaryBlog.Application.AssemblyInfo.cs
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\obj\Debug\net10.0\CulinaryBlog.Application.csproj.CoreCompileInputs.cache
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\obj\Debug\net10.0\CulinaryBlog.Application.sourcelink.json
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\bin\Debug\net10.0\CulinaryBlog.Application.deps.json
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\bin\Debug\net10.0\CulinaryBlog.Application.dll
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\bin\Debug\net10.0\CulinaryBlog.Application.pdb
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\bin\Debug\net10.0\CulinaryBlog.Domain.dll
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\bin\Debug\net10.0\CulinaryBlog.Domain.pdb
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\obj\Debug\net10.0\Culinary.995F3C4F.Up2Date
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\obj\Debug\net10.0\CulinaryBlog.Application.dll
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\obj\Debug\net10.0\refint\CulinaryBlog.Application.dll
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\obj\Debug\net10.0\CulinaryBlog.Application.pdb
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.Application\obj\Debug\net10.0\ref\CulinaryBlog.Application.dll

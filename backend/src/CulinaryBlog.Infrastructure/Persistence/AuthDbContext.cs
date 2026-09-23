@@ -4,12 +4,13 @@ using ApplicationUser = CulinaryBlog.Infrastructure.Identity.ApplicationUser;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using ApplicationUser = CulinaryBlog.Infrastructure.Identity.ApplicationUser;
 
 namespace CulinaryBlog.Infrastructure.Persistence;
 
 /// <summary>
-/// Minimal Auth DbContext for TV1 Week 2 authentication operations.
-/// TV2 is the lead for the consolidated DbContext and migrations.
+/// TEMPORARY LAB-02 PERSONAL DATABASE CONTEXT
+/// Personal Database Context for TV1 Week 2 / Lab 02.
 /// </summary>
 public class AuthDbContext : IdentityDbContext<ApplicationUser, IdentityRole, string>
 {
@@ -18,6 +19,10 @@ public class AuthDbContext : IdentityDbContext<ApplicationUser, IdentityRole, st
     }
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Recipe> Recipes => Set<Recipe>();
+    public DbSet<RecipeIngredient> RecipeIngredients => Set<RecipeIngredient>();
+    public DbSet<RecipeStep> RecipeSteps => Set<RecipeStep>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -32,5 +37,7 @@ public class AuthDbContext : IdentityDbContext<ApplicationUser, IdentityRole, st
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.ExpiresAt).IsRequired();
         });
+
+        builder.ApplyConfigurationsFromAssembly(typeof(AuthDbContext).Assembly);
     }
 }

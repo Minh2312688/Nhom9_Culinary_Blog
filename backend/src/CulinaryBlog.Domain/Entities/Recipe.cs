@@ -1,26 +1,24 @@
+using CulinaryBlog.Domain.Common;
+
 namespace CulinaryBlog.Domain.Entities;
 
 public class Recipe : BaseEntity
 {
-    public string Title { get; set; } = string.Empty;
-    public string Slug { get; set; } = string.Empty;
+    public string Title { get; set; } = default!;
+    public string Slug { get; set; } = default!;
     public string? Description { get; set; }
-
-    public int PrepTime { get; set; }
-    public int CookTime { get; set; }
-    public int Servings { get; set; }
-    public string Difficulty { get; set; } = string.Empty;
-
-    public RecipeStatus Status { get; set; } = RecipeStatus.Draft;
-
     public Guid CategoryId { get; set; }
-    public Category Category { get; set; } = null!;
+    public Category? Category { get; set; }
+    public string AuthorId { get; set; } = default!;
 
-    public string AuthorId { get; set; } = string.Empty;
-    public ApplicationUser Author { get; set; } = null!;
+    public int PrepTimeMinutes { get; set; }
+    public int CookTimeMinutes { get; set; }
+    public int Servings { get; set; }
+    public string Difficulty { get; set; } = "Easy";
+    public RecipeStatus Status { get; set; } = RecipeStatus.Draft;
 
     public ICollection<RecipeIngredient> Ingredients { get; set; } = new List<RecipeIngredient>();
     public ICollection<RecipeStep> Steps { get; set; } = new List<RecipeStep>();
+    public ICollection<RecipeImage> Images { get; set; } = new List<RecipeImage>();
+    public RecipeNutrition? Nutrition { get; set; }
 }
-
-// app.MapRecipeEndpoints();

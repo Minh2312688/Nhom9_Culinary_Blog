@@ -1,13 +1,18 @@
 using System.Threading.RateLimiting;
 using CulinaryBlog.API.Endpoints;
 using CulinaryBlog.Application;
+using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Infrastructure;
-using Scalar.AspNetCore;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 // Đăng ký các service của các layer
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CulinaryBlog.API.CurrentUserService>();
 
 // CORS for Frontend (Next.js) - SRS NFR-SEC-005: Configured origins only, never wildcard.
 // Development allows local defaults (3000/3001); Non-Development strictly requires configured origins.
@@ -93,22 +98,28 @@ app.MapGet("/", () => Results.Ok(new
     phase = "TV1 - Giai doan 2 Auth",
     status = "running"
 }));
-
+app.UseAuthentication();
+app.UseAuthorization();
+// Đăng ký tất cả endpoints
+app.MapCategoryEndpoints();
+app.MapRecipeEndpoints();
 app.MapSystemEndpoints();
 app.MapAuthEndpoints();
 app.MapCategoryEndpoints();
 
-// TEMPORARY LOCAL AUTH SCHEMA BOOTSTRAP
-// EnsureCreated is a temporary Development-only bootstrap.
-// It does not affect Staging/Production, but the development database
-// may need to be recreated when TV2 integrates consolidated EF Core
-// migrations because EnsureCreated does not create EF migration history.
-// TV2 owns final migrations.
+// LAB-02 DATABASE MIGRATION & SEEDING (DEVELOPMENT ONLY)
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var authDb = scope.ServiceProvider.GetRequiredService<CulinaryBlog.Infrastructure.Persistence.AuthDbContext>();
-    authDb.Database.EnsureCreated();
+    var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<CulinaryBlog.Infrastructure.Identity.ApplicationUser>>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    if (authDb.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory")
+    {
+        authDb.Database.Migrate();
+        await CulinaryBlog.Infrastructure.Persistence.Seed.Lab02DataSeeder.SeedAsync(authDb, userManager, logger);
+    }
 }
 
 app.Run();

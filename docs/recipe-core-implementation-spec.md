@@ -5,7 +5,7 @@
 Module gồm domain recipe, persistence EF Core/PostgreSQL, CQRS, API `/api/v1/recipes`, cache detail bằng Redis, migration và dataset ngẫu nhiên phục vụ báo cáo.
 
 ## Hợp đồng dữ liệu báo cáo
-
+...
 Dataset báo cáo phải thỏa các bất biến sau:
 
 | Bất biến | Điều kiện |

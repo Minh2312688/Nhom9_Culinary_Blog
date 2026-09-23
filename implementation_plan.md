@@ -128,17 +128,9 @@ Quy ước: `[x]` đã có code và đã kiểm tra build/test; `[~]` đã có m
 
 Chi tiết kỹ thuật và giới hạn hiện tại được ghi tại [docs/recipe-core-implementation-spec.md](docs/recipe-core-implementation-spec.md).
 
-## User Review Required
+## Quyết định conflict chính thức
 
-> [!IMPORTANT]
-> **Quyết định giải quyết xung đột (Conflict Resolutions)**
-> Để đảm bảo tính nhất quán và tuân thủ các best practice của Clean Architecture và .NET, các điểm mâu thuẫn đã được chọn phương án tối ưu nhất. Nhóm hoặc Giảng viên cần xác nhận các quyết định này:
-> 1. **Delete Strategy (CONFLICT-001):** Sử dụng **Soft Delete** (`IsDeleted = true` + EF Core Global Query Filter). An toàn cho dữ liệu người dùng.
-> 2. **Sorting (CONFLICT-003):** Sử dụng **Explicit params** (`sortBy=title&sortOrder=asc/desc`).
-> 3. **Pagination (CONFLICT-012):** Sử dụng **Flat shape** `PagedResult<T> { items, totalCount, page, pageSize, totalPages, hasNextPage, hasPreviousPage }`.
-> 4. **Concurrency (CONFLICT-014):** Trả về **HTTP 409 Conflict** khi sai `RowVersion`.
-> 5. **Caching (CONFLICT-019):** Sử dụng **Redis distributed cache** (TTL 5m, Cache-Aside) thay vì Output Cache để dễ scale-out.
-> 6. **Model Naming (CONFLICT-005, 006, 007, 008):** Dùng `OrderIndex`, `DurationMinutes`, có trường `Title` cho Step, và 6 chỉ số dinh dưỡng tính theo *PER SERVING*.
+Ngày 2026-09-23, đại diện nhóm xác nhận áp dụng phương án đề xuất cho toàn bộ 25 conflict. Decision log tại [docs/srs-audit/SRS-CONFLICTS-AND-DECISIONS.md](docs/srs-audit/SRS-CONFLICTS-AND-DECISIONS.md) là nguồn chuẩn về phương án đã chọn. `DECIDED` nghĩa là đã thống nhất thiết kế, không đồng nghĩa đã triển khai code. CONFLICT-004, 005 và 011 đã được triển khai cùng FR-RCP-009; các conflict còn lại cần được thực hiện theo module.
 
 ## Đề xuất Triển khai Từng bước
 
@@ -229,3 +221,16 @@ Sử dụng MediatR để phân tách các Use Case. Tất cả input phải đi
 - Đăng nhập với 2 user khác nhau để test phân quyền (User A không thể update/xem bài draft của User B).
 - Kiểm tra dữ liệu trong PGAdmin để đảm bảo `IsDeleted` hoạt động đúng thay vì mất record.
 - Dùng Redis CLI (`monitor`) để verify cache hit/miss và invalidation.
+
+## Cập nhật FR-RCP-009 - 2026-09-23
+
+- Backend đã có command/handler và validator cho thêm, sửa, xóa ingredient; API POST/PUT/DELETE được bảo vệ authorization và kiểm tra chủ sở hữu/Admin.
+- `Quantity` và `Unit` nullable; nếu có Quantity thì phải lớn hơn 0. Thứ tự dùng `OrderIndex`. PUT thay thế toàn bộ các trường ingredient; trường nullable gửi null sẽ được xóa.
+- Lỗi validation trả HTTP 400 Problem Details; resource sai route trả 404; thao tác trái quyền trả 403; xóa mềm và cache detail được xử lý.
+- 13 test FR-RCP-009 chạy qua; toàn solution có 72 test pass trong lần verification gần nhất. Integration dùng EF Core InMemory; PostgreSQL/Testcontainers verification còn lại. UI form còn phụ thuộc TV3.
+
+## Quyết định conflict chính thức
+
+- Ngày 2026-09-23, đại diện nhóm xác nhận áp dụng phương án đề xuất cho toàn bộ 25 mục trong [SRS conflict decision log](docs/srs-audit/SRS-CONFLICTS-AND-DECISIONS.md).
+- `DECIDED` nghĩa là đã chốt thiết kế; không được hiểu là đã triển khai code. CONFLICT-004, 005, 011 được đánh dấu `IMPLEMENTED` theo phần FR-RCP-009.
+- Các conflict còn lại là quyết định đầu vào cho kế hoạch triển khai theo module; cập nhật checklist và spec từng module khi hoàn tất code và verification.

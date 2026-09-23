@@ -225,10 +225,11 @@ Các lỗi được middleware ánh xạ:
 - `ValidationException` hoặc `InvalidOperationException`: 400.
 - `ForbiddenAccessException`: 403.
 - `NotFoundException`: 404.
-- `ConcurrencyException`: 409.
+- `UnauthorizedException`: 401.
+- `ConcurrencyException` hoặc `ConflictException`: 409.
 - Lỗi chưa phân loại: 500.
 
-Response lỗi dùng `Results.Problem`, tương thích Problem Details ở mức cơ bản. Khi tích hợp Identity/JWT hoàn chỉnh, cần bổ sung policy và kiểm tra token thực tế.
+Response lỗi dùng Problem Details; lỗi validation trả thêm dictionary `errors` theo tên field. Middleware được đăng ký tại API composition root.
 
 ## 6. Cache và vận hành
 
@@ -262,7 +263,7 @@ Kết quả lần chạy cuối: toàn bộ solution tests `13 passed, 0 failed`
 4. Hoàn thiện JWT/Identity và resource authorization thực tế.
 5. Thêm Hangfire job xóa các URL ảnh sau soft delete, hoặc xác định rõ chính sách giữ ảnh.
 6. Tạo cache key registry/Redis adapter để invalidation theo prefix thực sự hoạt động.
-7. Bổ sung endpoint quản lý Ingredients, Steps và Images độc lập theo FR-RCP-008..010.
+7. Bổ sung endpoint quản lý Steps và Images độc lập theo FR-RCP-008/010.
 8. Chuẩn hóa toàn bộ package EF Core về cùng một phiên bản để loại cảnh báo build.
 9. Chạy manual flow: create Draft -> add nested data -> publish -> archive -> delete; kiểm tra record vẫn tồn tại với `IsDeleted = true`.
 
@@ -277,7 +278,31 @@ Kết quả lần chạy cuối: toàn bộ solution tests `13 passed, 0 failed`
 | FR-RCP-005 | DONE | `PublishRecipeCommand`, child-data precondition |
 | FR-RCP-006 | DONE | `ArchiveRecipeCommand` |
 | FR-RCP-007 | DONE | `DeleteRecipeCommand`, DbContext soft delete |
+| FR-RCP-009 | DONE (backend) | Ingredient commands/endpoints, owner/Admin checks, validation, soft delete, cache invalidation; UI form còn lại |
 | Redis cache | PARTIAL | Redis registration có; prefix invalidation chưa có |
 | Hangfire cleanup | NOT STARTED | Chưa có Hangfire job trong repository |
 | Integration verification | NOT STARTED | Chưa có Testcontainers recipe suite |
 | Mock/demo data implementation | REMOVED | Seeder, seed configuration and generated-data Robot suite removed |
+
+
+## 10. Quyết định conflict chính thức
+
+Ngày 2026-09-23, đại diện nhóm xác nhận áp dụng các phương án đề xuất cho toàn bộ 25 conflict. Decision log ghi rõ phương án và người xác nhận tại [SRS-CONFLICTS-AND-DECISIONS.md](srs-audit/SRS-CONFLICTS-AND-DECISIONS.md). Trạng thái `DECIDED` xác nhận đã thống nhất hướng thiết kế, không đồng nghĩa các module tương ứng đã được code. Chỉ CONFLICT-004, 005 và 011 được ghi `IMPLEMENTED` cùng với phần FR-RCP-009 đã triển khai.
+
+Các quyết định ngoài phạm vi FR-RCP-009 cần được thực hiện theo module: soft delete Recipe/Category; query sort và pagination; Step/Nutrition schema; Auth/profile/OAuth/token; concurrency HTTP 409; Redis TTL/cache policy; Category update; Recipe author visibility; browser support; image API contract; và ngoại lệ kế thừa Identity của ApplicationUser. Decision log là nguồn chuẩn để triển khai các phần này.
+
+## 11. FR-RCP-009 — Quản lý ingredients riêng lẻ
+
+### API contract
+
+- `POST /api/v1/recipes/{id}/ingredients` thêm ingredient, trả `201 Created` và `Location` tới ingredient mới.
+- `PUT /api/v1/recipes/{id}/ingredients/{ingredientId}` thay thế toàn bộ các field có thể sửa; `Quantity`, `Unit` và `Notes` gửi `null` sẽ xóa giá trị cũ.
+- `DELETE /api/v1/recipes/{id}/ingredients/{ingredientId}` xóa mềm ingredient và trả `204 No Content`.
+- Cả ba route yêu cầu đăng nhập. Handler kiểm tra owner/Admin, và đảm bảo ingredient thuộc recipe trong route.
+- Payload yêu cầu `Name` và `OrderIndex`; `Quantity` và `Unit` nullable theo CONFLICT-004. Quantity nếu có phải lớn hơn 0; `OrderIndex` không âm.
+- Mỗi mutation xóa cache `recipes:slug:{slug}` và gọi invalidation prefix hiện có.
+- Lỗi trả theo Problem Details: validation 400, authentication 401, forbidden 403, resource không tồn tại/không khớp route 404.
+
+### Verification FR-RCP-009
+
+Test coverage gồm handler trên EF Core InMemory, validation/API auth và middleware Problem Details. Lần chạy mới nhất: 13 test FR-RCP-009 pass; solution có 45 Application, 24 Integration và 3 Architecture tests pass (72 tổng). Các handler tests dùng InMemory, chưa xác minh trên PostgreSQL/Testcontainers. UI ingredient form của TV3 chưa nằm trong phần backend này.

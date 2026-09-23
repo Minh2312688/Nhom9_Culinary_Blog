@@ -3,6 +3,7 @@ using CulinaryBlog.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using ApplicationUser = CulinaryBlog.Infrastructure.Identity.ApplicationUser;
 
 namespace CulinaryBlog.Infrastructure.Persistence.Seed;
 
@@ -86,7 +87,7 @@ public static class Lab02DataSeeder
                     Slug = def.Slug,
                     Description = def.Description,
                     OrderIndex = catOrder++,
-                    CreatedAt = DateTimeOffset.UtcNow
+                    CreatedAt = DateTime.UtcNow
                 };
                 context.Categories.Add(cat);
                 categories.Add(cat);
@@ -193,9 +194,9 @@ public static class Lab02DataSeeder
                 PrepTimeMinutes = rng.Next(10, 45),
                 CookTimeMinutes = rng.Next(15, 90),
                 Servings = rng.Next(2, 8),
-                Difficulty = rng.Next(1, 4), // 1=Easy, 2=Medium, 3=Hard
-                Status = 1, // Published
-                CreatedAt = DateTimeOffset.UtcNow
+                Difficulty = new[] { "Easy", "Medium", "Hard" }[rng.Next(3)],
+                Status = RecipeStatus.Published,
+                CreatedAt = DateTime.UtcNow
             };
 
             // Section 14: EACH recipe must have at least 10 RecipeIngredients
@@ -216,7 +217,7 @@ public static class Lab02DataSeeder
                     Unit = ingDef.Unit,
                     Notes = order == 0 ? "Nguyên liệu chính" : "Gia vị nêm nếm vừa ăn",
                     OrderIndex = order,
-                    CreatedAt = DateTimeOffset.UtcNow
+                    CreatedAt = DateTime.UtcNow
                 });
             }
 
@@ -231,8 +232,8 @@ public static class Lab02DataSeeder
                     StepNumber = s, // 1, 2, 3, 4, 5...
                     Title = $"Bước {s}: {stepTmpl.Title}",
                     Description = stepTmpl.Description,
-                    TimerMinutes = s == 2 ? 20 : (s == 4 ? 15 : null),
-                    CreatedAt = DateTimeOffset.UtcNow
+                    DurationMinutes = s == 2 ? 20 : (s == 4 ? 15 : null),
+                    CreatedAt = DateTime.UtcNow
                 });
             }
 

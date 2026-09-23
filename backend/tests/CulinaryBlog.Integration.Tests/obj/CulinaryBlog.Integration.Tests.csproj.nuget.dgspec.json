@@ -62,35 +62,42 @@
           "framework": "net10.0",
           "targetAlias": "net10.0",
           "dependencies": {
-            "Microsoft.AspNetCore.OpenApi": {
+            "Microsoft.EntityFrameworkCore.Design": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
               "target": "Package",
               "version": "[10.0.12, )",
-              "versionCentrallyManaged": true
-            },
-            "Scalar.AspNetCore": {
-              "target": "Package",
-              "version": "[2.17.4, )",
               "versionCentrallyManaged": true
             }
           },
           "centralPackageVersions": {
+            "coverlet.collector": "6.0.4",
+            "FluentAssertions": "8.1.1",
             "FluentValidation": "12.1.1",
             "FluentValidation.DependencyInjectionExtensions": "12.1.1",
+            "Google.Apis.Auth": "1.70.0",
             "Mapster": "10.0.12",
             "Mapster.DependencyInjection": "10.0.12",
             "MediatR": "12.5.0",
+            "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.12",
+            "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "10.0.12",
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.0",
             "Microsoft.AspNetCore.OpenApi": "10.0.12",
             "Microsoft.EntityFrameworkCore": "10.0.12",
+            "Microsoft.EntityFrameworkCore.Design": "10.0.12",
+            "Microsoft.EntityFrameworkCore.InMemory": "10.0.12",
+            "Microsoft.EntityFrameworkCore.Relational": "10.0.12",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.12",
             "Microsoft.Extensions.Caching.StackExchangeRedis": "10.0.0",
             "Microsoft.Extensions.Configuration.Abstractions": "10.0.12",
-            "Microsoft.Extensions.Identity.Stores": "10.0.0",
+            "Microsoft.Extensions.Identity.Stores": "10.0.12",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.12",
             "Microsoft.NET.Test.Sdk": "17.14.1",
+            "Moq": "4.20.72",
             "NetArchTest.Rules": "1.3.2",
             "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.3",
             "Scalar.AspNetCore": "2.17.4",
+            "StackExchange.Redis": "2.7.27",
             "xunit": "2.9.3",
             "xunit.runner.visualstudio": "3.1.4"
           },
@@ -623,23 +630,33 @@
             }
           },
           "centralPackageVersions": {
+            "coverlet.collector": "6.0.4",
+            "FluentAssertions": "8.1.1",
             "FluentValidation": "12.1.1",
             "FluentValidation.DependencyInjectionExtensions": "12.1.1",
+            "Google.Apis.Auth": "1.70.0",
             "Mapster": "10.0.12",
             "Mapster.DependencyInjection": "10.0.12",
             "MediatR": "12.5.0",
+            "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.12",
+            "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "10.0.12",
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.0",
             "Microsoft.AspNetCore.OpenApi": "10.0.12",
             "Microsoft.EntityFrameworkCore": "10.0.12",
+            "Microsoft.EntityFrameworkCore.Design": "10.0.12",
+            "Microsoft.EntityFrameworkCore.InMemory": "10.0.12",
+            "Microsoft.EntityFrameworkCore.Relational": "10.0.12",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.12",
             "Microsoft.Extensions.Caching.StackExchangeRedis": "10.0.0",
             "Microsoft.Extensions.Configuration.Abstractions": "10.0.12",
-            "Microsoft.Extensions.Identity.Stores": "10.0.0",
+            "Microsoft.Extensions.Identity.Stores": "10.0.12",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.12",
             "Microsoft.NET.Test.Sdk": "17.14.1",
+            "Moq": "4.20.72",
             "NetArchTest.Rules": "1.3.2",
             "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.3",
             "Scalar.AspNetCore": "2.17.4",
+            "StackExchange.Redis": "2.7.27",
             "xunit": "2.9.3",
             "xunit.runner.visualstudio": "3.1.4"
           },
@@ -990,28 +1007,38 @@
           "dependencies": {
             "Microsoft.Extensions.Identity.Stores": {
               "target": "Package",
-              "version": "[10.0.0, )",
+              "version": "[10.0.12, )",
               "versionCentrallyManaged": true
             }
           },
           "centralPackageVersions": {
+            "coverlet.collector": "6.0.4",
+            "FluentAssertions": "8.1.1",
             "FluentValidation": "12.1.1",
             "FluentValidation.DependencyInjectionExtensions": "12.1.1",
+            "Google.Apis.Auth": "1.70.0",
             "Mapster": "10.0.12",
             "Mapster.DependencyInjection": "10.0.12",
             "MediatR": "12.5.0",
+            "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.12",
+            "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "10.0.12",
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.0",
             "Microsoft.AspNetCore.OpenApi": "10.0.12",
             "Microsoft.EntityFrameworkCore": "10.0.12",
+            "Microsoft.EntityFrameworkCore.Design": "10.0.12",
+            "Microsoft.EntityFrameworkCore.InMemory": "10.0.12",
+            "Microsoft.EntityFrameworkCore.Relational": "10.0.12",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.12",
             "Microsoft.Extensions.Caching.StackExchangeRedis": "10.0.0",
             "Microsoft.Extensions.Configuration.Abstractions": "10.0.12",
-            "Microsoft.Extensions.Identity.Stores": "10.0.0",
+            "Microsoft.Extensions.Identity.Stores": "10.0.12",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.12",
             "Microsoft.NET.Test.Sdk": "17.14.1",
+            "Moq": "4.20.72",
             "NetArchTest.Rules": "1.3.2",
             "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.3",
             "Scalar.AspNetCore": "2.17.4",
+            "StackExchange.Redis": "2.7.27",
             "xunit": "2.9.3",
             "xunit.runner.visualstudio": "3.1.4"
           },
@@ -1364,7 +1391,29 @@
           "framework": "net10.0",
           "targetAlias": "net10.0",
           "dependencies": {
+            "Google.Apis.Auth": {
+              "target": "Package",
+              "version": "[1.70.0, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.AspNetCore.Authentication.JwtBearer": {
+              "target": "Package",
+              "version": "[10.0.12, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[10.0.12, )",
+              "versionCentrallyManaged": true
+            },
             "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[10.0.12, )",
+              "versionCentrallyManaged": true
+            },
+            "Microsoft.EntityFrameworkCore.Design": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
               "target": "Package",
               "version": "[10.0.12, )",
               "versionCentrallyManaged": true
@@ -1390,26 +1439,41 @@
               "target": "Package",
               "version": "[10.0.3, )",
               "versionCentrallyManaged": true
+            },
+            "StackExchange.Redis": {
+              "target": "Package",
+              "version": "[2.7.27, )",
+              "versionCentrallyManaged": true
             }
           },
           "centralPackageVersions": {
+            "coverlet.collector": "6.0.4",
+            "FluentAssertions": "8.1.1",
             "FluentValidation": "12.1.1",
             "FluentValidation.DependencyInjectionExtensions": "12.1.1",
+            "Google.Apis.Auth": "1.70.0",
             "Mapster": "10.0.12",
             "Mapster.DependencyInjection": "10.0.12",
             "MediatR": "12.5.0",
+            "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.12",
+            "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "10.0.12",
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.0",
             "Microsoft.AspNetCore.OpenApi": "10.0.12",
             "Microsoft.EntityFrameworkCore": "10.0.12",
+            "Microsoft.EntityFrameworkCore.Design": "10.0.12",
+            "Microsoft.EntityFrameworkCore.InMemory": "10.0.12",
+            "Microsoft.EntityFrameworkCore.Relational": "10.0.12",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.12",
             "Microsoft.Extensions.Caching.StackExchangeRedis": "10.0.0",
             "Microsoft.Extensions.Configuration.Abstractions": "10.0.12",
-            "Microsoft.Extensions.Identity.Stores": "10.0.0",
+            "Microsoft.Extensions.Identity.Stores": "10.0.12",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.12",
             "Microsoft.NET.Test.Sdk": "17.14.1",
+            "Moq": "4.20.72",
             "NetArchTest.Rules": "1.3.2",
             "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.3",
             "Scalar.AspNetCore": "2.17.4",
+            "StackExchange.Redis": "2.7.27",
             "xunit": "2.9.3",
             "xunit.runner.visualstudio": "3.1.4"
           },
@@ -1762,14 +1826,29 @@
           "framework": "net10.0",
           "targetAlias": "net10.0",
           "dependencies": {
+            "FluentAssertions": {
+              "target": "Package",
+              "version": "[8.1.1, )",
+              "versionCentrallyManaged": true
+            },
             "Microsoft.AspNetCore.Mvc.Testing": {
               "target": "Package",
               "version": "[10.0.0, )",
               "versionCentrallyManaged": true
             },
+            "Microsoft.EntityFrameworkCore.InMemory": {
+              "target": "Package",
+              "version": "[10.0.12, )",
+              "versionCentrallyManaged": true
+            },
             "Microsoft.NET.Test.Sdk": {
               "target": "Package",
               "version": "[17.14.1, )",
+              "versionCentrallyManaged": true
+            },
+            "Moq": {
+              "target": "Package",
+              "version": "[4.20.72, )",
               "versionCentrallyManaged": true
             },
             "xunit": {
@@ -1784,23 +1863,33 @@
             }
           },
           "centralPackageVersions": {
+            "coverlet.collector": "6.0.4",
+            "FluentAssertions": "8.1.1",
             "FluentValidation": "12.1.1",
             "FluentValidation.DependencyInjectionExtensions": "12.1.1",
+            "Google.Apis.Auth": "1.70.0",
             "Mapster": "10.0.12",
             "Mapster.DependencyInjection": "10.0.12",
             "MediatR": "12.5.0",
+            "Microsoft.AspNetCore.Authentication.JwtBearer": "10.0.12",
+            "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "10.0.12",
             "Microsoft.AspNetCore.Mvc.Testing": "10.0.0",
             "Microsoft.AspNetCore.OpenApi": "10.0.12",
             "Microsoft.EntityFrameworkCore": "10.0.12",
+            "Microsoft.EntityFrameworkCore.Design": "10.0.12",
+            "Microsoft.EntityFrameworkCore.InMemory": "10.0.12",
+            "Microsoft.EntityFrameworkCore.Relational": "10.0.12",
             "Microsoft.EntityFrameworkCore.Tools": "10.0.12",
             "Microsoft.Extensions.Caching.StackExchangeRedis": "10.0.0",
             "Microsoft.Extensions.Configuration.Abstractions": "10.0.12",
-            "Microsoft.Extensions.Identity.Stores": "10.0.0",
+            "Microsoft.Extensions.Identity.Stores": "10.0.12",
             "Microsoft.Extensions.Logging.Abstractions": "10.0.12",
             "Microsoft.NET.Test.Sdk": "17.14.1",
+            "Moq": "4.20.72",
             "NetArchTest.Rules": "1.3.2",
             "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.3",
             "Scalar.AspNetCore": "2.17.4",
+            "StackExchange.Redis": "2.7.27",
             "xunit": "2.9.3",
             "xunit.runner.visualstudio": "3.1.4"
           },

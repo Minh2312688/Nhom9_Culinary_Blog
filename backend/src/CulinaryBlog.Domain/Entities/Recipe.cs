@@ -14,9 +14,11 @@ public class Recipe : BaseEntity
     public int PrepTimeMinutes { get; set; }
     public int CookTimeMinutes { get; set; }
     public int Servings { get; set; }
-    public int Difficulty { get; set; } = 1; // 1=Easy, 2=Medium, 3=Hard, 4=Expert
-    public int Status { get; set; } = 1; // 0=Draft, 1=Published, 2=Archived
+    public string Difficulty { get; set; } = "Easy";
+    public RecipeStatus Status { get; set; } = RecipeStatus.Draft;
 
     public ICollection<RecipeIngredient> Ingredients { get; set; } = new List<RecipeIngredient>();
     public ICollection<RecipeStep> Steps { get; set; } = new List<RecipeStep>();
+    public ICollection<RecipeImage> Images { get; set; } = new List<RecipeImage>();
+    public RecipeNutrition? Nutrition { get; set; }
 }

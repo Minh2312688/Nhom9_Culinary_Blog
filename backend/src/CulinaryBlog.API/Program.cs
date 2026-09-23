@@ -1,13 +1,18 @@
 using System.Threading.RateLimiting;
 using CulinaryBlog.API.Endpoints;
 using CulinaryBlog.Application;
+using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 // Đăng ký các service của các layer
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CulinaryBlog.API.CurrentUserService>();
 
 // CORS for Frontend (Next.js) - SRS NFR-SEC-005: Configured origins only, never wildcard.
 // Development allows local defaults (3000/3001); Non-Development strictly requires configured origins.
@@ -97,6 +102,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 // Đăng ký tất cả endpoints
 app.MapCategoryEndpoints();
+app.MapRecipeEndpoints();
 app.MapSystemEndpoints();
 app.MapAuthEndpoints();
 

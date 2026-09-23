@@ -1,4 +1,6 @@
 using CulinaryBlog.Domain.Entities;
+using CulinaryBlog.Infrastructure.Identity;
+using ApplicationUser = CulinaryBlog.Infrastructure.Identity.ApplicationUser;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -29,7 +31,7 @@ public class RecipeConfiguration : IEntityTypeConfiguration<Recipe>
             .HasForeignKey(x => x.CategoryId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(x => x.Author)
+        builder.HasOne<ApplicationUser>()
             .WithMany()
             .HasForeignKey(x => x.AuthorId)
             .OnDelete(DeleteBehavior.Restrict);

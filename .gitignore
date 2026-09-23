@@ -1,6 +1,18 @@
 # .NET
 **/bin/
 **/obj/
+**/*.dll
+**/*.pdb
+**/*.cache
+**/*.csproj.nuget.dgspec.json
+**/*.csproj.nuget.g.props
+**/*.csproj.nuget.g.targets
+**/*.csproj.AssemblyReference.cache
+**/*.csproj.CoreCompileInputs.cache
+**/*.AssemblyInfo.cs
+**/*.AssemblyInfoInputs.cache
+**/*.assets.cache
+**/*.nuget.cache
 .vs/
 *.user
 *.suo
@@ -29,3 +41,4 @@ playwright-report/
 
 # Other
 docs/TV4/
+dotnet-tools.json

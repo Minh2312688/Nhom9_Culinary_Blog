@@ -394,6 +394,15 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 | 3 | Mai Quý Phước | FR-CAT-1,2,3,4,5 | Category Backend |
 | 4 | Trần Hữu Phan Lâm | `/`, `/recipes`, `/recipes/[slug]`, `/categories`, `/categories/[slug]` | Public Frontend Pages |
 
+### Tuần 3
+
+| STT | Thành viên | Công việc được giao |
+|---:|---|---|
+| 1 | Dương Văn Minh | FR-RCP-9,10 |
+| 2 | Nguyễn Phạm Phú Nam | FR-Auth-4,5,6, làm màn hình profile|
+| 3 | Mai Quý Phước | FR-CAT-1,2,3,4,5 | 
+| 4 | Trần Hữu Phan Lâm | Hoàn thành các màn hình tuần 2 phân công. Làm giao diện /dashboard,/dashboard/recipe,/dashboard/categories |
+
 ---
 
 ## 10. Theo dõi tiến độ thực tế theo từng thành viên

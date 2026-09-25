@@ -21,14 +21,11 @@ public sealed class ApiExceptionMiddleware(RequestDelegate next, ILogger<ApiExce
                 throw;
             }
 
-            var result = CreateProblem(exception, context);
+            var result = CreateProblem(exception, context.Request.Path);
             if (result is null)
             {
                 logger.LogError(exception, "Unhandled request exception.");
-                result = Results.Problem(
-                    statusCode: StatusCodes.Status500InternalServerError,
-                    title: "An unexpected error occurred.",
-                    instance: context.Request.Path);
+                result = Results.Problem(statusCode: 500, title: "An unexpected error occurred.", instance: context.Request.Path);
             }
             else if (exception is not ValidationException)
             {
@@ -39,19 +36,18 @@ public sealed class ApiExceptionMiddleware(RequestDelegate next, ILogger<ApiExce
         }
     }
 
-    private static IResult? CreateProblem(Exception exception, HttpContext context) => exception switch
+    private static IResult? CreateProblem(Exception exception, PathString path) => exception switch
     {
         ValidationException validation => Results.ValidationProblem(
-            validation.Errors
-                .GroupBy(error => error.PropertyName)
+            validation.Errors.GroupBy(error => error.PropertyName)
                 .ToDictionary(group => group.Key, group => group.Select(error => error.ErrorMessage).Distinct().ToArray()),
-            statusCode: StatusCodes.Status400BadRequest,
-            instance: context.Request.Path),
-        ForbiddenAccessException => Results.Problem(statusCode: StatusCodes.Status403Forbidden, title: "Forbidden", detail: exception.Message, instance: context.Request.Path),
-        NotFoundException => Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Not Found", detail: exception.Message, instance: context.Request.Path),
-        UnauthorizedException => Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized", detail: exception.Message, instance: context.Request.Path),
-        ConcurrencyException or ConflictException => Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Conflict", detail: exception.Message, instance: context.Request.Path),
-        InvalidOperationException => Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "Bad Request", detail: exception.Message, instance: context.Request.Path),
+            statusCode: 400,
+            instance: path),
+        ForbiddenAccessException => Results.Problem(statusCode: 403, title: "Forbidden", detail: exception.Message, instance: path),
+        NotFoundException => Results.Problem(statusCode: 404, title: "Not Found", detail: exception.Message, instance: path),
+        UnauthorizedException => Results.Problem(statusCode: 401, title: "Unauthorized", detail: exception.Message, instance: path),
+        ConcurrencyException or ConflictException => Results.Problem(statusCode: 409, title: "Conflict", detail: exception.Message, instance: path),
+        InvalidOperationException => Results.Problem(statusCode: 400, title: "Bad Request", detail: exception.Message, instance: path),
         _ => null
     };
 }

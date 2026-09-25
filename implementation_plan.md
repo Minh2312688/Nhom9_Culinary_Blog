@@ -128,9 +128,17 @@ Quy ước: `[x]` đã có code và đã kiểm tra build/test; `[~]` đã có m
 
 Chi tiết kỹ thuật và giới hạn hiện tại được ghi tại [docs/recipe-core-implementation-spec.md](docs/recipe-core-implementation-spec.md).
 
-## Quyết định conflict chính thức
+## User Review Required
 
-Ngày 2026-09-23, đại diện nhóm xác nhận áp dụng phương án đề xuất cho toàn bộ 25 conflict. Decision log tại [docs/srs-audit/SRS-CONFLICTS-AND-DECISIONS.md](docs/srs-audit/SRS-CONFLICTS-AND-DECISIONS.md) là nguồn chuẩn về phương án đã chọn. `DECIDED` nghĩa là đã thống nhất thiết kế, không đồng nghĩa đã triển khai code. CONFLICT-004, 005 và 011 đã được triển khai cùng FR-RCP-009; các conflict còn lại cần được thực hiện theo module.
+> [!IMPORTANT]
+> **Quyết định giải quyết xung đột (Conflict Resolutions)**
+> Để đảm bảo tính nhất quán và tuân thủ các best practice của Clean Architecture và .NET, các điểm mâu thuẫn đã được chọn phương án tối ưu nhất. Nhóm hoặc Giảng viên cần xác nhận các quyết định này:
+> 1. **Delete Strategy (CONFLICT-001):** Sử dụng **Soft Delete** (`IsDeleted = true` + EF Core Global Query Filter). An toàn cho dữ liệu người dùng.
+> 2. **Sorting (CONFLICT-003):** Sử dụng **Explicit params** (`sortBy=title&sortOrder=asc/desc`).
+> 3. **Pagination (CONFLICT-012):** Sử dụng **Flat shape** `PagedResult<T> { items, totalCount, page, pageSize, totalPages, hasNextPage, hasPreviousPage }`.
+> 4. **Concurrency (CONFLICT-014):** Trả về **HTTP 409 Conflict** khi sai `RowVersion`.
+> 5. **Caching (CONFLICT-019):** Sử dụng **Redis distributed cache** (TTL 5m, Cache-Aside) thay vì Output Cache để dễ scale-out.
+> 6. **Model Naming (CONFLICT-005, 006, 007, 008):** Dùng `OrderIndex`, `DurationMinutes`, có trường `Title` cho Step, và 6 chỉ số dinh dưỡng tính theo *PER SERVING*.
 
 ## Đề xuất Triển khai Từng bước
 
@@ -222,15 +230,12 @@ Sử dụng MediatR để phân tách các Use Case. Tất cả input phải đi
 - Kiểm tra dữ liệu trong PGAdmin để đảm bảo `IsDeleted` hoạt động đúng thay vì mất record.
 - Dùng Redis CLI (`monitor`) để verify cache hit/miss và invalidation.
 
-## Cập nhật FR-RCP-009 - 2026-09-23
+## FR-RCP-010 implementation update (2026-09-25)
 
-- Backend đã có command/handler và validator cho thêm, sửa, xóa ingredient; API POST/PUT/DELETE được bảo vệ authorization và kiểm tra chủ sở hữu/Admin.
-- `Quantity` và `Unit` nullable; nếu có Quantity thì phải lớn hơn 0. Thứ tự dùng `OrderIndex`. PUT thay thế toàn bộ các trường ingredient; trường nullable gửi null sẽ được xóa.
-- Lỗi validation trả HTTP 400 Problem Details; resource sai route trả 404; thao tác trái quyền trả 403; xóa mềm và cache detail được xử lý.
-- 13 test FR-RCP-009 chạy qua; toàn solution có 72 test pass trong lần verification gần nhất. Integration dùng EF Core InMemory; PostgreSQL/Testcontainers verification còn lại. UI form còn phụ thuộc TV3.
-
-## Quyết định conflict chính thức
-
-- Ngày 2026-09-23, đại diện nhóm xác nhận áp dụng phương án đề xuất cho toàn bộ 25 mục trong [SRS conflict decision log](docs/srs-audit/SRS-CONFLICTS-AND-DECISIONS.md).
-- `DECIDED` nghĩa là đã chốt thiết kế; không được hiểu là đã triển khai code. CONFLICT-004, 005, 011 được đánh dấu `IMPLEMENTED` theo phần FR-RCP-009.
-- Các conflict còn lại là quyết định đầu vào cho kế hoạch triển khai theo module; cập nhật checklist và spec từng module khi hoàn tất code và verification.
+- Added `AddRecipeStepCommand`, `UpdateRecipeStepCommand`, and `DeleteRecipeStepCommand` with FluentValidation, recipe owner/admin checks, cache invalidation, soft deletion, and contiguous active-step renumbering.
+- Added authenticated `POST`, `PUT`, and `DELETE` step endpoints. `StepNumber` is server-assigned on create and preserved on update.
+- Added API exception middleware that returns validation errors as Problem Details and maps authorization, not-found, and conflict errors to HTTP status codes.
+- Added PostgreSQL migration `20260925090000_AddActiveRecipeStepOrderIndex` to align Title length (200) and enforce unique active step order. The regular EF migration scaffold currently detects unrelated drift from the pre-existing snapshot, so this migration is intentionally scoped to the two FR-RCP-010 schema changes.
+- Added handler and HTTP integration tests. Targeted FR-RCP-010 tests passed (9/9); full solution build passed with 0 warnings and 0 errors; full solution tests passed (68/68: Application 45, Integration 20, Architecture 3).
+- `dotnet ef migrations list` discovers the new migration as pending. It was not applied because no PostgreSQL migration run was requested/configured for this verification.
+- Remaining: exercise the migration and mutation flows against PostgreSQL/Testcontainers; complete the step editor UI; address `TECH-RISK-012` for concurrent add/delete and multi-save renumber operations.

@@ -5,7 +5,7 @@
 Module gồm domain recipe, persistence EF Core/PostgreSQL, CQRS, API `/api/v1/recipes`, cache detail bằng Redis, migration và dataset ngẫu nhiên phục vụ báo cáo.
 
 ## Hợp đồng dữ liệu báo cáo
-...
+
 Dataset báo cáo phải thỏa các bất biến sau:
 
 | Bất biến | Điều kiện |
@@ -225,11 +225,10 @@ Các lỗi được middleware ánh xạ:
 - `ValidationException` hoặc `InvalidOperationException`: 400.
 - `ForbiddenAccessException`: 403.
 - `NotFoundException`: 404.
-- `UnauthorizedException`: 401.
-- `ConcurrencyException` hoặc `ConflictException`: 409.
+- `ConcurrencyException`: 409.
 - Lỗi chưa phân loại: 500.
 
-Response lỗi dùng Problem Details; lỗi validation trả thêm dictionary `errors` theo tên field. Middleware được đăng ký tại API composition root.
+Response lỗi dùng `Results.Problem`, tương thích Problem Details ở mức cơ bản. Khi tích hợp Identity/JWT hoàn chỉnh, cần bổ sung policy và kiểm tra token thực tế.
 
 ## 6. Cache và vận hành
 
@@ -263,7 +262,7 @@ Kết quả lần chạy cuối: toàn bộ solution tests `13 passed, 0 failed`
 4. Hoàn thiện JWT/Identity và resource authorization thực tế.
 5. Thêm Hangfire job xóa các URL ảnh sau soft delete, hoặc xác định rõ chính sách giữ ảnh.
 6. Tạo cache key registry/Redis adapter để invalidation theo prefix thực sự hoạt động.
-7. Bổ sung endpoint quản lý Steps và Images độc lập theo FR-RCP-008/010.
+7. Bổ sung endpoint quản lý Ingredients, Steps và Images độc lập theo FR-RCP-008..010.
 8. Chuẩn hóa toàn bộ package EF Core về cùng một phiên bản để loại cảnh báo build.
 9. Chạy manual flow: create Draft -> add nested data -> publish -> archive -> delete; kiểm tra record vẫn tồn tại với `IsDeleted = true`.
 
@@ -278,31 +277,37 @@ Kết quả lần chạy cuối: toàn bộ solution tests `13 passed, 0 failed`
 | FR-RCP-005 | DONE | `PublishRecipeCommand`, child-data precondition |
 | FR-RCP-006 | DONE | `ArchiveRecipeCommand` |
 | FR-RCP-007 | DONE | `DeleteRecipeCommand`, DbContext soft delete |
-| FR-RCP-009 | DONE (backend) | Ingredient commands/endpoints, owner/Admin checks, validation, soft delete, cache invalidation; UI form còn lại |
+| FR-RCP-010 | DONE (backend) | Step commands, authenticated endpoints, validation, soft delete and renumbering; PostgreSQL migration and handler/HTTP tests |
 | Redis cache | PARTIAL | Redis registration có; prefix invalidation chưa có |
 | Hangfire cleanup | NOT STARTED | Chưa có Hangfire job trong repository |
 | Integration verification | NOT STARTED | Chưa có Testcontainers recipe suite |
 | Mock/demo data implementation | REMOVED | Seeder, seed configuration and generated-data Robot suite removed |
 
+## FR-RCP-010 — Recipe step management
 
-## 10. Quyết định conflict chính thức
+The backend exposes authenticated step management routes under `/api/v1/recipes/{id}/steps`:
 
-Ngày 2026-09-23, đại diện nhóm xác nhận áp dụng các phương án đề xuất cho toàn bộ 25 conflict. Decision log ghi rõ phương án và người xác nhận tại [SRS-CONFLICTS-AND-DECISIONS.md](srs-audit/SRS-CONFLICTS-AND-DECISIONS.md). Trạng thái `DECIDED` xác nhận đã thống nhất hướng thiết kế, không đồng nghĩa các module tương ứng đã được code. Chỉ CONFLICT-004, 005 và 011 được ghi `IMPLEMENTED` cùng với phần FR-RCP-009 đã triển khai.
+- `POST /api/v1/recipes/{id}/steps` creates a step. The server assigns `StepNumber` as the current maximum (including soft-deleted rows) plus one; clients cannot choose the number.
+- `PUT /api/v1/recipes/{id}/steps/{stepId}` replaces `Title`, `Description`, optional `DurationMinutes`, and optional `ImageUrl`. The server-owned `StepNumber` is unchanged.
+- `DELETE /api/v1/recipes/{id}/steps/{stepId}` soft-deletes the selected step and renumbers active steps contiguously from 1. Existing deleted rows are moved to unused negative numbers to avoid collisions with historical step numbers.
 
-Các quyết định ngoài phạm vi FR-RCP-009 cần được thực hiện theo module: soft delete Recipe/Category; query sort và pagination; Step/Nutrition schema; Auth/profile/OAuth/token; concurrency HTTP 409; Redis TTL/cache policy; Category update; Recipe author visibility; browser support; image API contract; và ngoại lệ kế thừa Identity của ApplicationUser. Decision log là nguồn chuẩn để triển khai các phần này.
+Only the recipe owner or an administrator can mutate its steps. Missing recipes/steps return 404; invalid payloads return 400 Problem Details; unauthorized ownership returns 403. Mutations invalidate the recipe detail cache and request recipe-list prefix invalidation through the existing cache contract.
 
-## 11. FR-RCP-009 — Quản lý ingredients riêng lẻ
+The `AddActiveRecipeStepOrderIndex` PostgreSQL migration increases `RecipeSteps.Title` from 150 to 200 characters and adds a unique `(RecipeId, StepNumber)` index filtered to active rows. FR-RCP-010 handler tests cover number assignment, content updates, soft delete/renumbering, authorization, validation and historical deleted-number collisions. HTTP integration tests cover authentication and Problem Details validation responses. Verification: targeted tests passed 9/9; full solution build passed with 0 warnings and 0 errors; all solution tests passed 68/68 (Application 45, Integration 20, Architecture 3). EF tooling discovers the new migration as pending; it has not been applied to PostgreSQL. Testcontainers/PostgreSQL execution and concurrent step changes remain follow-up verification; the step-renumbering race documented as `TECH-RISK-012` is not fully eliminated by these changes.
 
-### API contract
+## Conflict compliance audit — FR-RCP-001 through FR-RCP-007
 
-- `POST /api/v1/recipes/{id}/ingredients` thêm ingredient, trả `201 Created` và `Location` tới ingredient mới.
-- `PUT /api/v1/recipes/{id}/ingredients/{ingredientId}` thay thế toàn bộ các field có thể sửa; `Quantity`, `Unit` và `Notes` gửi `null` sẽ xóa giá trị cũ.
-- `DELETE /api/v1/recipes/{id}/ingredients/{ingredientId}` xóa mềm ingredient và trả `204 No Content`.
-- Cả ba route yêu cầu đăng nhập. Handler kiểm tra owner/Admin, và đảm bảo ingredient thuộc recipe trong route.
-- Payload yêu cầu `Name` và `OrderIndex`; `Quantity` và `Unit` nullable theo CONFLICT-004. Quantity nếu có phải lớn hơn 0; `OrderIndex` không âm.
-- Mỗi mutation xóa cache `recipes:slug:{slug}` và gọi invalidation prefix hiện có.
-- Lỗi trả theo Problem Details: validation 400, authentication 401, forbidden 403, resource không tồn tại/không khớp route 404.
+Checked against the decisions recorded in `docs/srs-audit/SRS-CONFLICTS-AND-DECISIONS.md` on 2026-09-25:
 
-### Verification FR-RCP-009
+| Requirement / decision | Finding |
+|---|---|
+| FR-RCP-001 — CONFLICT-003, -012, -021 | Compliant: uses explicit `sortBy` / `sortOrder`, flat pagination metadata, and includes an author's own Draft and Archived recipes plus Published recipes. |
+| FR-RCP-002 — CONFLICT-005 through -008, -019 | Compliant: detail includes ingredients ordered by `OrderIndex`, step `DurationMinutes` and `Title`, all six nutrition values, and uses cache-aside with a five-minute TTL. |
+| FR-RCP-003 — CONFLICT-004 through -008 | Fixed: Create now permits a null ingredient quantity but rejects supplied quantities `<= 0`; optional Unit remains nullable. Nested steps use `DurationMinutes` and include optional Title. |
+| FR-RCP-004 — CONFLICT-014, -019 | Fixed: Update invalidates the old detail slug as well as the new slug after a title change; optimistic concurrency is mapped to HTTP 409. |
+| FR-RCP-005 | Compliant: publish requires at least one active ingredient and one active step. |
+| FR-RCP-006 | Compliant: archive changes status to Archived and invalidates recipe detail cache. |
+| FR-RCP-007 — CONFLICT-001 | Compliant: `DbContext` converts entity deletion to `IsDeleted`; the global filter hides deleted recipes. A regression test verifies the row remains in storage and is hidden from normal queries. |
+| Cross-cutting — CONFLICT-011, -025 | Compliant: validation returns HTTP 400 Problem Details; domain entities use one `BaseEntity`, while `ApplicationUser` derives directly from `IdentityUser<string>`. The unused duplicate BaseEntity declaration was removed. |
 
-Test coverage gồm handler trên EF Core InMemory, validation/API auth và middleware Problem Details. Lần chạy mới nhất: 13 test FR-RCP-009 pass; solution có 45 Application, 24 Integration và 3 Architecture tests pass (72 tổng). Các handler tests dùng InMemory, chưa xác minh trên PostgreSQL/Testcontainers. UI ingredient form của TV3 chưa nằm trong phần backend này.
+Regression tests were added for nullable/positive ingredient quantities on Create and Update, old/new slug cache invalidation, and recipe soft deletion. Final verification: solution build succeeded with 0 warnings and 0 errors; all tests passed (72 total: Application 47, Integration 22, Architecture 3). PostgreSQL-specific concurrency behavior and slug collisions under simultaneous creates remain operational risks; they are not decisions in these conflicts.

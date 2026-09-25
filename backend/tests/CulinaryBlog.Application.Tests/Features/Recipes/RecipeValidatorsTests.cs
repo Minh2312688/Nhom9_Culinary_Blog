@@ -19,6 +19,36 @@ public sealed class RecipeValidatorsTests
     }
 
     [Fact]
+    public async Task CreateRecipe_ShouldAllowMissingIngredientQuantityButRejectNonPositiveQuantity()
+    {
+        var validator = new CreateRecipeCommandValidator();
+        var validWithoutQuantity = new CreateRecipeCommand(
+            "Valid recipe", null, Guid.NewGuid(), 5, 10, 2, "Easy",
+            [new RecipeIngredientInput("Salt", null, null, null)]);
+        var invalidQuantity = validWithoutQuantity with
+        {
+            Ingredients = [new RecipeIngredientInput("Salt", 0, "g", null)]
+        };
+
+        Assert.True((await validator.ValidateAsync(validWithoutQuantity)).IsValid);
+        var result = await validator.ValidateAsync(invalidQuantity);
+        Assert.Contains(result.Errors, error => error.PropertyName == "Ingredients[0].Quantity");
+    }
+
+    [Fact]
+    public async Task UpdateRecipe_ShouldRejectNegativeIngredientQuantity()
+    {
+        var validator = new UpdateRecipeCommandValidator();
+        var command = new UpdateRecipeCommand(
+            Guid.NewGuid(), "Valid recipe", null, Guid.NewGuid(), 5, 10, 2, "Easy", [1],
+            [new RecipeIngredientInput("Salt", -1, "g", null)]);
+
+        var result = await validator.ValidateAsync(command);
+
+        Assert.Contains(result.Errors, error => error.PropertyName == "Ingredients[0].Quantity");
+    }
+
+    [Fact]
     public async Task UpdateRecipe_ShouldRequireRowVersion()
     {
         var validator = new UpdateRecipeCommandValidator();

@@ -61,16 +61,16 @@ Quy ước trạng thái:
 | **FR-CAT-003** | | X | X | **X** | **TV4** | Admin Authorization (TV1), DbContext (TV2) | CONFLICT-020 | **BLOCKED** |
 | **FR-CAT-004** | | X | X | **X** | **TV4** | Admin Authorization (TV1), DbContext (TV2) | CONFLICT-017 | **BLOCKED** |
 | **FR-CAT-005** | | X | X | **X** | **TV4** | Recipe Foreign Key check (TV2) | CONFLICT-002 | **BLOCKED** |
-| **FR-RCP-001** | | **X** | X | | **TV2** | Search/Filter Logic, Recipe Card UI (TV3) | CONFLICT-003, CONFLICT-012, CONFLICT-021 | **BLOCKED** |
-| **FR-RCP-002** | | **X** | X | | **TV2** | Eager Loading, Redis Cache, Detail UI (TV3) | CONFLICT-005..008, CONFLICT-019 | **BLOCKED** |
-| **FR-RCP-003** | | **X** | X | | **TV2** | Author Authorization (TV1), Wizard UI (TV3) | CONFLICT-004..008, TECH-RISK-003 | **BLOCKED** |
-| **FR-RCP-004** | | **X** | X | | **TV2** | RowVersion handling, Edit UI (TV3) | CONFLICT-014 | **BLOCKED** |
-| **FR-RCP-005** | | **X** | X | | **TV2** | Author-Owner policy (TV1), Dashboard UI (TV3) | None | **NOT_STARTED** |
-| **FR-RCP-006** | | **X** | X | | **TV2** | Author-Owner policy (TV1), Dashboard UI (TV3) | None | **NOT_STARTED** |
-| **FR-RCP-007** | | **X** | X | X | **TV2** | Hangfire delete image (TV4), UI (TV3) | CONFLICT-001 | **BLOCKED** |
+| **FR-RCP-001** | | **X** | X | | **TV2** | Backend query implemented; Search/Filter and Recipe Card UI (TV3) | None (conflicts decided; see audit) | **IN_PROGRESS** |
+| **FR-RCP-002** | | **X** | X | | **TV2** | Backend detail/cache implemented; Detail UI (TV3) | None (conflicts decided; see audit) | **IN_PROGRESS** |
+| **FR-RCP-003** | | **X** | X | | **TV2** | Backend create implemented; Wizard UI (TV3) | TECH-RISK-003 (slug collision under concurrency) | **IN_PROGRESS** |
+| **FR-RCP-004** | | **X** | X | | **TV2** | Backend RowVersion handling implemented; Edit UI (TV3) | None (conflict decided; see audit) | **IN_PROGRESS** |
+| **FR-RCP-005** | | **X** | X | | **TV2** | Backend publish implemented; Dashboard UI (TV3) | None | **IN_PROGRESS** |
+| **FR-RCP-006** | | **X** | X | | **TV2** | Backend archive implemented; Dashboard UI (TV3) | None | **IN_PROGRESS** |
+| **FR-RCP-007** | | **X** | X | X | **TV2** | Backend soft delete implemented; Hangfire image cleanup (TV4), UI (TV3) | None (conflict decided; see audit) | **IN_PROGRESS** |
 | **FR-RCP-008** | | **X** | X | X | **TV2** | MinIO upload service (TV4), Hangfire thumbnail (TV4) | CONFLICT-023, CONFLICT-024, TECH-RISK-011 | **BLOCKED** |
 | **FR-RCP-009** | | **X** | X | | **TV2** | Ingredient form UI (TV3) | CONFLICT-004, CONFLICT-005 | **BLOCKED** |
-| **FR-RCP-010** | | **X** | X | | **TV2** | Step form UI (TV3) | CONFLICT-006, CONFLICT-007, CONFLICT-015, TECH-RISK-012 | **BLOCKED** |
+| **FR-RCP-010** | | **X** | X | | **TV2** | Step form UI (TV3), PostgreSQL/Testcontainers concurrency verification | TECH-RISK-012 (concurrent renumbering) | **IN_PROGRESS** |
 | **FR-SRCH-001** | | **X** | X | | **TV2** | PostgreSQL tsvector/unaccent, Search UI (TV3) | CONFLICT-016, TECH-RISK-004 | **BLOCKED** |
 | **FR-SRCH-002** | | **X** | X | | **TV2** | Filter panel UI (TV3) | None | **NOT_STARTED** |
 | **FR-SRCH-003** | | **X** | X | | **TV2** | Sort dropdown UI (TV3) | CONFLICT-003 | **BLOCKED** |

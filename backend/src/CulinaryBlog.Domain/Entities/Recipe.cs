@@ -1,5 +1,3 @@
-using CulinaryBlog.Domain.Common;
-
 namespace CulinaryBlog.Domain.Entities;
 
 public class Recipe : BaseEntity

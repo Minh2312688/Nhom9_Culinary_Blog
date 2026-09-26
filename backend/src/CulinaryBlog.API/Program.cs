@@ -1,5 +1,6 @@
 using System.Threading.RateLimiting;
 using CulinaryBlog.API.Endpoints;
+using CulinaryBlog.API.Middleware;
 using CulinaryBlog.Application;
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Infrastructure;
@@ -87,6 +88,7 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
+app.UseMiddleware<ApiExceptionMiddleware>();
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();

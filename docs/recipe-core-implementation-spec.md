@@ -277,7 +277,37 @@ Kết quả lần chạy cuối: toàn bộ solution tests `13 passed, 0 failed`
 | FR-RCP-005 | DONE | `PublishRecipeCommand`, child-data precondition |
 | FR-RCP-006 | DONE | `ArchiveRecipeCommand` |
 | FR-RCP-007 | DONE | `DeleteRecipeCommand`, DbContext soft delete |
+| FR-RCP-010 | DONE (backend) | Step commands, authenticated endpoints, validation, soft delete and renumbering; PostgreSQL migration and handler/HTTP tests |
 | Redis cache | PARTIAL | Redis registration có; prefix invalidation chưa có |
 | Hangfire cleanup | NOT STARTED | Chưa có Hangfire job trong repository |
 | Integration verification | NOT STARTED | Chưa có Testcontainers recipe suite |
 | Mock/demo data implementation | REMOVED | Seeder, seed configuration and generated-data Robot suite removed |
+
+## FR-RCP-010 — Recipe step management
+
+The backend exposes authenticated step management routes under `/api/v1/recipes/{id}/steps`:
+
+- `POST /api/v1/recipes/{id}/steps` creates a step. The server assigns `StepNumber` as the current maximum (including soft-deleted rows) plus one; clients cannot choose the number.
+- `PUT /api/v1/recipes/{id}/steps/{stepId}` replaces `Title`, `Description`, optional `DurationMinutes`, and optional `ImageUrl`. The server-owned `StepNumber` is unchanged.
+- `DELETE /api/v1/recipes/{id}/steps/{stepId}` soft-deletes the selected step and renumbers active steps contiguously from 1. Existing deleted rows are moved to unused negative numbers to avoid collisions with historical step numbers.
+
+Only the recipe owner or an administrator can mutate its steps. Missing recipes/steps return 404; invalid payloads return 400 Problem Details; unauthorized ownership returns 403. Mutations invalidate the recipe detail cache and request recipe-list prefix invalidation through the existing cache contract.
+
+The `AddActiveRecipeStepOrderIndex` PostgreSQL migration increases `RecipeSteps.Title` from 150 to 200 characters and adds a unique `(RecipeId, StepNumber)` index filtered to active rows. FR-RCP-010 handler tests cover number assignment, content updates, soft delete/renumbering, authorization, validation and historical deleted-number collisions. HTTP integration tests cover authentication and Problem Details validation responses. Verification: targeted tests passed 9/9; full solution build passed with 0 warnings and 0 errors; all solution tests passed 68/68 (Application 45, Integration 20, Architecture 3). EF tooling discovers the new migration as pending; it has not been applied to PostgreSQL. Testcontainers/PostgreSQL execution and concurrent step changes remain follow-up verification; the step-renumbering race documented as `TECH-RISK-012` is not fully eliminated by these changes.
+
+## Conflict compliance audit — FR-RCP-001 through FR-RCP-007
+
+Checked against the decisions recorded in `docs/srs-audit/SRS-CONFLICTS-AND-DECISIONS.md` on 2026-09-25:
+
+| Requirement / decision | Finding |
+|---|---|
+| FR-RCP-001 — CONFLICT-003, -012, -021 | Compliant: uses explicit `sortBy` / `sortOrder`, flat pagination metadata, and includes an author's own Draft and Archived recipes plus Published recipes. |
+| FR-RCP-002 — CONFLICT-005 through -008, -019 | Compliant: detail includes ingredients ordered by `OrderIndex`, step `DurationMinutes` and `Title`, all six nutrition values, and uses cache-aside with a five-minute TTL. |
+| FR-RCP-003 — CONFLICT-004 through -008 | Fixed: Create now permits a null ingredient quantity but rejects supplied quantities `<= 0`; optional Unit remains nullable. Nested steps use `DurationMinutes` and include optional Title. |
+| FR-RCP-004 — CONFLICT-014, -019 | Fixed: Update invalidates the old detail slug as well as the new slug after a title change; optimistic concurrency is mapped to HTTP 409. |
+| FR-RCP-005 | Compliant: publish requires at least one active ingredient and one active step. |
+| FR-RCP-006 | Compliant: archive changes status to Archived and invalidates recipe detail cache. |
+| FR-RCP-007 — CONFLICT-001 | Compliant: `DbContext` converts entity deletion to `IsDeleted`; the global filter hides deleted recipes. A regression test verifies the row remains in storage and is hidden from normal queries. |
+| Cross-cutting — CONFLICT-011, -025 | Compliant: validation returns HTTP 400 Problem Details; domain entities use one `BaseEntity`, while `ApplicationUser` derives directly from `IdentityUser<string>`. The unused duplicate BaseEntity declaration was removed. |
+
+Regression tests were added for nullable/positive ingredient quantities on Create and Update, old/new slug cache invalidation, and recipe soft deletion. Final verification: solution build succeeded with 0 warnings and 0 errors; all tests passed (72 total: Application 47, Integration 22, Architecture 3). PostgreSQL-specific concurrency behavior and slug collisions under simultaneous creates remain operational risks; they are not decisions in these conflicts.

@@ -35,8 +35,18 @@ public sealed class CreateRecipeCommandValidator : AbstractValidator<CreateRecip
         RuleFor(x => x.CookTimeMinutes).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Servings).GreaterThan(0);
         RuleFor(x => x.Difficulty).NotEmpty().MaximumLength(20);
-        RuleForEach(x => x.Ingredients).ChildRules(item => item.RuleFor(i => i.Name).NotEmpty().MaximumLength(100));
-        RuleForEach(x => x.Steps).ChildRules(item => item.RuleFor(i => i.Description).NotEmpty());
+        RuleForEach(x => x.Ingredients).ChildRules(item =>
+        {
+            item.RuleFor(i => i.Name).NotEmpty().MaximumLength(100);
+            item.RuleFor(i => i.Quantity).GreaterThan(0).When(i => i.Quantity.HasValue);
+            item.RuleFor(i => i.Notes).MaximumLength(200);
+        });
+        RuleForEach(x => x.Steps).ChildRules(item =>
+        {
+            item.RuleFor(i => i.Title).MaximumLength(200);
+            item.RuleFor(i => i.Description).NotEmpty();
+            item.RuleFor(i => i.DurationMinutes).GreaterThanOrEqualTo(0);
+        });
     }
 }
 
@@ -138,6 +148,18 @@ public sealed class UpdateRecipeCommandValidator : AbstractValidator<UpdateRecip
         RuleFor(x => x.CategoryId).NotEmpty(); RuleFor(x => x.Servings).GreaterThan(0);
         RuleFor(x => x.PrepTimeMinutes).GreaterThanOrEqualTo(0); RuleFor(x => x.CookTimeMinutes).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Difficulty).NotEmpty().MaximumLength(20); RuleFor(x => x.RowVersion).NotEmpty();
+        RuleForEach(x => x.Ingredients).ChildRules(item =>
+        {
+            item.RuleFor(i => i.Name).NotEmpty().MaximumLength(100);
+            item.RuleFor(i => i.Quantity).GreaterThan(0).When(i => i.Quantity.HasValue);
+            item.RuleFor(i => i.Notes).MaximumLength(200);
+        });
+        RuleForEach(x => x.Steps).ChildRules(item =>
+        {
+            item.RuleFor(i => i.Title).MaximumLength(200);
+            item.RuleFor(i => i.Description).NotEmpty();
+            item.RuleFor(i => i.DurationMinutes).GreaterThanOrEqualTo(0);
+        });
     }
 }
 
@@ -156,6 +178,7 @@ public sealed class UpdateRecipeCommandHandler : IRequestHandler<UpdateRecipeCom
             .SingleOrDefaultAsync(x => x.Id == request.Id, cancellationToken) ?? throw new NotFoundException(nameof(Recipe), request.Id);
         EnsureOwner(recipe);
         if (!await context.Categories.AnyAsync(x => x.Id == request.CategoryId, cancellationToken)) throw new NotFoundException(nameof(Category), request.CategoryId);
+        var previousSlug = recipe.Slug;
         context.SetOriginalRowVersion(recipe, request.RowVersion);
         recipe.Title = request.Title.Trim(); recipe.Description = request.Description?.Trim(); recipe.CategoryId = request.CategoryId;
         recipe.PrepTimeMinutes = request.PrepTimeMinutes; recipe.CookTimeMinutes = request.CookTimeMinutes;
@@ -167,7 +190,9 @@ public sealed class UpdateRecipeCommandHandler : IRequestHandler<UpdateRecipeCom
         CreateRecipeCommandHandler.AddChildren(recipe, request.Ingredients, request.Steps, request.Nutrition);
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateConcurrencyException) { throw new ConcurrencyException(); }
-        await cache.RemoveAsync($"recipes:slug:{recipe.Slug}", cancellationToken);
+        await cache.RemoveAsync($"recipes:slug:{previousSlug}", cancellationToken);
+        if (!string.Equals(previousSlug, recipe.Slug, StringComparison.OrdinalIgnoreCase))
+            await cache.RemoveAsync($"recipes:slug:{recipe.Slug}", cancellationToken);
         await cache.RemoveByPrefixAsync("recipes:", cancellationToken);
         return recipe.ToDetail();
     }

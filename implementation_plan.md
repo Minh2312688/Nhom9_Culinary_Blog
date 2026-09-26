@@ -229,3 +229,13 @@ Sử dụng MediatR để phân tách các Use Case. Tất cả input phải đi
 - Đăng nhập với 2 user khác nhau để test phân quyền (User A không thể update/xem bài draft của User B).
 - Kiểm tra dữ liệu trong PGAdmin để đảm bảo `IsDeleted` hoạt động đúng thay vì mất record.
 - Dùng Redis CLI (`monitor`) để verify cache hit/miss và invalidation.
+
+## FR-RCP-010 implementation update (2026-09-25)
+
+- Added `AddRecipeStepCommand`, `UpdateRecipeStepCommand`, and `DeleteRecipeStepCommand` with FluentValidation, recipe owner/admin checks, cache invalidation, soft deletion, and contiguous active-step renumbering.
+- Added authenticated `POST`, `PUT`, and `DELETE` step endpoints. `StepNumber` is server-assigned on create and preserved on update.
+- Added API exception middleware that returns validation errors as Problem Details and maps authorization, not-found, and conflict errors to HTTP status codes.
+- Added PostgreSQL migration `20260925090000_AddActiveRecipeStepOrderIndex` to align Title length (200) and enforce unique active step order. The regular EF migration scaffold currently detects unrelated drift from the pre-existing snapshot, so this migration is intentionally scoped to the two FR-RCP-010 schema changes.
+- Added handler and HTTP integration tests. Targeted FR-RCP-010 tests passed (9/9); full solution build passed with 0 warnings and 0 errors; full solution tests passed (68/68: Application 45, Integration 20, Architecture 3).
+- `dotnet ef migrations list` discovers the new migration as pending. It was not applied because no PostgreSQL migration run was requested/configured for this verification.
+- Remaining: exercise the migration and mutation flows against PostgreSQL/Testcontainers; complete the step editor UI; address `TECH-RISK-012` for concurrent add/delete and multi-save renumber operations.

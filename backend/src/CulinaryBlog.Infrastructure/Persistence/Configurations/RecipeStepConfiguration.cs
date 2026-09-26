@@ -25,7 +25,8 @@ public class RecipeStepConfiguration : IEntityTypeConfiguration<RecipeStep>
             .HasMaxLength(500);
 
         builder.HasIndex(rs => new { rs.RecipeId, rs.StepNumber })
-            .IsUnique();
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = false");
 
         builder.Property(rs => rs.RowVersion)
             .IsRowVersion();

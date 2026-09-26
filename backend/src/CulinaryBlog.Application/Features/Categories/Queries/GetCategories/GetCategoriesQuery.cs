@@ -9,7 +9,7 @@ public record GetCategoriesQuery(
     int PageSize = 10, // Số item/trang mặc định (DefaultPageSize), giới hạn bởi MaxPageSize
     string? Search = null, // Tìm kiếm theo tên/mô tả
     string SortBy = "name", // Tên field để sắp xếp
-    bool Descending = false // Chiều sắp xếp
+    string SortOrder = "asc" // asc|desc (CONFLICT-003)
 ) : IRequest<PaginatedResult<CategoryDto>>
 {
     // Giá trị mặc định và giới hạn phân trang — dùng chung cho binding và validator

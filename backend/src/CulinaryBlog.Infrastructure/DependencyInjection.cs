@@ -17,6 +17,7 @@ using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.IdentityModel.Tokens;
 using Minio;
 using CulinaryBlog.Application.Contracts.Storage;
+using CulinaryBlog.Infrastructure.Storage;
 
 namespace CulinaryBlog.Infrastructure;
 
@@ -51,6 +52,7 @@ public static class DependencyInjection
             services.AddStackExchangeRedisCache(options => options.Configuration = redisConnection);
         }
         services.AddScoped<IRecipeCache, DistributedRecipeCache>();
+        services.AddScoped<ICategoryCache, DistributedCategoryCache>();
 
         var minioEndpoint = configuration["MinIO:Endpoint"];
         var minioAccessKey = configuration["MinIO:AccessKey"];

@@ -7,5 +7,7 @@ public record CategoryDto(
  string Name,
  string Slug,
  string? Description,
+ string? ImageUrl,
+ int OrderIndex,
  DateTime CreatedAt
 );

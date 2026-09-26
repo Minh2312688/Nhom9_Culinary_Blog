@@ -81,4 +81,49 @@ public class GetCategoriesQueryValidatorTests
         // Assert
         result.IsValid.Should().BeTrue();
     }
+
+    [Fact]
+    public void Validate_DefaultQuery_ShouldUseAscendingSortOrder()
+    {
+        // Arrange
+        var query = new GetCategoriesQuery();
+
+        // Act & Assert
+        query.SortOrder.Should().Be("asc");
+    }
+
+    [Theory]
+    [InlineData("asc")]
+    [InlineData("ASC")]
+    [InlineData("desc")]
+    [InlineData("Desc")]
+    public void Validate_SortOrderAscOrDesc_ShouldNotHaveErrors(string sortOrder)
+    {
+        // Arrange: CONFLICT-003 chốt sortOrder chỉ nhận asc|desc (không phân biệt hoa thường)
+        var query = new GetCategoriesQuery(SortOrder: sortOrder);
+
+        // Act
+        var result = _validator.Validate(query);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("ascending")]
+    [InlineData("up")]
+    public void Validate_SortOrderOutsideContract_ShouldHaveError(string sortOrder)
+    {
+        // Arrange
+        var query = new GetCategoriesQuery(SortOrder: sortOrder);
+
+        // Act
+        var result = _validator.Validate(query);
+
+        // Assert: lỗi validation => HTTP 400 Problem Details
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(error => error.PropertyName == nameof(GetCategoriesQuery.SortOrder));
+    }
 }

@@ -1,6 +1,9 @@
+using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Application.Features.Categories.Commands.CreateCategory;
+using CulinaryBlog.Application.Features.Categories.Commands.UpdateCategory;
 using CulinaryBlog.Application.Features.Categories.Queries.GetCategories;
+using CulinaryBlog.Application.Features.Categories.Queries.GetCategoryBySlug;
 using FluentAssertions;
 using FluentValidation;
 using MediatR;
@@ -22,6 +25,8 @@ public class CategoryDependencyInjectionTests
         services.AddLogging();
         services.AddApplication();
         services.AddScoped<IApplicationDbContext>(_ => context);
+        // Category handlers phụ thuộc ICategoryCache; unit test dùng fake in-memory.
+        services.AddSingleton<ICategoryCache, FakeCategoryCache>();
 
         return services.BuildServiceProvider();
     }
@@ -35,7 +40,9 @@ public class CategoryDependencyInjectionTests
 
         // Act & Assert: mỗi command/query có đúng một validator, không đăng ký trùng
         provider.GetServices<IValidator<CreateCategoryCommand>>().Should().ContainSingle();
+        provider.GetServices<IValidator<UpdateCategoryCommand>>().Should().ContainSingle();
         provider.GetServices<IValidator<GetCategoriesQuery>>().Should().ContainSingle();
+        provider.GetServices<IValidator<GetCategoryBySlugQuery>>().Should().ContainSingle();
     }
 
     [Fact]

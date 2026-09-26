@@ -105,7 +105,6 @@ app.MapCategoryEndpoints();
 app.MapRecipeEndpoints();
 app.MapSystemEndpoints();
 app.MapAuthEndpoints();
-app.MapCategoryEndpoints();
 
 // LAB-02 DATABASE MIGRATION & SEEDING (DEVELOPMENT ONLY)
 if (app.Environment.IsDevelopment())

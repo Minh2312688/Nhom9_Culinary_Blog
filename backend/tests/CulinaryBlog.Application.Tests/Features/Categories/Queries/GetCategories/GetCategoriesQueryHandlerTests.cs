@@ -11,7 +11,7 @@ public class GetCategoriesQueryHandlerTests
     {
         // Arrange
         await using var context = await CategoriesTestData.SeedDefaultAsync();
-        var handler = new GetCategoriesQueryHandler(context);
+        var handler = new GetCategoriesQueryHandler(context, new FakeCategoryCache());
 
         // Act
         var result = await handler.Handle(new GetCategoriesQuery(), CancellationToken.None);
@@ -33,7 +33,7 @@ public class GetCategoriesQueryHandlerTests
     {
         // Arrange
         await using var context = await CategoriesTestData.SeedDefaultAsync();
-        var handler = new GetCategoriesQueryHandler(context);
+        var handler = new GetCategoriesQueryHandler(context, new FakeCategoryCache());
 
         // Act
         var firstPage = await handler.Handle(new GetCategoriesQuery(Page: 1, PageSize: 2), CancellationToken.None);
@@ -63,7 +63,7 @@ public class GetCategoriesQueryHandlerTests
     {
         // Arrange
         await using var context = await CategoriesTestData.SeedDefaultAsync();
-        var handler = new GetCategoriesQueryHandler(context);
+        var handler = new GetCategoriesQueryHandler(context, new FakeCategoryCache());
 
         // Act
         var result = await handler.Handle(new GetCategoriesQuery(Search: search), CancellationToken.None);
@@ -78,7 +78,7 @@ public class GetCategoriesQueryHandlerTests
     {
         // Arrange
         await using var context = await CategoriesTestData.SeedDefaultAsync();
-        var handler = new GetCategoriesQueryHandler(context);
+        var handler = new GetCategoriesQueryHandler(context, new FakeCategoryCache());
 
         // Act
         var result = await handler.Handle(
@@ -95,7 +95,7 @@ public class GetCategoriesQueryHandlerTests
     {
         // Arrange
         await using var context = await CategoriesTestData.SeedDefaultAsync();
-        var handler = new GetCategoriesQueryHandler(context);
+        var handler = new GetCategoriesQueryHandler(context, new FakeCategoryCache());
 
         // Act
         var result = await handler.Handle(

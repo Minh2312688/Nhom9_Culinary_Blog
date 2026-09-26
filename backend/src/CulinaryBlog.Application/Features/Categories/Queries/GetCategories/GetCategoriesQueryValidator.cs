@@ -20,5 +20,13 @@ public sealed class GetCategoriesQueryValidator : AbstractValidator<GetCategorie
                 .WithMessage("PageSize must be greater than or equal to 1.")
             .LessThanOrEqualTo(GetCategoriesQuery.MaxPageSize)
                 .WithMessage($"PageSize must not exceed {GetCategoriesQuery.MaxPageSize}.");
+
+        // CONFLICT-003: sorting dùng sortBy + sortOrder, sortOrder chỉ nhận asc|desc.
+        // Sai contract trả HTTP 400 Problem Details qua ValidationBehavior.
+        RuleFor(query => query.SortOrder)
+            .Must(sortOrder => sortOrder is not null &&
+                (sortOrder.Equals("asc", StringComparison.OrdinalIgnoreCase) ||
+                 sortOrder.Equals("desc", StringComparison.OrdinalIgnoreCase)))
+                .WithMessage("SortOrder must be asc or desc.");
     }
 }

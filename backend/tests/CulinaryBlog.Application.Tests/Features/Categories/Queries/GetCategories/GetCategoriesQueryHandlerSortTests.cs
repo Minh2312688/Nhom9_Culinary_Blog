@@ -16,11 +16,11 @@ public class GetCategoriesQueryHandlerSortTests
     {
         // Arrange
         await using var context = await CategoriesTestData.SeedDefaultAsync();
-        var handler = new GetCategoriesQueryHandler(context);
+        var handler = new GetCategoriesQueryHandler(context, new FakeCategoryCache());
 
         // Act
         var result = await handler.Handle(
-            new GetCategoriesQuery(SortBy: "name", Descending: descending),
+            new GetCategoriesQuery(SortBy: "name", SortOrder: descending ? "desc" : "asc"),
             CancellationToken.None);
 
         // Assert
@@ -35,11 +35,11 @@ public class GetCategoriesQueryHandlerSortTests
     {
         // Arrange
         await using var context = await CategoriesTestData.SeedDefaultAsync();
-        var handler = new GetCategoriesQueryHandler(context);
+        var handler = new GetCategoriesQueryHandler(context, new FakeCategoryCache());
 
         // Act
         var result = await handler.Handle(
-            new GetCategoriesQuery(SortBy: "createdAt", Descending: descending),
+            new GetCategoriesQuery(SortBy: "createdAt", SortOrder: descending ? "desc" : "asc"),
             CancellationToken.None);
 
         // Assert
@@ -59,7 +59,7 @@ public class GetCategoriesQueryHandlerSortTests
     {
         // Arrange
         await using var context = await CategoriesTestData.SeedDefaultAsync();
-        var handler = new GetCategoriesQueryHandler(context);
+        var handler = new GetCategoriesQueryHandler(context, new FakeCategoryCache());
 
         // Act
         var result = await handler.Handle(

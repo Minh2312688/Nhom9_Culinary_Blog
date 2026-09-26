@@ -80,8 +80,10 @@ public class CategorySlugTests
         category.Slug.Should().Be(name);
     }
 
+    // Group decision: the slug is generated once in Create and is NOT regenerated on Update,
+    // so renaming a category must not break the existing /api/v1/categories/{slug} URL.
     [Fact]
-    public void Update_ShouldRegenerateSlugFromNewName()
+    public void Update_ShouldKeepExistingSlug()
     {
         // Arrange
         var category = Category.Create("Món Tráng Miệng");
@@ -91,6 +93,21 @@ public class CategorySlugTests
 
         // Assert
         category.Name.Should().Be("Bánh Ngọt");
-        category.Slug.Should().Be("banh-ngot");
+        category.Slug.Should().Be("mon-trang-mieng");
+    }
+
+    [Fact]
+    public void Update_Repeatedly_ShouldKeepSlugGeneratedOnCreate()
+    {
+        // Arrange
+        var category = Category.Create("Món Tráng Miệng");
+
+        // Act
+        category.Update("Bánh Ngọt", null);
+        category.Update("Bánh Mì", "Mô tả");
+
+        // Assert
+        category.Name.Should().Be("Bánh Mì");
+        category.Slug.Should().Be("mon-trang-mieng");
     }
 }

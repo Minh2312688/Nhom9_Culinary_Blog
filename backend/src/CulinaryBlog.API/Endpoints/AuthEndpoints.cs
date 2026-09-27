@@ -1,7 +1,11 @@
+using System.Security.Claims;
 using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.DTOs.Auth;
 using CulinaryBlog.Application.Features.Auth.GoogleLogin;
 using CulinaryBlog.Application.Features.Auth.Login;
+using CulinaryBlog.Application.Features.Auth.Logout;
+using CulinaryBlog.Application.Features.Auth.Profile;
+using CulinaryBlog.Application.Features.Auth.TokenRefresh;
 using CulinaryBlog.Application.Features.Auth.Register;
 using FluentValidation;
 using MediatR;
@@ -118,6 +122,111 @@ public static class AuthEndpoints
                     statusCode: StatusCodes.Status401Unauthorized);
             }
         });
+
+        // FR-AUTH-004: Refresh Token Rotation
+        authGroup.MapPost("/refresh", async (
+            RefreshTokenRequestDto request,
+            HttpContext httpContext,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var command = new RefreshTokenCommand(
+                    request.RefreshToken,
+                    httpContext.Connection.RemoteIpAddress?.ToString());
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ValidationException ex)
+            {
+                return Results.ValidationProblem(
+                    ex.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()),
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+            catch (UnauthorizedException ex)
+            {
+                return Results.Problem(
+                    title: "Unauthorized",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status401Unauthorized);
+            }
+        });
+
+        // FR-AUTH-005: Logout (Idempotent)
+        authGroup.MapPost("/logout", async (
+            LogoutRequestDto request,
+            ClaimsPrincipal user,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? user.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Results.Problem(
+                    title: "Unauthorized",
+                    detail: "User is not authenticated.",
+                    statusCode: StatusCodes.Status401Unauthorized);
+            }
+
+            try
+            {
+                var command = new LogoutCommand(request.RefreshToken, userId);
+                await sender.Send(command, cancellationToken);
+                return Results.NoContent();
+            }
+            catch (ValidationException ex)
+            {
+                return Results.ValidationProblem(
+                    ex.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()),
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+        }).RequireAuthorization();
+
+        // FR-AUTH-006: View Current Profile
+        authGroup.MapGet("/me", async (
+            ClaimsPrincipal user,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? user.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Results.Problem(
+                    title: "Unauthorized",
+                    detail: "User is not authenticated.",
+                    statusCode: StatusCodes.Status401Unauthorized);
+            }
+
+            try
+            {
+                var query = new GetCurrentUserQuery(userId);
+                var result = await sender.Send(query, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.Problem(
+                    title: "Not Found",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status404NotFound);
+            }
+            catch (UnauthorizedException ex)
+            {
+                return Results.Problem(
+                    title: "Unauthorized",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status401Unauthorized);
+            }
+        }).RequireAuthorization();
 
         return endpoints;
     }

@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Exceptions;
+using CulinaryBlog.Application.Common.Validation;
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Application.DTOs;
@@ -35,7 +36,11 @@ public sealed class UpdateCategoryCommandValidator : AbstractValidator<UpdateCat
             .Must(name => name is not null && name.Trim().Length >= Category.MinNameLength)
                 .WithMessage($"Name must be at least {Category.MinNameLength} characters long.")
             .Must(name => name is null || name.Trim().Length <= Category.MaxNameLength)
-                .WithMessage($"Name must not exceed {Category.MaxNameLength} characters.");
+                .WithMessage($"Name must not exceed {Category.MaxNameLength} characters.")
+            // Cùng rule với CreateCategoryCommandValidator: chặn HTML markup nhưng không
+            // chặn ký tự so sánh trong text thuần ("Món < 30 phút").
+            .Must(name => !HtmlMarkup.Contains(name))
+                .WithMessage("Name must not contain HTML markup.");
 
         RuleFor(command => command.Description)
             .Must(description => description is null ||

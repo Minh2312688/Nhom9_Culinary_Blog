@@ -51,8 +51,8 @@ public class CategorySlugTests
         category.Slug.Should().Be(expectedSlug);
     }
 
-    // Domain là nơi duy nhất kiểm tra khả năng sinh slug;
-    // validator của Application không lặp lại rule này (xem CreateCategoryCommandValidatorTests).
+    // Domain sở hữu thuật toán slug duy nhất; validator của Application chỉ hỏi lại
+    // qua Category.CanCreateSlug (xem CreateCategoryCommandValidatorTests).
     [Theory]
     [InlineData("!!!")]
     [InlineData("---")]
@@ -64,6 +64,54 @@ public class CategorySlugTests
 
         // Assert: tên không còn ký tự a-z/0-9 nên không sinh được slug
         act.Should().Throw<ArgumentException>();
+    }
+
+    // Helper dùng chung cho Application validator: cùng một thuật toán slug với Create,
+    // nhờ vậy tên tiếng Việt chỉ gồm ký tự có dấu (không có ký tự ASCII) vẫn được chấp nhận.
+    [Theory]
+    [InlineData("Món Tráng Miệng", true)]
+    [InlineData("Đồ", true)]
+    [InlineData("Ăn", true)]
+    [InlineData("Ức", true)]
+    [InlineData("Ớt", true)]
+    [InlineData("Ổi", true)]
+    [InlineData("!!!Đồ Ăn Vặt!!!", true)]
+    [InlineData("Bánh Flan 100% Ngon!", true)]
+    [InlineData("!!!", false)]
+    [InlineData("---", false)]
+    [InlineData("...", false)]
+    [InlineData("   ", false)]
+    [InlineData(null, false)]
+    public void CanCreateSlug_ShouldReportWhetherSlugCanBeGenerated(string? name, bool expected)
+    {
+        // Act
+        var canCreateSlug = Category.CanCreateSlug(name);
+
+        // Assert
+        canCreateSlug.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("Món Tráng Miệng")]
+    [InlineData("Đồ")]
+    [InlineData("Ổi")]
+    [InlineData("!!!")]
+    [InlineData("---")]
+    public void CanCreateSlug_ShouldAgreeWithCreate(string name)
+    {
+        // Act: helper phải trả lời đúng câu hỏi "Create có sinh được slug không?"
+        var canCreateSlug = Category.CanCreateSlug(name);
+        var act = () => Category.Create(name);
+
+        // Assert
+        if (canCreateSlug)
+        {
+            act.Should().NotThrow();
+        }
+        else
+        {
+            act.Should().Throw<ArgumentException>();
+        }
     }
 
     [Fact]

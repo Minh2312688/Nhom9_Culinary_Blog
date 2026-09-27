@@ -9,8 +9,8 @@ using Xunit;
 namespace CulinaryBlog.Application.Tests.Features.Categories.Queries.GetCategories;
 
 /// <summary>
-/// Cache-aside cho GET /api/v1/categories: hit thì không chạm database, miss thì đọc
-/// database rồi ghi cache với TTL 30 phút theo contract nhóm.
+/// Cache-aside cho GET /api/v1/categories: hit thì lấy trang Category từ cache và
+/// refresh recipeCount; miss thì đọc database rồi ghi cache với TTL 30 phút.
 /// </summary>
 public class GetCategoriesQueryHandlerCacheTests
 {
@@ -37,7 +37,7 @@ public class GetCategoriesQueryHandlerCacheTests
     }
 
     [Fact]
-    public async Task Handle_WhenCacheHit_ShouldReturnCachedResultWithoutReadingDatabase()
+    public async Task Handle_WhenCacheHit_ShouldRefreshCountsOnCachedCategoryPage()
     {
         // Arrange
         await using var context = await CategoriesTestData.SeedDefaultAsync();
@@ -51,8 +51,14 @@ public class GetCategoriesQueryHandlerCacheTests
         // Act
         var result = await handler.Handle(query, CancellationToken.None);
 
-        // Assert: trả đúng dữ liệu cache và không ghi lại cache
-        result.Should().BeSameAs(cachedResult);
+        // Assert: tái sử dụng trang Category cache nhưng tính lại recipeCount
+        result.Should().NotBeSameAs(cachedResult);
+        result.Items.Should().ContainSingle();
+        result.Items[0].Name.Should().Be("Bánh Ngọt");
+        result.TotalCount.Should().Be(cachedResult.TotalCount);
+        result.Page.Should().Be(cachedResult.Page);
+        result.PageSize.Should().Be(cachedResult.PageSize);
+        result.Items[0].RecipeCount.Should().Be(0);
         cache.SetCalls.Should().BeEmpty();
     }
 

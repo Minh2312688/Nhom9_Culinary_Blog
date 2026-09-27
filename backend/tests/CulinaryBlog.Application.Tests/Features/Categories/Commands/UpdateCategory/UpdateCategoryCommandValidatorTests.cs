@@ -64,6 +64,43 @@ public class UpdateCategoryCommandValidatorTests
         result.Errors.Should().Contain(error => error.PropertyName == nameof(UpdateCategoryCommand.Name));
     }
 
+    // Cùng rule HTML markup như CreateCategoryCommandValidator: markup thật bị chặn,
+    // ký tự so sánh trong text thuần vẫn hợp lệ.
+    [Theory]
+    [InlineData("<b>Bánh ngọt</b>")]
+    [InlineData("<script>alert(1)</script>")]
+    [InlineData("<img src=x>")]
+    [InlineData("<svg/onload=alert(1)>")]
+    [InlineData("<b>Bánh Ngọt")]
+    [InlineData("Bánh <br/> Ngọt")]
+    [InlineData("</b>")]
+    [InlineData("<!-- chú thích -->")]
+    public void Validate_NameWithHtmlMarkup_ShouldHaveError(string name)
+    {
+        // Act
+        var result = new UpdateCategoryCommandValidator().Validate(ValidCommand(name));
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(error => error.PropertyName == nameof(UpdateCategoryCommand.Name));
+    }
+
+    [Theory]
+    [InlineData("Món < 30 phút")]
+    [InlineData("Bún <3")]
+    [InlineData("Giá 4>2")]
+    [InlineData("Đồ ăn (ngon) 100%")]
+    [InlineData("Bánh <b")]
+    public void Validate_NameWithComparisonSymbolButNoMarkup_ShouldNotHaveErrors(string name)
+    {
+        // Act
+        var result = new UpdateCategoryCommandValidator().Validate(ValidCommand(name));
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+    }
+
     [Fact]
     public void Validate_DescriptionLongerThanMaximum_ShouldHaveError()
     {

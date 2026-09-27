@@ -48,6 +48,46 @@ public class CategoryEndpointsTests
     }
 
     [Fact]
+    public async Task GetCategories_ShouldIncludeRecipeCountOfPublishedRecipes()
+    {
+        // Arrange
+        await using var factory = new CategoryWebApplicationFactory();
+        await factory.SeedAsync(async context =>
+        {
+            var category = Category.Create("Bánh Ngọt", "Mô tả");
+            context.Categories.Add(category);
+            context.Recipes.AddRange(
+                new Recipe
+                {
+                    Title = "Bánh Flan",
+                    Slug = "banh-flan",
+                    CategoryId = category.Id,
+                    AuthorId = "test-author",
+                    Status = RecipeStatus.Published
+                },
+                new Recipe
+                {
+                    Title = "Bánh Nháp",
+                    Slug = "banh-nhap",
+                    CategoryId = category.Id,
+                    AuthorId = "test-author",
+                    Status = RecipeStatus.Draft
+                });
+            await context.SaveChangesAsync();
+        });
+        var client = factory.CreateClient();
+
+        // Act
+        var response = await client.GetAsync("/api/v1/categories?sortBy=name");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var item = json.RootElement.GetProperty("items")[0];
+        item.GetProperty("recipeCount").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
     public async Task GetCategories_WithInvalidSortOrder_ShouldReturn400ProblemDetails()
     {
         // Arrange
@@ -67,7 +107,7 @@ public class CategoryEndpointsTests
     {
         // Arrange
         await using var factory = new CategoryWebApplicationFactory();
-        var client = factory.CreateClient();
+        var client = factory.CreateClientAs("Admin");
 
         // Act
         var response = await client.PostAsJsonAsync(
@@ -88,7 +128,7 @@ public class CategoryEndpointsTests
     {
         // Arrange
         await using var factory = new CategoryWebApplicationFactory();
-        var client = factory.CreateClient();
+        var client = factory.CreateClientAs("Admin");
 
         // Act
         var response = await client.PostAsJsonAsync(
@@ -98,6 +138,100 @@ public class CategoryEndpointsTests
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
+    }
+
+    [Theory]
+    [InlineData("!!!")]
+    [InlineData("---")]
+    public async Task PostCategory_WithNameThatCannotGenerateSlug_ShouldReturn400ProblemDetails(string name)
+    {
+        // Arrange
+        await using var factory = new CategoryWebApplicationFactory();
+        var client = factory.CreateClientAs("Admin");
+
+        // Act
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/categories",
+            new { name, description = (string?)null });
+
+        // Assert: validator chặn trước khi Category.Create ném ArgumentException (=> 500)
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = json.RootElement;
+        root.GetProperty("status").GetInt32().Should().Be(400);
+        root.GetProperty("errors").TryGetProperty("Name", out var nameErrors).Should().BeTrue();
+        nameErrors.EnumerateArray().Should().NotBeEmpty();
+    }
+
+    // Bug: Name chứa HTML markup từng được POST thành công nên DB lưu markup và client
+    // render lại. Validator chặn markup trước khi handler chạy => 400 Problem Details.
+    [Theory]
+    [InlineData("<b>Bánh ngọt</b>")]
+    [InlineData("<script>alert(1)</script>")]
+    [InlineData("<img src=x>")]
+    [InlineData("<svg/onload=alert(1)>")]
+    public async Task PostCategory_WithHtmlMarkupName_ShouldReturn400ProblemDetails(string name)
+    {
+        // Arrange
+        await using var factory = new CategoryWebApplicationFactory();
+        var client = factory.CreateClientAs("Admin");
+
+        // Act
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/categories",
+            new { name, description = (string?)null });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = json.RootElement;
+        root.GetProperty("status").GetInt32().Should().Be(400);
+        root.GetProperty("errors").TryGetProperty("Name", out var nameErrors).Should().BeTrue();
+        nameErrors.EnumerateArray().Should().NotBeEmpty();
+        // Validation chặn trước handler nên không có row nào được ghi
+        factory.Query(context => context.Categories.Count()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task PostCategory_WithComparisonSymbolInName_ShouldReturn201()
+    {
+        // Arrange: dấu "bé hơn" trong text thuần không phải HTML markup nên vẫn hợp lệ
+        await using var factory = new CategoryWebApplicationFactory();
+        var client = factory.CreateClientAs("Admin");
+
+        // Act
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/categories",
+            new { name = "Món < 30 phút", description = (string?)null });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<CategoryDto>();
+        body!.Name.Should().Be("Món < 30 phút");
+        body.Slug.Should().Be("mon-30-phut");
+    }
+
+    [Fact]
+    public async Task PostCategory_WithVietnameseNameOfOnlyDiacritics_ShouldReturn201WithAsciiSlug()
+    {
+        // Arrange: "Đồ" không có ký tự ASCII nào nhưng vẫn sinh được slug "do",
+        // nên validator không được từ chối (bug cũ: rule ContainsSlugCharacter trên tên gốc).
+        await using var factory = new CategoryWebApplicationFactory();
+        var client = factory.CreateClientAs("Admin");
+
+        // Act
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/categories",
+            new { name = "Đồ", description = (string?)null });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        response.Headers.Location!.ToString().Should().Be("/api/v1/categories/do");
+        var body = await response.Content.ReadFromJsonAsync<CategoryDto>();
+        body!.Name.Should().Be("Đồ");
+        body.Slug.Should().Be("do");
     }
 
     [Fact]
@@ -110,7 +244,7 @@ public class CategoryEndpointsTests
             context.Categories.Add(Category.Create("Bánh Ngọt"));
             await context.SaveChangesAsync();
         });
-        var client = factory.CreateClient();
+        var client = factory.CreateClientAs("Admin");
 
         // Act
         var response = await client.PostAsJsonAsync(

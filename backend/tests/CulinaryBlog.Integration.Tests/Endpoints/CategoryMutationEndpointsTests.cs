@@ -26,7 +26,7 @@ public class CategoryMutationEndpointsTests
             await context.SaveChangesAsync();
         });
         var id = factory.Query(context => context.Categories.Single().Id);
-        var client = factory.CreateClient();
+        var client = factory.CreateClientAs("Admin");
 
         // Act
         var response = await client.PutAsJsonAsync(
@@ -50,12 +50,78 @@ public class CategoryMutationEndpointsTests
         factory.Query(context => context.Categories.Single().Slug).Should().Be("banh-ngot");
     }
 
+    // PUT cũng phải từ chối HTML markup trong Name: validator chạy trước handler nên
+    // entity không bị sửa và API trả 400 Problem Details.
+    [Theory]
+    [InlineData("<b>Bánh ngọt</b>")]
+    [InlineData("<script>alert(1)</script>")]
+    [InlineData("<img src=x>")]
+    [InlineData("<svg/onload=alert(1)>")]
+    public async Task PutCategory_WithHtmlMarkupName_ShouldReturn400ProblemDetails(string name)
+    {
+        // Arrange
+        await using var factory = new CategoryWebApplicationFactory();
+        await factory.SeedAsync(async context =>
+        {
+            context.Categories.Add(Category.Create("Bánh Ngọt"));
+            await context.SaveChangesAsync();
+        });
+        var id = factory.Query(context => context.Categories.Single().Id);
+        var client = factory.CreateClientAs("Admin");
+
+        // Act
+        var response = await client.PutAsJsonAsync(
+            $"/api/v1/categories/{id}",
+            new { name, description = (string?)null, imageUrl = (string?)null, orderIndex = 0 });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = json.RootElement;
+        root.GetProperty("status").GetInt32().Should().Be(400);
+        root.GetProperty("errors").TryGetProperty("Name", out var nameErrors).Should().BeTrue();
+        nameErrors.EnumerateArray().Should().NotBeEmpty();
+        factory.Query(context => context.Categories.Single().Name).Should().Be("Bánh Ngọt");
+    }
+
+    [Fact]
+    public async Task PutCategory_WithComparisonSymbolInName_ShouldReturn200()
+    {
+        // Arrange: dấu "bé hơn" trong text thuần không phải HTML markup nên vẫn hợp lệ
+        await using var factory = new CategoryWebApplicationFactory();
+        await factory.SeedAsync(async context =>
+        {
+            context.Categories.Add(Category.Create("Bánh Ngọt"));
+            await context.SaveChangesAsync();
+        });
+        var id = factory.Query(context => context.Categories.Single().Id);
+        var client = factory.CreateClientAs("Admin");
+
+        // Act
+        var response = await client.PutAsJsonAsync(
+            $"/api/v1/categories/{id}",
+            new
+            {
+                name = "Món < 30 phút",
+                description = (string?)null,
+                imageUrl = (string?)null,
+                orderIndex = 0
+            });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<CategoryDto>();
+        body!.Name.Should().Be("Món < 30 phút");
+        body.Slug.Should().Be("banh-ngot");
+    }
+
     [Fact]
     public async Task PutCategory_UnknownId_ShouldReturn404()
     {
         // Arrange
         await using var factory = new CategoryWebApplicationFactory();
-        var client = factory.CreateClient();
+        var client = factory.CreateClientAs("Admin");
 
         // Act
         var response = await client.PutAsJsonAsync(
@@ -84,7 +150,7 @@ public class CategoryMutationEndpointsTests
             await context.SaveChangesAsync();
         });
         var id = factory.Query(context => context.Categories.Single().Id);
-        var client = factory.CreateClient();
+        var client = factory.CreateClientAs("Admin");
 
         // Act
         var deleted = await client.DeleteAsync($"/api/v1/categories/{id}");
@@ -119,7 +185,7 @@ public class CategoryMutationEndpointsTests
             await context.SaveChangesAsync();
         });
         var id = factory.Query(context => context.Categories.Single().Id);
-        var client = factory.CreateClient();
+        var client = factory.CreateClientAs("Admin");
 
         // Act
         var response = await client.DeleteAsync($"/api/v1/categories/{id}");
@@ -128,5 +194,38 @@ public class CategoryMutationEndpointsTests
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
         factory.Query(context => context.Categories.IgnoreQueryFilters().Single().IsDeleted)
             .Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CategoryMutationRoutes_ShouldRequireAdminRole()
+    {
+        // Arrange
+        await using var factory = new CategoryWebApplicationFactory();
+        await factory.SeedAsync(async context =>
+        {
+            context.Categories.Add(Category.Create("Bánh Ngọt"));
+            await context.SaveChangesAsync();
+        });
+        var id = factory.Query(context => context.Categories.Single().Id);
+        var anonymousClient = factory.CreateClient();
+        var authorClient = factory.CreateClientAs("Author");
+
+        // Act
+        var anonymousCreate = await anonymousClient.PostAsJsonAsync(
+            "/api/v1/categories",
+            new { name = "Món Chay", description = (string?)null });
+        var authorCreate = await authorClient.PostAsJsonAsync(
+            "/api/v1/categories",
+            new { name = "Món Chay", description = (string?)null });
+        var authorUpdate = await authorClient.PutAsJsonAsync(
+            $"/api/v1/categories/{id}",
+            new { name = "Bánh Mới", description = (string?)null, imageUrl = (string?)null, orderIndex = 0 });
+        var authorDelete = await authorClient.DeleteAsync($"/api/v1/categories/{id}");
+
+        // Assert
+        anonymousCreate.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        authorCreate.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        authorUpdate.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        authorDelete.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 }

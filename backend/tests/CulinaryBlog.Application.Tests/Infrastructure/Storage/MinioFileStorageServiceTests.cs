@@ -2,6 +2,7 @@ using System.Text;
 using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Common.Files;
 using CulinaryBlog.Application.Contracts.Storage;
+using CulinaryBlog.Application.Tests.Common.Files;
 using CulinaryBlog.Infrastructure.Storage;
 using FluentAssertions;
 using Xunit;

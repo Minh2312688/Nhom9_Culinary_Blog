@@ -86,11 +86,11 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 | **FR-AUTH-005** | Đăng xuất | AUTH | Thu hồi Refresh Token hiện tại (Revoke). Xóa token phía client. | TV1 | Phase 2 | **CLEAR** | §3.1 p. 21–22, §8.1 p. 62 |
 | **FR-AUTH-006** | Xem thông tin User | AUTH | Trả về thông tin cá nhân của người dùng hiện tại đang đăng nhập (`/auth/me`). | TV1 | Phase 2 | **CLEAR** | §3.1 p. 22, §8.1 p. 62 |
 | **FR-AUTH-007** | Cập nhật thông tin User | AUTH | Cập nhật DisplayName/FullName, AvatarUrl, Bio. Email và Role không đổi. | TV1 | Phase 2 | **CONFLICT** | §3.1 p. 23, §7.2 p. 55 (FullName vs DisplayName) |
-| **FR-CAT-001** | Xem danh sách Danh mục | CAT | Lấy tất cả danh mục kèm số lượng công thức Published. Sắp xếp theo Name. | TV4 | Phase 3 | **CONFLICT** | §3.2 p. 24 (IMemoryCache vs Redis) |
-| **FR-CAT-002** | Xem chi tiết Danh mục | CAT | Lấy thông tin danh mục theo slug kèm danh sách công thức phân trang. | TV4 | Phase 3 | **CONFLICT** | §3.2 p. 24–25, §8.2 p. 63 (Pagination Shape) |
-| **FR-CAT-003** | Tạo Danh mục mới | CAT | Admin tạo danh mục mới. Tự động sinh slug duy nhất. Invalidate cache danh mục. | TV4 | Phase 3 | **CONFLICT** | §3.2 p. 25–26 (Cache invalidation mechanism) |
-| **FR-CAT-004** | Cập nhật Danh mục | CAT | Admin cập nhật danh mục. Tạo slug mới nếu đổi tên. Invalidate cache. | TV4 | Phase 3 | **CONFLICT** | §3.2 p. 26, §8.2 p. 63 (Fields allowed to update) |
-| **FR-CAT-005** | Xóa Danh mục | CAT | Admin xóa danh mục. Chặn nếu còn chứa công thức. | TV4 | Phase 3 | **CONFLICT** | §3.2 p. 26–27, §7.6 p. 58 (Hard vs Soft Delete) |
+| **FR-CAT-001** | Xem danh sách Danh mục | CAT | Lấy danh mục phân trang, kèm số lượng công thức Published; Category cache dùng Redis TTL 30 phút. | TV4 | Phase 3 | **VERIFIED** | Category unit/integration tests passed |
+| **FR-CAT-002** | Xem chi tiết Danh mục | CAT | Trả Category DTO theo slug; client gọi Recipe API riêng bằng categoryId. | TV4 | Phase 3 | **VERIFIED** | Category unit/integration tests passed |
+| **FR-CAT-003** | Tạo Danh mục mới | CAT | Admin tạo bằng Name/Description; sinh slug; collision trả 409; Name không chứa HTML. | TV4 | Phase 3 | **VERIFIED** | Create HTML validation unit/integration tests passed |
+| **FR-CAT-004** | Cập nhật Danh mục | CAT | Admin cập nhật Name, Description, ImageUrl, OrderIndex; đổi tên giữ nguyên slug. | TV4 | Phase 3 | **VERIFIED** | Update HTML validation unit/integration tests passed |
+| **FR-CAT-005** | Xóa Danh mục | CAT | Admin soft-delete Category; chặn khi còn Recipe chưa soft-delete bằng HTTP 409. | TV4 | Phase 3 | **VERIFIED** | Category unit/integration tests passed |
 | **FR-RCP-001** | Xem danh sách Công thức | RCP | Lấy danh sách công thức Published có lọc, phân trang, sắp xếp. | TV2 | Phase 3 | **CONFLICT** | §3.3 p. 27–28 (Sorting, Pagination, Author visibility) |
 | **FR-RCP-002** | Xem chi tiết Công thức | RCP | Lấy chi tiết công thức kèm steps, ingredients, nutrition, author theo slug. | TV2 | Phase 3 | **CONFLICT** | §3.3 p. 28–29 (OutputCache 60m vs Redis 5m) |
 | **FR-RCP-003** | Tạo Công thức mới | RCP | Author/Admin tạo công thức dạng Draft. Sinh slug duy nhất. | TV2 | Phase 3 | **CONFLICT** | §3.3 p. 29–30 (Ingredient & Nutrition fields) |
@@ -400,13 +400,13 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **Name:** Xem Chi tiết Danh mục và Công thức
 - **Actor:** Tất cả (Guest / Author / Admin)
 - **Priority:** Must Have (M)
-- **Purpose:** Xem thông tin một danh mục cụ thể theo slug kèm danh sách công thức phân trang trực thuộc.
+- **Purpose:** Xem thông tin một danh mục cụ thể theo slug. Danh sách Recipe được lấy riêng qua Recipes API bằng `categoryId`.
 - **Preconditions:** Danh mục tồn tại theo slug.
-- **Inputs:** Route param `slug`, query params `page`, `pageSize`.
-- **Outputs:** `CategoryDetailDto` kèm phân trang recipes.
-- **Happy path:** 1. GET `/api/v1/categories/{slug}` $\rightarrow$ 2. Query Category by Slug $\rightarrow$ 3. Query Recipes phân trang where Status=Published $\rightarrow$ 4. Trả 200 OK.
+- **Inputs:** Route param `slug`.
+- **Outputs:** `CategoryDto`; client dùng `id` trong DTO để gọi `GET /api/v1/recipes?categoryId={id}&page=...`.
+- **Happy path:** 1. GET `/api/v1/categories/{slug}` $\rightarrow$ 2. Query Category by Slug $\rightarrow$ 3. Trả Category DTO; client gọi Recipes API riêng nếu cần danh sách Recipe.
 - **Alternate/error paths:** Slug không tồn tại $\rightarrow$ HTTP 404 Not Found.
-- **Validation:** Slug hợp lệ; page >= 1, pageSize 1–50.
+- **Validation:** Slug không rỗng, tối đa 120 ký tự.
 - **Authorization:** Anonymous.
 - **HTTP method:** GET
 - **Endpoint:** `/api/v1/categories/{slug}`
@@ -423,25 +423,25 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **Related Data Model:** §7.6, §7.2.
 - **Conflict IDs:** `CONFLICT-012`.
 - **Technical Risk IDs:** Không.
-- **Status:** **CONFLICT**
+- **Status:** **CONTRACT CLARIFIED FOR TV4; SOURCE SRS REVISION REQUIRED**
 
 ### FR-CAT-003: Tạo Danh mục Mới (Create Category)
 - **ID:** FR-CAT-003
 - **Name:** Tạo Danh mục Mới
 - **Actor:** Quản trị viên (Admin)
 - **Priority:** Must Have (M)
-- **Purpose:** Cho phép Admin tạo danh mục công thức mới, tự động sinh slug duy nhất từ tên.
+- **Purpose:** Cho phép Admin tạo danh mục công thức mới, tự động sinh slug từ tên; nếu slug đã tồn tại thì trả 409 và yêu cầu chọn tên khác.
 - **Preconditions:** User đăng nhập với role Admin; tên danh mục chưa tồn tại.
-- **Inputs:** `CreateCategoryRequest { name, description, imageUrl?, orderIndex? }`.
+- **Inputs:** `{ name, description? }`.
 - **Outputs:** `CategoryDto` mới tạo.
-- **Happy path:** 1. POST `/api/v1/categories` $\rightarrow$ 2. Check Admin role $\rightarrow$ 3. Validate name 2–50 ký tự $\rightarrow$ 4. Slugify sinh slug duy nhất $\rightarrow$ 5. Lưu DB $\rightarrow$ 6. Invalidate cache categories $\rightarrow$ 7. Trả 201 Created.
-- **Alternate/error paths:** A1: Không phải Admin $\rightarrow$ HTTP 403; A2: Tên trùng $\rightarrow$ HTTP 409; A3: Validation fail $\rightarrow$ HTTP 422.
-- **Validation:** Name 2–50 ký tự, không chứa HTML; Description max 500 ký tự.
+- **Happy path:** 1. POST `/api/v1/categories` $\rightarrow$ 2. Check Admin role $\rightarrow$ 3. Validate name 2–50 ký tự, không chứa HTML $\rightarrow$ 4. Sinh slug $\rightarrow$ 5. Lưu DB $\rightarrow$ 6. Invalidate category cache $\rightarrow$ 7. Trả 201 Created.
+- **Alternate/error paths:** A1: Không phải Admin $\rightarrow$ HTTP 403; A2: Tên/slug đã tồn tại $\rightarrow$ HTTP 409; A3: Validation fail $\rightarrow$ HTTP 400 Problem Details.
+- **Validation:** Name 2–50 ký tự, không chứa HTML; Description tối đa 500 ký tự.
 - **Authorization:** Role Admin (`RequireAuthorization("Admin")`).
 - **HTTP method:** POST
 - **Endpoint:** `/api/v1/categories`
 - **Success status:** 201 Created
-- **Error statuses:** 400 Bad Request, 401 Unauthorized, 403 Forbidden, 409 Conflict, 422 Unprocessable Entity
+- **Error statuses:** 400 Bad Request, 401 Unauthorized, 403 Forbidden, 409 Conflict
 - **Entities affected:** `Category`
 - **Cache behavior:** Invalidate cache danh sách category.
 - **External dependency:** DbContext.
@@ -453,25 +453,25 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **Related Data Model:** §7.6.
 - **Conflict IDs:** `CONFLICT-011`, `CONFLICT-020`.
 - **Technical Risk IDs:** Không.
-- **Status:** **CONFLICT**
+- **Status:** **IMPLEMENTED AND VERIFIED FOR TV4**
 
 ### FR-CAT-004: Cập nhật Danh mục (Update Category)
 - **ID:** FR-CAT-004
 - **Name:** Cập nhật Danh mục
 - **Actor:** Quản trị viên (Admin)
 - **Priority:** Should Have (S)
-- **Purpose:** Sửa thông tin danh mục; nếu đổi tên thì tự động sinh slug mới.
+- **Purpose:** Sửa thông tin danh mục; khi đổi tên giữ nguyên slug để URL hiện tại không bị hỏng.
 - **Preconditions:** User đăng nhập role Admin; Category ID tồn tại.
 - **Inputs:** `UpdateCategoryRequest { name, description, imageUrl?, orderIndex? }`.
 - **Outputs:** `CategoryDto` sau cập nhật.
 - **Happy path:** 1. PUT `/api/v1/categories/{id}` $\rightarrow$ 2. Check Admin $\rightarrow$ 3. Cập nhật fields $\rightarrow$ 4. Invalidate cache $\rightarrow$ 5. Trả 200 OK.
 - **Alternate/error paths:** ID không tồn tại $\rightarrow$ HTTP 404; Tên trùng $\rightarrow$ HTTP 409; Không phải Admin $\rightarrow$ HTTP 403.
-- **Validation:** Name 2–50 ký tự; Description max 500.
+- **Validation:** Name 2–50 ký tự, không chứa HTML; Description tối đa 500 ký tự; ImageUrl tối đa 500 ký tự; OrderIndex >= 0.
 - **Authorization:** Role Admin.
 - **HTTP method:** PUT
 - **Endpoint:** `/api/v1/categories/{id}`
 - **Success status:** 200 OK
-- **Error statuses:** 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 409 Conflict, 422 Unprocessable Entity
+- **Error statuses:** 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 409 Conflict
 - **Entities affected:** `Category`
 - **Cache behavior:** Invalidate category cache.
 - **External dependency:** DbContext.
@@ -483,25 +483,25 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **Related Data Model:** §7.6.
 - **Conflict IDs:** `CONFLICT-017`, `CONFLICT-020`.
 - **Technical Risk IDs:** Không.
-- **Status:** **CONFLICT**
+- **Status:** **IMPLEMENTED AND VERIFIED FOR TV4**
 
 ### FR-CAT-005: Xóa Danh mục (Delete Category)
 - **ID:** FR-CAT-005
 - **Name:** Xóa Danh mục
 - **Actor:** Quản trị viên (Admin)
 - **Priority:** Should Have (S)
-- **Purpose:** Cho phép Admin xóa danh mục khi không còn công thức nào trực thuộc.
-- **Preconditions:** Category tồn tại; không chứa công thức nào (RecipeCount == 0).
+- **Purpose:** Cho phép Admin xóa mềm Category khi không còn Recipe đang hoạt động trực thuộc.
+- **Preconditions:** Category tồn tại; không có Recipe chưa soft-delete.
 - **Inputs:** Route param `id`.
 - **Outputs:** Message xác nhận hoặc empty.
-- **Happy path:** 1. DELETE `/api/v1/categories/{id}` $\rightarrow$ 2. Check Admin $\rightarrow$ 3. Kiểm tra liên kết Recipe (nếu > 0 thì chặn) $\rightarrow$ 4. Xóa Category $\rightarrow$ 5. Invalidate cache $\rightarrow$ 6. Trả 200 OK / 204 No Content.
-- **Alternate/error paths:** Còn recipe liên kết $\rightarrow$ HTTP 400 Bad Request ("CATEGORY_HAS_RECIPES"); ID không tồn tại $\rightarrow$ HTTP 404.
+- **Happy path:** 1. DELETE `/api/v1/categories/{id}` $\rightarrow$ 2. Check Admin $\rightarrow$ 3. Kiểm tra Recipe chưa soft-delete $\rightarrow$ 4. Đặt `IsDeleted = true` $\rightarrow$ 5. Invalidate cache $\rightarrow$ 6. Trả 204 No Content.
+- **Alternate/error paths:** Còn Recipe chưa soft-delete $\rightarrow$ HTTP 409 Conflict; ID không tồn tại hoặc đã soft-delete $\rightarrow$ HTTP 404.
 - **Validation:** ID hợp lệ.
 - **Authorization:** Role Admin.
 - **HTTP method:** DELETE
 - **Endpoint:** `/api/v1/categories/{id}`
-- **Success status:** 200 OK / 204 No Content
-- **Error statuses:** 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found
+- **Success status:** 204 No Content
+- **Error statuses:** 401 Unauthorized, 403 Forbidden, 404 Not Found, 409 Conflict
 - **Entities affected:** `Category`
 - **Cache behavior:** Invalidate category cache.
 - **External dependency:** DbContext.
@@ -513,7 +513,7 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **Related Data Model:** §7.6.
 - **Conflict IDs:** `CONFLICT-002`.
 - **Technical Risk IDs:** Không.
-- **Status:** **CONFLICT**
+- **Status:** **CONTRACT CLARIFIED FOR TV4**
 
 ### FR-RCP-001: Xem Danh sách Công thức (Get Recipe List)
 - **ID:** FR-RCP-001
@@ -1804,9 +1804,9 @@ Base URL: `/api/v1`. Toàn bộ response chuẩn hóa JSON theo envelope `{ data
 | 6 | Auth | `GET` | `/auth/me` | (None) | `200: { id, email, displayName, avatarUrl, bio, roles }` | Bearer JWT | 200 OK | 401: Unauthorized | `FR-AUTH-006` | Không |
 | 7 | Auth | `PATCH` | `/auth/me` | `{ displayName?, avatarUrl?, bio? }` | `200: { id, email, displayName, avatarUrl, bio }` | Bearer JWT | 200 OK | 400: validation, 401: Unauthorized | `FR-AUTH-007` | `CONFLICT-009` (FullName/UserName vs DisplayName/Bio) |
 | 8 | Category | `GET` | `/categories` | (None) | `200: [{ id, name, slug, description, imageUrl, recipeCount }]` | Không | 200 OK | — | `FR-CAT-001` | `CONFLICT-020` |
-| 9 | Category | `GET` | `/categories/{slug}` | Query: `?page=1&pageSize=10&sortBy=...` | `200: { category, recipes: PagedResult }` | Không | 200 OK | 404: Category not found | `FR-CAT-002` | `CONFLICT-012` |
-| 10 | Category | `POST` | `/categories` | `{ name, description?, imageUrl? }` | `201: { id, name, slug, description }` | Bearer + Admin | 201 Created | 400: validation, 403: Forbidden, 409: name đã tồn tại | `FR-CAT-003` | Không |
-| 11 | Category | `PUT` | `/categories/{id}` | `{ name, description?, imageUrl?, orderIndex? }` | `200: category updated` | Bearer + Admin | 200 OK | 400, 403, 404 | `FR-CAT-004` | `CONFLICT-017` |
+| 9 | Category | `GET` | `/categories/{slug}` | Không có query parameters | `200: CategoryDto`; client dùng `id` gọi `/recipes?categoryId={id}&page=...` | Không | 200 OK | 404: Category not found | `FR-CAT-002` | Recipe list được gọi riêng |
+| 10 | Category | `POST` | `/categories` | `{ name, description? }` | `201: CategoryDto` | Bearer + Admin | 201 Created | 400: validation, 401: Unauthorized, 403: Forbidden, 409: slug đã tồn tại | `FR-CAT-003` | Create không nhận imageUrl/orderIndex |
+| 11 | Category | `PUT` | `/categories/{id}` | `{ name, description?, imageUrl?, orderIndex? }` | `200: CategoryDto` | Bearer + Admin | 200 OK | 400, 401, 403, 404, 409: name trùng | `FR-CAT-004` | Giữ slug; Name chứa HTML trả 400 |
 | 12 | Category | `DELETE` | `/categories/{id}` | (None) | (Empty body) | Bearer + Admin | 204 No Content | 403: Forbidden, 404: Not found, 409: Có recipes thuộc category này | `FR-CAT-005` | `CONFLICT-002` |
 | 13 | Recipe | `GET` | `/recipes` | `?page&pageSize&sortBy&sortOrder&categoryId&difficulty&minPrepTime&maxPrepTime` | `200: PagedResult<RecipeSummaryDto>` | Không (Author xem thêm Draft) | 200 OK | 400: validation | `FR-RCP-001` | `CONFLICT-003`, `CONFLICT-012`, `CONFLICT-021` |
 | 14 | Recipe | `GET` | `/recipes/{slug}` | (None) | `200: RecipeDetailDto` (kèm steps, ingredients, images, nutrition) | Không (Draft: Author/Admin) | 200 OK | 404: Not found, 403: Draft | `FR-RCP-002` | `CONFLICT-008`, `CONFLICT-019` |
@@ -1992,12 +1992,12 @@ Hệ thống Culinary Blog tích hợp với 9 dịch vụ và thành phần m�
 
 ## 13. Conflicts Master Register (Danh mục 25 Mâu thuẫn Kiến trúc)
 
-Tất cả 24 mâu thuẫn dưới đây đều được trích xuất từ việc đối chiếu chéo giữa các chương của SRS v1.0.0. Toàn bộ đang ở trạng thái **OPEN** (chờ xác nhận từ Giảng viên / Nhóm trưởng).
+Các mâu thuẫn dưới đây được trích xuất từ việc đối chiếu chéo giữa các chương của SRS v1.0.0. Trạng thái từng dòng phản ánh quyết định mới nhất; chi tiết quyết định nằm trong `SRS-CONFLICTS-AND-DECISIONS.md`.
 
 | Conflict ID | Tên mâu thuẫn | Bằng chứng A (Evidence A) | Bằng chứng B (Evidence B) | Ảnh hưởng chính | Trạng thái |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **CONFLICT-001** | Recipe Delete Strategy | §3.3 FR-RCP-010 p.35: Dùng `DbSet.Remove()` hard delete | §7.1 p.54, §7.2 p.56, §8.3 p.64: Soft delete (`IsDeleted=true`) | TV2 (DB/API) | **OPEN** |
-| **CONFLICT-002** | Category Delete Strategy | §3.2 FR-CAT-005 p.27: Xóa danh mục khỏi CSDL | §7.1 p.54, §7.6 p.58, §8.2 p.63: Soft delete | TV4 (Category) | **OPEN** |
+| **CONFLICT-002** | Category Delete Strategy | §3.2 FR-CAT-005 p.27: Xóa danh mục khỏi CSDL | §7.1 p.54, §7.6 p.58, §8.2 p.63: Soft delete | TV4 (Category) | **DECIDED: soft delete** |
 | **CONFLICT-003** | Sorting Convention | §3.3 FR-RCP-001 p.28: `sort=title`, `sort=-createdAt` | §8 p.61, §8.3 p.63: `sortBy=createdAt&sortOrder=desc` | TV2, TV3 | **OPEN** |
 | **CONFLICT-004** | RecipeIngredient Quantity / Unit | §3.3 FR-RCP-009 p.35: Quantity & Unit bắt buộc | §7.4 p.57, §8.6 p.65: Quantity & Unit là Nullable | TV2, TV3 | **OPEN** |
 | **CONFLICT-005** | Ingredient Ordering Name | §3.3 FR-RCP-009 p.35: Sắp xếp theo `StepNumber` | §7.4 p.57, §8.6 p.65: Sắp xếp theo trường `OrderIndex` | TV2 | **OPEN** |
@@ -2012,10 +2012,10 @@ Tất cả 24 mâu thuẫn dưới đây đều được trích xuất từ vi�
 | **CONFLICT-014** | Concurrency Conflict HTTP Status | §3.3 FR-RCP-004 p.31 & §8.3 p.63: Lỗi concurrency trả HTTP 409 Conflict | Phụ lục A p.67 & Phụ lục B p.68: Lỗi CONCURRENCY_CONFLICT trả HTTP 422 Unprocessable Entity | TV2 | **OPEN** |
 | **CONFLICT-015** | RecipeStep StepNumber Generation | §3.3 FR-RCP-009 p.34: Server tự động tính `StepNumber` | §8.5 p.65: Client gửi `stepNumber` trong Request Body | TV2, TV3 | **OPEN** |
 | **CONFLICT-016** | Search Query Cache TTL | §3.4 FR-SRCH-001 p.36: Cache kết quả tìm kiếm 5 phút | §4.1 NFR-PERF-003 p.39: Không cache search query trên Redis | TV2 | **OPEN** |
-| **CONFLICT-017** | Category Update Allowed Fields | §3.2 FR-CAT-004 p.26: Chỉ cho phép cập nhật `name`, `description` | §8.2 p.63: Cho phép cập nhật thêm `imageUrl` và `orderIndex` | TV4 | **OPEN** |
+| **CONFLICT-017** | Category Update Allowed Fields | §3.2 FR-CAT-004 p.26: Chỉ cho phép cập nhật `name`, `description` | §8.2 p.63: Cho phép cập nhật thêm `imageUrl` và `orderIndex` | TV4 | **DECIDED: Name, Description, ImageUrl, OrderIndex** |
 | **CONFLICT-018** | Refresh Token Entropy | §3.1 FR-AUTH-004 p.22: Tạo token ngẫu nhiên 32 bytes (256-bit) | §4.2 NFR-SEC-002 p.40: Tạo token ngẫu nhiên 64 bytes (512-bit) | TV1 | **OPEN** |
 | **CONFLICT-019** | Recipe Detail Cache TTL / Tech | §3.3 FR-RCP-002 p.29: Cache In-Memory 10 phút | §4.1 NFR-PERF-003 p.39: Cache Redis phân tán 30 phút | TV2 | **OPEN** |
-| **CONFLICT-020** | Category Cache Technology / TTL | §3.2 FR-CAT-001 p.24: In-Memory IMemoryCache 60 phút | §4.1 NFR-PERF-003 p.39: Redis phân tán (Distributed Cache) 24h | TV4 | **OPEN** |
+| **CONFLICT-020** | Category Cache Technology / TTL | §3.2 FR-CAT-001 p.24: In-Memory IMemoryCache 60 phút | §4.1 NFR-PERF-003 p.39: Redis phân tán (Distributed Cache) 24h | TV4 | **DECIDED: Redis distributed cache, TTL 30 minutes** |
 | **CONFLICT-021** | Recipe List Author Visibility | §3.3 FR-RCP-001 p.28 (Mô tả): Thấy Draft & Archived của mình | §3.3 FR-RCP-001 p.28 (Step 4): Chỉ thấy Published và Draft của mình | TV2, TV3 | **OPEN** |
 | **CONFLICT-022** | Browser Version Support Matrix | §2.4.3 p.14: Hỗ trợ Chrome 90+, Firefox 88+, Safari 14+ | §5.4.2 p.49: Yêu cầu tối thiểu Chrome 112+, Firefox 113+, Safari 16+ | TV3 | **OPEN** |
 | **CONFLICT-023** | Recipe Image Set-Primary Endpoint Contract | §3.3 FR-RCP-008 p.34: Route `PATCH /api/v1/recipes/{id}/images/{imageId}/primary` | §8.4 p.64: Route `PATCH /recipes/{id}/images/{imageId}` body `{ altText?, isPrimary?, orderIndex? }` | TV2, TV4 | **OPEN** |

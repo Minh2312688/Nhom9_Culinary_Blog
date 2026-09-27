@@ -6,8 +6,10 @@ using CulinaryBlog.Application.Features.Categories.Commands.DeleteCategory;
 using CulinaryBlog.Application.Features.Categories.Commands.UpdateCategory;
 using CulinaryBlog.Application.Features.Categories.Queries.GetCategories;
 using CulinaryBlog.Application.Features.Categories.Queries.GetCategoryBySlug;
+using CulinaryBlog.Domain.Constants;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -92,6 +94,7 @@ public static class CategoryEndpoints
             }
         })
             .WithName("CreateCategory")
+            .RequireAuthorization(policy => policy.RequireRole(AppRoles.Admin))
             .WithSummary("Tạo danh mục mới")
             .Produces<CategoryDto>(201)
             .ProducesProblem(400) // Validation error
@@ -124,6 +127,7 @@ public static class CategoryEndpoints
             }
         })
             .WithName("UpdateCategory")
+            .RequireAuthorization(policy => policy.RequireRole(AppRoles.Admin))
             .WithSummary("Cập nhật danh mục")
             .WithDescription("Cập nhật Name, Description, ImageUrl, OrderIndex. Slug không đổi.")
             .Produces<CategoryDto>(200)
@@ -151,6 +155,7 @@ public static class CategoryEndpoints
             }
         })
             .WithName("DeleteCategory")
+            .RequireAuthorization(policy => policy.RequireRole(AppRoles.Admin))
             .WithSummary("Xóa mềm danh mục")
             .WithDescription("Đặt IsDeleted = true. Trả 409 nếu category còn recipe đang hoạt động.")
             .Produces(204)
@@ -182,4 +187,3 @@ public static class CategoryEndpoints
             detail: exception.Message,
             statusCode: StatusCodes.Status409Conflict);
 }
-

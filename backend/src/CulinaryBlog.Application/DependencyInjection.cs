@@ -4,8 +4,6 @@ using CulinaryBlog.Application.Common.Behaviors;
 using FluentValidation;
 using Mapster;
 using MapsterMapper;
-using FluentValidation;
-using CulinaryBlog.Application.Common.Behaviors;
 namespace CulinaryBlog.Application;
 
 public static class DependencyInjection

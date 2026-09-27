@@ -137,3 +137,8 @@ D:\Nhom9_Culinary_Blog\backend\tests\CulinaryBlog.Application.Tests\bin\Debug\ne
 D:\Nhom9_Culinary_Blog\backend\tests\CulinaryBlog.Application.Tests\bin\Debug\net10.0\runtimes\win\lib\net7.0\System.Management.dll
 D:\Nhom9_Culinary_Blog\backend\tests\CulinaryBlog.Application.Tests\bin\Debug\net10.0\CulinaryBlog.Infrastructure.dll
 D:\Nhom9_Culinary_Blog\backend\tests\CulinaryBlog.Application.Tests\bin\Debug\net10.0\CulinaryBlog.Infrastructure.pdb
+D:\Nhom9_Culinary_Blog\backend\tests\CulinaryBlog.Application.Tests\bin\Debug\net10.0\CommunityToolkit.HighPerformance.dll
+D:\Nhom9_Culinary_Blog\backend\tests\CulinaryBlog.Application.Tests\bin\Debug\net10.0\Microsoft.EntityFrameworkCore.InMemory.dll
+D:\Nhom9_Culinary_Blog\backend\tests\CulinaryBlog.Application.Tests\bin\Debug\net10.0\Minio.dll
+D:\Nhom9_Culinary_Blog\backend\tests\CulinaryBlog.Application.Tests\bin\Debug\net10.0\System.IO.Hashing.dll
+D:\Nhom9_Culinary_Blog\backend\tests\CulinaryBlog.Application.Tests\bin\Debug\net10.0\System.Reactive.dll

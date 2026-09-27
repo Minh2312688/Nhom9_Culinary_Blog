@@ -131,7 +131,10 @@ public class DistributedCategoryCacheTests
         var store = new InMemoryDistributedCache();
         var cache = CreateCache(store);
         var expected = new PaginatedResult<CategoryDto>(
-            [new CategoryDto(Guid.NewGuid(), "Bánh Ngọt", "banh-ngot", "Mô tả", null, 3, DateTime.UtcNow)],
+            [new CategoryDto(Guid.NewGuid(), "Bánh Ngọt", "banh-ngot", "Mô tả", null, 3, DateTime.UtcNow)
+            {
+                RecipeCount = 7
+            }],
             1,
             1,
             10);
@@ -145,6 +148,8 @@ public class DistributedCategoryCacheTests
         actual!.Items.Should().ContainSingle();
         actual.Items[0].Name.Should().Be("Bánh Ngọt");
         actual.Items[0].OrderIndex.Should().Be(3);
+        // FR-CAT-001: recipeCount phải sống sót qua vòng serialize/deserialize của cache
+        actual.Items[0].RecipeCount.Should().Be(7);
         actual.TotalCount.Should().Be(1);
         actual.TotalPages.Should().Be(1);
         actual.HasNextPage.Should().BeFalse();

@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Contracts;
+using CulinaryBlog.Application.Contracts.Authentication;
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
@@ -85,6 +86,17 @@ public sealed class CategoryWebApplicationFactory : WebApplicationFactory<Progra
     {
         using var scope = Services.CreateScope();
         await seed(scope.ServiceProvider.GetRequiredService<IApplicationDbContext>());
+    }
+
+    public HttpClient CreateClientAs(string role)
+    {
+        var client = CreateClient();
+        using var scope = Services.CreateScope();
+        var tokenGenerator = scope.ServiceProvider.GetRequiredService<IJwtTokenGenerator>();
+        var token = tokenGenerator.GenerateAccessToken($"test-{role.ToLowerInvariant()}", "test@example.com", [role]);
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        return client;
     }
 
     public T Query<T>(Func<IApplicationDbContext, T> query)

@@ -149,3 +149,7 @@ D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.API\bin\Debug\net10.0\tr\Microso
 D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.API\bin\Debug\net10.0\zh-Hans\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
 D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.API\bin\Debug\net10.0\zh-Hant\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
 D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.API\bin\Debug\net10.0\runtimes\win\lib\net7.0\System.Management.dll
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.API\bin\Debug\net10.0\CommunityToolkit.HighPerformance.dll
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.API\bin\Debug\net10.0\Minio.dll
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.API\bin\Debug\net10.0\System.IO.Hashing.dll
+D:\Nhom9_Culinary_Blog\backend\src\CulinaryBlog.API\bin\Debug\net10.0\System.Reactive.dll

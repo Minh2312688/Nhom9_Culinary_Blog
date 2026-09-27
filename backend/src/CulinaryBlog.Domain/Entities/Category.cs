@@ -122,7 +122,38 @@ public class Category : BaseEntity
         return trimmedImageUrl;
     }
 
+    /// <summary>
+    /// Cho biết <paramref name="name"/> có sinh được slug hay không, dùng lại chính thuật toán
+    /// slug của <see cref="Create"/> nên tầng Application (validator CreateCategoryCommand)
+    /// không cần bộ slugify riêng và quy tắc slug vẫn chỉ tồn tại ở Domain.
+    /// Tên tiếng Việt chỉ gồm ký tự có dấu (mất hết ký tự ASCII sau khi bỏ dấu) vẫn trả true,
+    /// ví dụ "Đồ" -> "do", "Ăn" -> "an", "Ức" -> "uc", "Ớt" -> "ot", "Ổi" -> "oi".
+    /// </summary>
+    public static bool CanCreateSlug(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        // Create normalizes trước (trim trong NormalizeName) nên helper cũng so trên tên đã trim.
+        return TryCreateSlug(name.Trim(), out _);
+    }
+
     private static string CreateSlug(string value)
+    {
+        if (!TryCreateSlug(value, out var slug))
+        {
+            throw new ArgumentException(
+                "Name must contain at least one letter or digit so a slug can be generated.",
+                nameof(value));
+        }
+
+        return slug;
+    }
+
+    /// <summary>Thuật toán slug duy nhất của Category, dùng chung cho Create và CanCreateSlug.</summary>
+    private static bool TryCreateSlug(string value, out string slug)
     {
         var normalized = value.Replace('đ', 'd').Replace('Đ', 'D')
             .Normalize(NormalizationForm.FormD);
@@ -147,11 +178,11 @@ public class Category : BaseEntity
 
         if (builder.Length == 0)
         {
-            throw new ArgumentException(
-                "Name must contain at least one letter or digit so a slug can be generated.",
-                nameof(value));
+            slug = string.Empty;
+            return false;
         }
 
-        return builder.ToString().Trim('-');
+        slug = builder.ToString().Trim('-');
+        return slug.Length > 0;
     }
 }

@@ -213,6 +213,28 @@ Tài liệu này ghi nhận toàn bộ các điểm mâu thuẫn thực tế, ch
 - **Confirmed by:** Đại diện nhóm (xác nhận chính thức trong hội thoại), 2026-09-23.
 - **Status:** `DECIDED`
 
+## 3. TV4 Category contract confirmations (2026-09-27)
+
+The following Category API choices were confirmed by the TV4 module owner for
+the current implementation. They clarify the module contract but do not claim
+approval by other team members; the team may record formal approval separately.
+
+- Create accepts `Name` and optional `Description` only; `ImageUrl` and
+  `OrderIndex` are not part of the create request.
+- Renaming a Category preserves its existing slug so the current URL remains
+  valid.
+- `GET /api/v1/categories/{slug}` returns a Category DTO only. The client
+  requests recipes separately using
+  `/api/v1/recipes?categoryId={id}&page=...`.
+- A slug collision returns HTTP 409; the server does not append a numeric
+  suffix.
+- Deleting a Category with active (not soft-deleted) recipes returns HTTP 409.
+  Category deletion itself is soft delete using `IsDeleted`, as already decided
+  in CONFLICT-002.
+- Category `Name` rejects HTML markup for both create and update. The shared
+  validator rule and its unit/integration tests have been implemented and
+  verified.
+
 ### CONFLICT-021: Recipe List Author Visibility
 - **Mô tả:** Mâu thuẫn về quyền xem bài viết của chính tác giả (Author) trong danh sách công thức tại `FR-RCP-001`.
 - **Evidence A:** SRS §3.3 FR-RCP-001 (trang 28) phần Mô tả $

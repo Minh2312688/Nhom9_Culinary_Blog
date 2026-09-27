@@ -105,18 +105,72 @@ public class CreateCategoryCommandValidatorTests
         result.Errors.Should().BeEmpty();
     }
 
-    [Fact]
-    public void Validate_NameWithoutAnySlugCharacter_ShouldNotHaveErrors_BecauseDomainOwnsSlugRule()
+    // Bug: tên "!!!" qua được validator (chỉ kiểm tra bắt buộc + độ dài) nên handler gọi
+    // Category.Create và Domain ném ArgumentException => API trả 500 thay vì 400.
+    // Validator giờ chặn sớm, nhưng vẫn không sở hữu thuật toán slug: quy tắc "sinh được slug"
+    // do Domain quyết định qua helper Category.CanCreateSlug dùng chung với Create.
+    [Theory]
+    [InlineData("!!!")]
+    [InlineData("---")]
+    [InlineData("...")]
+    [InlineData("  !!!  ")]
+    public void Validate_NameWithoutAnySlugCharacter_ShouldHaveError(string name)
     {
-        // Arrange: validator chỉ kiểm tra bắt buộc + độ dài;
-        // Category domain mới là nơi ném ArgumentException khi tên không sinh được slug.
-        var command = new CreateCategoryCommand("!!!", null);
+        // Arrange: tên không còn ký tự chữ/số nên Category.Create ném ArgumentException
+        var command = new CreateCategoryCommand(name, null);
+
+        // Act
+        var result = _validator.Validate(command);
+
+        // Assert: validator từ chối trước khi Domain phải ném exception
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(error => error.PropertyName == nameof(CreateCategoryCommand.Name));
+    }
+
+    // Bug: Name chứa HTML markup (<b>, <script>, <img ...>) từng qua được validator nên
+    // markup được lưu thẳng vào DB và trả lại cho client. Validator giờ chặn sớm bằng
+    // HtmlMarkup.Contains (logic dùng chung với UpdateCategoryCommandValidator) nên API
+    // trả 400 Problem Details thay vì nhận dữ liệu có markup.
+    [Theory]
+    [InlineData("<b>Bánh ngọt</b>")]
+    [InlineData("<script>alert(1)</script>")]
+    [InlineData("<img src=x>")]
+    [InlineData("<svg/onload=alert(1)>")]
+    [InlineData("<b>Bánh Ngọt")]
+    [InlineData("Bánh <br/> Ngọt")]
+    [InlineData("</b>")]
+    [InlineData("<!-- chú thích -->")]
+    public void Validate_NameWithHtmlMarkup_ShouldHaveError(string name)
+    {
+        // Arrange
+        var command = new CreateCategoryCommand(name, null);
+
+        // Act
+        var result = _validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(error => error.PropertyName == nameof(CreateCategoryCommand.Name));
+    }
+
+    // Ký tự so sánh "bé hơn/lớn hơn" trong text thuần không phải markup nên không được chặn.
+    [Theory]
+    [InlineData("Món < 30 phút")]
+    [InlineData("Bún <3")]
+    [InlineData("Giá 4>2")]
+    [InlineData("Đồ ăn (ngon) 100%")]
+    [InlineData("Bánh <b")]
+    public void Validate_NameWithComparisonSymbolButNoMarkup_ShouldNotHaveErrors(string name)
+    {
+        // Arrange
+        var command = new CreateCategoryCommand(name, null);
 
         // Act
         var result = _validator.Validate(command);
 
         // Assert
         result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
     }
 
     [Fact]

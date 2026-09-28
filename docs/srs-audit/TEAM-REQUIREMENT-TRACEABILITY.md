@@ -69,8 +69,8 @@ Quy ước trạng thái:
 | **FR-RCP-006** | | **X** | X | | **TV2** | Backend archive implemented; Dashboard UI (TV3) | None | **IN_PROGRESS** |
 | **FR-RCP-007** | | **X** | X | X | **TV2** | Backend soft delete implemented; Hangfire image cleanup (TV4), UI (TV3) | None (conflict decided; see audit) | **IN_PROGRESS** |
 | **FR-RCP-008** | | **X** | X | X | **TV2** | MinIO upload service (TV4), Hangfire thumbnail (TV4) | CONFLICT-023, CONFLICT-024, TECH-RISK-011 | **BLOCKED** |
-| **FR-RCP-009** | | **X** | X | | **TV2** | Ingredient handler/HTTP tests | CONFLICT-004, CONFLICT-005 (decided) | **IN_PROGRESS** |
-| **FR-RCP-010** | | **X** | X | | **TV2** | Apply migration and verify advisory lock/concurrency on PostgreSQL/Testcontainers | TECH-RISK-012 (concurrent renumbering) | **IN_PROGRESS** |
+| **FR-RCP-009** | | **X** | X | | **TV2** | Đã xác minh kiểm thử handler/HTTP và ghi nguyên liệu vào PostgreSQL ngày 2026-09-28 | CONFLICT-004, CONFLICT-005 (đã quyết định) | **DONE** |
+| **FR-RCP-010** | | **X** | X | | **TV2** | Đã xác minh migration, kiểm thử handler/HTTP, advisory lock và ghi bước nấu vào PostgreSQL ngày 2026-09-28 | TECH-RISK-012 (tiếp tục theo dõi tình huống đồng thời bổ sung) | **DONE** |
 | **FR-SRCH-001** | | **X** | X | | **TV2** | PostgreSQL tsvector/unaccent, Search UI (TV3) | CONFLICT-016, TECH-RISK-004 | **BLOCKED** |
 | **FR-SRCH-002** | | **X** | X | | **TV2** | Filter panel UI (TV3) | None | **NOT_STARTED** |
 | **FR-SRCH-003** | | **X** | X | | **TV2** | Sort dropdown UI (TV3) | CONFLICT-003 | **BLOCKED** |

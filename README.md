@@ -609,6 +609,12 @@ dotnet ef database update `
   --context AuthDbContext
 ```
 
+### Chuyển database legacy sang AuthDbContext
+
+Không apply AuthDbContext migrations trực tiếp lên database `culinary_blog` đang có dữ liệu legacy. Runbook và importer cho phương án giữ nguyên nguồn, tạo database đích riêng, chạy migrations rồi nhập dữ liệu nằm tại [`docs/postgresql-data-migration-plan.md`](docs/postgresql-data-migration-plan.md).
+
+Importer mặc định chỉ chạy preflight. Chỉ truyền `--apply` sau khi đã tạo và xác minh backup nguồn; cần cấu hình riêng `ConnectionStrings__PostgresSource` và `ConnectionStrings__PostgresTarget`. Không commit các biến môi trường hoặc connection string.
+
 ### Lưu ý khi làm việc nhóm
 
 - Không tự ý sửa migration của thành viên khác.

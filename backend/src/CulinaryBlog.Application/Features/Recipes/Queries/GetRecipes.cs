@@ -33,7 +33,7 @@ public sealed class GetRecipesQueryValidator : AbstractValidator<GetRecipesQuery
         RuleFor(x => x.Difficulty)
             .Must(value => string.IsNullOrWhiteSpace(value) || CreateRecipeCommandValidator.IsRecipeDifficulty(value))
             .WithMessage("Difficulty must be Easy, Medium, Hard, or Expert.");
-        RuleFor(x => x.SortBy).Must(value => SortFields.Contains(value.ToLowerInvariant()))
+        RuleFor(x => x.SortBy).Must(value => SortFields.Contains(value, StringComparer.OrdinalIgnoreCase))
             .WithMessage("sortBy must be title, createdAt, cookTime, or prepTime.");
         RuleFor(x => x.SortOrder).Must(value => value.Equals("asc", StringComparison.OrdinalIgnoreCase) || value.Equals("desc", StringComparison.OrdinalIgnoreCase))
             .WithMessage("sortOrder must be asc or desc.");

@@ -230,22 +230,25 @@ Sử dụng MediatR để phân tách các Use Case. Tất cả input phải đi
 - Kiểm tra dữ liệu trong PGAdmin để đảm bảo `IsDeleted` hoạt động đúng thay vì mất record.
 - Dùng Redis CLI (`monitor`) để verify cache hit/miss và invalidation.
 
-## FR-RCP-010 implementation update (2026-09-25)
+## Cập nhật triển khai FR-RCP-010 (2026-09-25)
 
-- Added `AddRecipeStepCommand`, `UpdateRecipeStepCommand`, and `DeleteRecipeStepCommand` with FluentValidation, recipe owner/admin checks, cache invalidation, soft deletion, and contiguous active-step renumbering.
-- Added authenticated `POST`, `PUT`, and `DELETE` step endpoints. `StepNumber` is server-assigned on create and preserved on update.
-- Added API exception middleware that returns validation errors as Problem Details and maps authorization, not-found, and conflict errors to HTTP status codes.
-- Added PostgreSQL migration `20260925090000_AddActiveRecipeStepOrderIndex` to align Title length (200) and enforce unique active step order. The regular EF migration scaffold currently detects unrelated drift from the pre-existing snapshot, so this migration is intentionally scoped to the two FR-RCP-010 schema changes.
-- Added handler and HTTP integration tests. Targeted FR-RCP-010 tests passed (9/9); full solution build passed with 0 warnings and 0 errors; full solution tests passed (68/68: Application 45, Integration 20, Architecture 3).
-- `dotnet ef migrations list` discovers the new migration as pending. It was not applied because no PostgreSQL migration run was requested/configured for this verification.
-- Remaining: exercise the migration and mutation flows against PostgreSQL/Testcontainers; complete the step editor UI; address `TECH-RISK-012` for concurrent add/delete and multi-save renumber operations.
+- Đã thêm `AddRecipeStepCommand`, `UpdateRecipeStepCommand` và `DeleteRecipeStepCommand` cùng FluentValidation, kiểm tra quyền owner/admin, invalidation cache, xóa mềm và đánh lại số liên tục cho các step đang hoạt động.
+- Đã thêm endpoint step `POST`, `PUT`, `DELETE` yêu cầu xác thực. Server tự cấp `StepNumber` khi tạo và giữ nguyên số này khi cập nhật.
+- Đã thêm API exception middleware để trả lỗi validation dạng Problem Details và ánh xạ lỗi phân quyền, không tìm thấy, xung đột sang HTTP status tương ứng.
+- Đã thêm migration PostgreSQL `20260925090000_AddActiveRecipeStepOrderIndex` để đồng bộ độ dài Title (200) và bảo đảm thứ tự step đang hoạt động là duy nhất. Vì lệnh scaffold migration EF phát hiện schema drift cũ không liên quan, migration này chỉ chứa hai thay đổi thuộc FR-RCP-010.
+- Đã thêm handler test và HTTP integration test. Bộ test FR-RCP-010 đạt 9/9; build solution thành công, 0 warning và 0 error; toàn bộ solution test đạt 68/68 (Application 45, Integration 20, Architecture 3).
+- Tại thời điểm ghi chú này, `dotnet ef migrations list` cho thấy migration mới đang chờ áp dụng. Trạng thái đã được cập nhật trong phần bàn giao ngày 2026-09-28 sau khi migration được xác minh trên PostgreSQL.
+- Các hạng mục tiếp theo tại thời điểm 2026-09-25: kiểm tra migration và mutation trên PostgreSQL/Testcontainers, hoàn thiện UI chỉnh sửa step và tiếp tục theo dõi `TECH-RISK-012` cho các tình huống add/delete đồng thời và đánh lại số qua nhiều lần lưu.
 
-## FR-RCP-009/010 status and developer handoff (2026-09-28)
+## Trạng thái FR-RCP-009/010 và bàn giao phát triển (2026-09-28)
 
-- FR-RCP-009 standalone backend implementation is present: contracts, commands, validators, owner/admin authorization, soft delete, cache invalidation, and POST/PUT/DELETE endpoints. A frontend ingredient editor is available at `/dashboard/recipes/{slug}/components`. Automated handler/HTTP tests remain pending.
-- FR-RCP-010 backend commands, routes, migration, and handler/HTTP tests are present. Add/delete use a PostgreSQL transaction-scoped advisory lock per recipe to serialize step-order mutations. The full solution build passed on 2026-09-28 with 0 warnings and 0 errors. The shared ingredient/step editor is implemented; apply the pending migration to PostgreSQL and verify locking and unique active step numbering with PostgreSQL/Testcontainers.
-- Frontend build verification is pending: `npm install --offline --ignore-scripts --no-save --package-lock=false` could not resolve uncached `@hookform/resolvers`; no dependency files were changed.
-- Detailed API payloads, rules, file locations, ordered implementation steps, and acceptance criteria: [`docs/recipe-management-fr009-fr010-spec.md`](docs/recipe-management-fr009-fr010-spec.md).
+- FR-RCP-009 đã có backend và giao diện chỉnh sửa nguyên liệu. Handler test kiểm tra validation, phân quyền, quan hệ recipe-con, xóa mềm và invalidation cache chi tiết/danh sách; HTTP test kiểm tra các mã 401/400/403/404/201/200/204 và việc ẩn ingredient đã xóa khỏi recipe detail.
+- FR-RCP-010 đã có command, route, migration, handler test và xác minh mutation trên PostgreSQL. HTTP test kiểm tra server tự gán số step, cập nhật giữ nguyên số và recipe detail không trả step đã xóa. API test dùng InMemory cache/no-op mutation lock; hành vi PostgreSQL advisory lock được kiểm tra riêng bằng PostgreSQL verifier.
+- Đã xác minh trực tiếp qua API/PostgreSQL: đăng ký/đăng nhập trả 201/200; tạo recipe, ingredient và step đều trả 201. Truy vấn `culinary_blog_auth` xác nhận có 1 recipe, 1 ingredient và 1 step cùng ID. Sau đó tạo recipe mẫu `canh-chua-ca` gồm 7 nguyên liệu và 5 bước; PostgreSQL xác nhận số dòng 1/7/5. Dữ liệu chẩn đoán đã được dọn; recipe mẫu còn lại được mô tả tại [`recipe-management-fr009-fr010-spec.md`](docs/recipe-management-fr009-fr010-spec.md).
+- Đã sửa lỗi tạo recipe có tiêu đề Unicode: `Location` hiện dùng slug ASCII được sinh từ title. Regression test `CreateRecipe_WithVietnameseTitle_ReturnsCreatedWithAsciiSlugLocation` đạt 1/1.
+- Thứ tự xây dựng có thể lặp lại được ghi tại mục 3.3 (FR-RCP-009) và 4.3 (FR-RCP-010) trong tài liệu đặc tả: schema/contract → handler và phân quyền → lưu dữ liệu/cache → endpoint → test → xác minh PostgreSQL → UI. Mục 8 có ví dụ PowerShell và câu lệnh SQL kiểm tra.
+- Chưa xác minh build frontend: `npm install --offline --ignore-scripts --no-save --package-lock=false` không tìm thấy package `@hookform/resolvers` trong cache; không có file dependency nào bị thay đổi.
+- Payload API, quy tắc, vị trí file, thứ tự triển khai và tiêu chí nghiệm thu được ghi tại [`recipe-management-fr009-fr010-spec.md`](docs/recipe-management-fr009-fr010-spec.md).
 
 ## DbContext/model/schema reconciliation (2026-09-28)
 
@@ -256,5 +259,24 @@ Sử dụng MediatR để phân tách các Use Case. Tất cả input phải đi
 - [x] Xóa `Domain.Entities.ApplicationUser` có cột `Role`; Identity user chuẩn là `Infrastructure.Identity.ApplicationUser`, role dùng ASP.NET Identity.
 - [x] Scaffold migration `AlignAuthDbContextRecipeSchema`: đổi `TimerMinutes` thành `DurationMinutes`, cho phép `RecipeSteps.Title` nullable, bổ sung default RowVersion, tạo bảng RecipeImages/RecipeNutritions và partial unique index cho bước chưa xóa mềm.
 - [x] Bỏ production registration/design-time factory của `ApplicationDbContext`. Context và migration cũ được giữ làm legacy cho integration test/lịch sử; không tạo hoặc áp dụng migration mới bằng context này.
-- [ ] Áp dụng migration và xác minh schema/history trên PostgreSQL đích. Chưa thực hiện vì PostgreSQL từ chối xác thực với cấu hình hiện có; cần cập nhật `ConnectionStrings__Postgres` an toàn trước khi tiếp tục.
-- [ ] Chạy xác minh tích hợp trên PostgreSQL cho migration, RowVersion, soft delete và mutation step order.
+- [x] Kiểm tra SQL migration sinh từ EF trước khi đối chiếu DB: không drop table/column, nhưng migration này giả định schema Auth baseline và không thể áp trực tiếp vào database đích.
+- [x] Chạy integration test project hiện có: 22/22 pass. Bộ test hiện dùng EF InMemory/WebApplicationFactory, không thay thế xác minh trực tiếp PostgreSQL.
+- [x] `dotnet ef migrations has-pending-model-changes --context AuthDbContext`: không còn drift giữa model và snapshot.
+- [x] Đọc PostgreSQL đích ở transaction read-only: migration history hiện có `InitialRecipeSchema` và `AddRowVersionDefaults` (ApplicationDbContext); bảng user là `ApplicationUser` có cột `Role`, chưa có `AspNetUsers`/`AspNetRoles`; database hiện có 20 Categories, 100 Recipes, 500 RecipeSteps và không có active duplicate step number.
+- [x] Chọn chiến lược database mới rồi nhập dữ liệu; giữ database `culinary_blog` nguyên trạng làm nguồn. Database đích đề xuất `culinary_blog_auth`, chưa tạo.
+- [x] Viết runbook mapping/schema preflight/import/validation tại `docs/postgresql-data-migration-plan.md`.
+- [x] Xây dựng tool `backend/tools/CulinaryBlog.DataMigration`: dry-run mặc định; `--apply` yêu cầu xác nhận backup; source read-only; target tách biệt, đã migrate và rỗng; kiểm tra role/difficulty/FK/length/precision; COPY theo transaction; đối soát count/ID trước commit.
+- [x] Thêm mapping/guard tests cho difficulty, role, target database separation, backup acknowledgment, Category defaults và data comparison helpers; 24/24 pass.
+- [x] Build toàn solution với single-node/shared-compilation off: 0 warnings, 0 errors; full test suite 102/102 pass (Application 53, Integration 22, Architecture 3, DataMigration 24).
+- [x] Thử preflight chỉ đọc bằng kết nối nguồn đang lưu ở User scope; PostgreSQL trả SQLSTATE `28P01` (sai mật khẩu), dừng trước khi đọc/ghi database đích. Công cụ báo SQLSTATE nhưng không in chuỗi kết nối.
+- [x] Thử lại read-only preflight bằng host `::1` theo thông tin pgAdmin; toàn bộ kiểm tra source đã qua. Preflight dừng tại database chẩn đoán `postgres` vì không có `__EFMigrationsHistory` (SQLSTATE `42P01`); chưa kiểm tra target thật, không có dữ liệu bị ghi.
+- [x] Người dùng xác nhận đã backup nguồn và tạo `culinary_blog_auth`; áp ba migration `AuthDbContext` lên target. `dotnet ef migrations list` xác nhận cả ba migration đã áp dụng.
+- [x] Chạy importer dry-run rồi `--apply`: source gồm 1 user, 20 categories, 100 recipes, 1.000 ingredients, 500 steps, 100 nutritions, 0 images; preflight đạt và import commit sau khi kiểm tra count, ID và mapped values. Source được đọc read-only.
+- [x] PostgreSQL verifier phát hiện RowVersion không đổi khi UPDATE; thêm migration `20260928142200_AddPostgresRowVersionTriggers` áp dụng trigger cho 6 entity tables. Kiểm tra stale RowVersion, Identity role membership, Category/Recipe soft delete/filter, add/delete/renumber step, hai add đồng thời và add/delete đồng thời trên `culinary_blog_auth` đã pass; verifier dọn các row tạm sau chạy.
+- [x] PostgreSQL verifier tạo/xóa user tạm, xác nhận password validation và role Author qua `IIdentityService`; không dùng hoặc tiết lộ credential tài khoản đã import.
+- [x] Người dùng restore `dulieu.backup` bằng pgAdmin vào database tạm `culinary_blog_backup_verify`; truy vấn read-only xác nhận schema bảng nghiệp vụ và số dòng khớp preflight/import: 1 user, 20 categories, 100 recipes, 1.000 ingredients, 500 steps, 100 nutritions, 0 images.
+- [ ] Người dùng đăng nhập bằng tài khoản đã import để xác nhận password/hash tương thích; verifier hiện chỉ xác nhận luồng Identity bằng user tạm. Do frontend dev server thiếu package `next`, có thể kiểm tra endpoint `/api/v1/auth/login` trên API đang chạy tại `http://localhost:5000`.
+- [x] API smoke test Production trỏ `culinary_blog_auth`: root trả `running`; `GET /api/v1/recipes?page=1&pageSize=3` trả 100 tổng và 3 items. Test phát hiện validator `sortBy` so sánh sai casing; bổ sung hồi quy và sửa để giá trị mặc định `createdAt` được chấp nhận.
+- [x] Tìm thấy `dulieu.backup` ở project root; chữ ký `PGDMP` xác nhận PostgreSQL custom format. Restore pgAdmin vào DB tạm thành công; đã đối chiếu schema và row counts read-only.
+- [x] Chuyển User-scope `ConnectionStrings__Postgres` sang `culinary_blog_auth`, giữ nguyên host/credential; tạo `Jwt__Key` ngẫu nhiên 512-bit trong User-scope vì app chưa cấu hình key. Production API đang chạy trên `http://127.0.0.1:5000`; root và GET recipes trả thành công (100 tổng, 3 item). Chạy Production nên không migration/seed database lúc startup.
+- [ ] Hoàn tất nghiệm thu sau khi người dùng đăng nhập được bằng tài khoản import; giữ nguồn để rollback trong cửa sổ cutover.

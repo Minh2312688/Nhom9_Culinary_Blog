@@ -31,11 +31,15 @@ public sealed class AddRecipeStepCommandValidator : AbstractValidator<AddRecipeS
 public sealed class AddRecipeStepCommandHandler(
     IApplicationDbContext context,
     ICurrentUserService currentUser,
-    IRecipeCache cache) : IRequestHandler<AddRecipeStepCommand, RecipeStepDto>
+    IRecipeCache cache,
+    IRecipeMutationLock? mutationLock = null) : IRequestHandler<AddRecipeStepCommand, RecipeStepDto>
 {
     public async Task<RecipeStepDto> Handle(AddRecipeStepCommand request, CancellationToken cancellationToken)
     {
-        var recipe = await RecipeStepCommandHelpers.GetEditableRecipeAsync(context, currentUser, request.RecipeId, cancellationToken);
+        await using var mutationLease = mutationLock is null
+            ? null
+            : await mutationLock.AcquireAsync(request.RecipeId, cancellationToken);
+        var recipe = await RecipeChildCommandHelpers.GetEditableRecipeAsync(context, currentUser, request.RecipeId, cancellationToken);
         var maxStepNumber = await context.RecipeSteps.IgnoreQueryFilters()
             .Where(x => x.RecipeId == recipe.Id)
             .Select(x => (int?)x.StepNumber)
@@ -50,11 +54,13 @@ public sealed class AddRecipeStepCommandHandler(
             Title = request.Title.Trim(),
             Description = request.Description.Trim(),
             DurationMinutes = request.DurationMinutes,
-            ImageUrl = RecipeStepCommandHelpers.TrimToNull(request.ImageUrl)
+            ImageUrl = RecipeChildCommandHelpers.TrimToNull(request.ImageUrl)
         };
         context.RecipeSteps.Add(step);
         await context.SaveChangesAsync(cancellationToken);
-        await RecipeStepCommandHelpers.InvalidateAsync(cache, recipe.Slug, cancellationToken);
+        if (mutationLease is not null)
+            await mutationLease.CommitAsync(cancellationToken);
+        await RecipeChildCommandHelpers.InvalidateAsync(cache, recipe.Slug, cancellationToken);
         return step.ToStepDto();
     }
 }
@@ -87,7 +93,7 @@ public sealed class UpdateRecipeStepCommandHandler(
 {
     public async Task<RecipeStepDto> Handle(UpdateRecipeStepCommand request, CancellationToken cancellationToken)
     {
-        var recipe = await RecipeStepCommandHelpers.GetEditableRecipeAsync(context, currentUser, request.RecipeId, cancellationToken);
+        var recipe = await RecipeChildCommandHelpers.GetEditableRecipeAsync(context, currentUser, request.RecipeId, cancellationToken);
         var step = await context.RecipeSteps.SingleOrDefaultAsync(
             x => x.Id == request.StepId && x.RecipeId == recipe.Id, cancellationToken)
             ?? throw new NotFoundException(nameof(RecipeStep), request.StepId);
@@ -95,9 +101,9 @@ public sealed class UpdateRecipeStepCommandHandler(
         step.Title = request.Title.Trim();
         step.Description = request.Description.Trim();
         step.DurationMinutes = request.DurationMinutes;
-        step.ImageUrl = RecipeStepCommandHelpers.TrimToNull(request.ImageUrl);
+        step.ImageUrl = RecipeChildCommandHelpers.TrimToNull(request.ImageUrl);
         await context.SaveChangesAsync(cancellationToken);
-        await RecipeStepCommandHelpers.InvalidateAsync(cache, recipe.Slug, cancellationToken);
+        await RecipeChildCommandHelpers.InvalidateAsync(cache, recipe.Slug, cancellationToken);
         return step.ToStepDto();
     }
 }
@@ -107,11 +113,15 @@ public sealed record DeleteRecipeStepCommand(Guid RecipeId, Guid StepId) : IRequ
 public sealed class DeleteRecipeStepCommandHandler(
     IApplicationDbContext context,
     ICurrentUserService currentUser,
-    IRecipeCache cache) : IRequestHandler<DeleteRecipeStepCommand>
+    IRecipeCache cache,
+    IRecipeMutationLock? mutationLock = null) : IRequestHandler<DeleteRecipeStepCommand>
 {
     public async Task Handle(DeleteRecipeStepCommand request, CancellationToken cancellationToken)
     {
-        var recipe = await RecipeStepCommandHelpers.GetEditableRecipeAsync(context, currentUser, request.RecipeId, cancellationToken);
+        await using var mutationLease = mutationLock is null
+            ? null
+            : await mutationLock.AcquireAsync(request.RecipeId, cancellationToken);
+        var recipe = await RecipeChildCommandHelpers.GetEditableRecipeAsync(context, currentUser, request.RecipeId, cancellationToken);
         var allSteps = await context.RecipeSteps.IgnoreQueryFilters()
             .Where(x => x.RecipeId == recipe.Id)
             .OrderBy(x => x.StepNumber)
@@ -144,11 +154,13 @@ public sealed class DeleteRecipeStepCommandHandler(
             await context.SaveChangesAsync(cancellationToken);
         }
 
-        await RecipeStepCommandHelpers.InvalidateAsync(cache, recipe.Slug, cancellationToken);
+        if (mutationLease is not null)
+            await mutationLease.CommitAsync(cancellationToken);
+        await RecipeChildCommandHelpers.InvalidateAsync(cache, recipe.Slug, cancellationToken);
     }
 }
 
-internal static class RecipeStepCommandHelpers
+internal static class RecipeChildCommandHelpers
 {
     public static async Task<Recipe> GetEditableRecipeAsync(
         IApplicationDbContext context,

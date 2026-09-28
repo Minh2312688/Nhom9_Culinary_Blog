@@ -4,35 +4,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace CulinaryBlog.Infrastructure.Configurations;
 
-public class RecipeStepConfiguration : IEntityTypeConfiguration<RecipeStep>
-{
-    public void Configure(EntityTypeBuilder<RecipeStep> builder)
-    {
-        builder.ToTable("RecipeSteps");
-        builder.HasKey(x => x.Id);
-        builder.HasQueryFilter(x => !x.IsDeleted);
-
-        builder.Property(x => x.Title).HasMaxLength(150);
-        builder.Property(x => x.Description).IsRequired();
-        builder.Property(x => x.ImageUrl).HasMaxLength(500);
-    }
-}
-
-public class RecipeIngredientConfiguration : IEntityTypeConfiguration<RecipeIngredient>
-{
-    public void Configure(EntityTypeBuilder<RecipeIngredient> builder)
-    {
-        builder.ToTable("RecipeIngredients");
-        builder.HasKey(x => x.Id);
-        builder.HasQueryFilter(x => !x.IsDeleted);
-
-        builder.Property(x => x.Name).IsRequired().HasMaxLength(100);
-        builder.Property(x => x.Unit).HasMaxLength(50);
-        builder.Property(x => x.Notes).HasMaxLength(200);
-        builder.Property(x => x.Quantity).HasColumnType("decimal(18,2)");
-    }
-}
-
 public class RecipeImageConfiguration : IEntityTypeConfiguration<RecipeImage>
 {
     public void Configure(EntityTypeBuilder<RecipeImage> builder)

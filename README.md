@@ -186,6 +186,9 @@ Cấu trúc có thể được bổ sung khi các module mới được tích h�
 - FR-RCP-001 → FR-RCP-007.
 - FR-RCP-009.
 - FR-RCP-010.
+- Ingredient CRUD: POST/PUT/DELETE `/api/v1/recipes/{id}/ingredients`.
+- Step CRUD: POST/PUT/DELETE `/api/v1/recipes/{id}/steps`; step numbering is server-managed.
+- Ingredient/step editor: `/dashboard/recipes/[slug]/components` (code added; frontend build and PostgreSQL migration verification pending).
 - Tạo / sửa / xóa Recipe.
 - Ingredient.
 - Recipe Step.
@@ -243,6 +246,7 @@ Cấu trúc có thể được bổ sung khi các module mới được tích h�
 - `/dashboard/recipes`
 - `/dashboard/recipes/new`
 - `/dashboard/recipes/[id]/edit`
+- `/dashboard/recipes/[slug]/components` (manage ingredients and steps)
 
 **UI / Form**
 
@@ -569,10 +573,11 @@ Project sử dụng:
 - Entity Framework Core.
 - EF Core Migration.
 
-Các model chính hiện có:
+Các model chính hiện có (schema runtime do `AuthDbContext` sở hữu):
 
 ```text
-ApplicationUser
+AspNetUsers (ApplicationUser)
+AspNetRoles / AspNetUserRoles
 RefreshToken
 Category
 Recipe
@@ -580,7 +585,7 @@ RecipeIngredient
 RecipeStep
 ```
 
-Database schema được quản lý bằng Migration.
+Database schema được quản lý bằng Migration của `AuthDbContext`. `ApplicationDbContext` và migration chain cũ chỉ được giữ lại phục vụ lịch sử/test; không dùng để scaffold hoặc apply migration mới.
 
 Không sử dụng `EnsureCreated()` để thay thế workflow Migration hiện tại.
 
@@ -592,6 +597,8 @@ dotnet ef migrations list `
   --startup-project backend/src/CulinaryBlog.API `
   --context AuthDbContext
 ```
+
+EF CLI đọc connection từ biến môi trường `ConnectionStrings__Postgres`; không ghi mật khẩu trực tiếp vào factory hoặc commit vào repository.
 
 Apply migration:
 
@@ -609,7 +616,7 @@ dotnet ef database update `
 - Không tạo Entity trùng.
 - Không reset Docker volume nếu chưa kiểm tra dữ liệu.
 - DbContext là file có nguy cơ conflict cao, cần hạn chế chỉnh song song.
-- DbContext hiện tại có thể tiếp tục được hợp nhất khi nhóm tích hợp database chính thức.
+- `AuthDbContext` hiện là context chuẩn duy nhất ở runtime; các lệnh EF phải chỉ định `--context AuthDbContext`.
 
 ---
 

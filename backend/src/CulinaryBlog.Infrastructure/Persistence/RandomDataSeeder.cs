@@ -1,6 +1,10 @@
 using CulinaryBlog.Domain.Entities;
+using CulinaryBlog.Domain.Constants;
+using CulinaryBlog.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
+using ApplicationUser = CulinaryBlog.Infrastructure.Identity.ApplicationUser;
 
 namespace CulinaryBlog.Infrastructure.Persistence;
 
@@ -13,11 +17,13 @@ public static class RandomDataSeeder
     private const int StepsPerRecipe = 5;
 
     public static async Task SeedAsync(
-        ApplicationDbContext context,
+        AuthDbContext context,
+        UserManager<ApplicationUser> userManager,
+        RoleManager<IdentityRole> roleManager,
         ILogger logger,
         CancellationToken cancellationToken = default)
     {
-        var author = await EnsureAuthorAsync(context, cancellationToken);
+        var author = await EnsureAuthorAsync(userManager, roleManager);
         var categories = await EnsureCategoriesAsync(context, cancellationToken);
         await EnsureRecipesAsync(context, author.Id, categories, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
@@ -31,34 +37,50 @@ public static class RandomDataSeeder
     }
 
     private static async Task<ApplicationUser> EnsureAuthorAsync(
-        ApplicationDbContext context,
-        CancellationToken cancellationToken)
+        UserManager<ApplicationUser> userManager,
+        RoleManager<IdentityRole> roleManager)
     {
-        var author = await context.Set<ApplicationUser>()
-            .SingleOrDefaultAsync(x => x.Id == ReportAuthorId, cancellationToken);
-        if (author is not null)
+        var author = await userManager.FindByIdAsync(ReportAuthorId);
+        if (author is null)
         {
-            return author;
+            author = new ApplicationUser
+            {
+                Id = ReportAuthorId,
+                UserName = "report.author@culinary.local",
+                Email = "report.author@culinary.local",
+                EmailConfirmed = true,
+                DisplayName = "Report Random Author"
+            };
+            var createResult = await userManager.CreateAsync(author);
+            if (!createResult.Succeeded)
+            {
+                throw new InvalidOperationException(string.Join("; ", createResult.Errors.Select(x => x.Description)));
+            }
         }
 
-        author = new ApplicationUser
+        if (!await roleManager.RoleExistsAsync(AppRoles.Author))
         {
-            Id = ReportAuthorId,
-            UserName = "report.author@culinary.local",
-            NormalizedUserName = "REPORT.AUTHOR@CULINARY.LOCAL",
-            Email = "report.author@culinary.local",
-            NormalizedEmail = "REPORT.AUTHOR@CULINARY.LOCAL",
-            EmailConfirmed = true,
-            DisplayName = "Report Random Author",
-            Role = nameof(UserRole.Author)
-        };
-        context.Set<ApplicationUser>().Add(author);
-        await context.SaveChangesAsync(cancellationToken);
+            var roleResult = await roleManager.CreateAsync(new IdentityRole(AppRoles.Author));
+            if (!roleResult.Succeeded)
+            {
+                throw new InvalidOperationException(string.Join("; ", roleResult.Errors.Select(x => x.Description)));
+            }
+        }
+
+        if (!await userManager.IsInRoleAsync(author, AppRoles.Author))
+        {
+            var roleResult = await userManager.AddToRoleAsync(author, AppRoles.Author);
+            if (!roleResult.Succeeded)
+            {
+                throw new InvalidOperationException(string.Join("; ", roleResult.Errors.Select(x => x.Description)));
+            }
+        }
+
         return author;
     }
 
     private static async Task<List<Category>> EnsureCategoriesAsync(
-        ApplicationDbContext context,
+        AuthDbContext context,
         CancellationToken cancellationToken)
     {
         var categories = await context.Categories
@@ -80,7 +102,7 @@ public static class RandomDataSeeder
     }
 
     private static async Task EnsureRecipesAsync(
-        ApplicationDbContext context,
+        AuthDbContext context,
         string authorId,
         IReadOnlyList<Category> categories,
         CancellationToken cancellationToken)
@@ -117,7 +139,7 @@ public static class RandomDataSeeder
             PrepTimeMinutes = random.Next(5, 31),
             CookTimeMinutes = random.Next(10, 91),
             Servings = random.Next(2, 9),
-            Difficulty = new[] { "Easy", "Medium", "Hard" }[random.Next(3)],
+            Difficulty = new[] { RecipeDifficulty.Easy, RecipeDifficulty.Medium, RecipeDifficulty.Hard }[random.Next(3)],
             Status = RecipeStatus.Published,
             CategoryId = categoryId,
             AuthorId = authorId

@@ -34,12 +34,15 @@ public sealed class CreateRecipeCommandValidator : AbstractValidator<CreateRecip
         RuleFor(x => x.PrepTimeMinutes).GreaterThanOrEqualTo(0);
         RuleFor(x => x.CookTimeMinutes).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Servings).GreaterThan(0);
-        RuleFor(x => x.Difficulty).NotEmpty().MaximumLength(20);
+        RuleFor(x => x.Difficulty).Must(IsRecipeDifficulty)
+            .WithMessage("Difficulty must be Easy, Medium, Hard, or Expert.");
         RuleForEach(x => x.Ingredients).ChildRules(item =>
         {
-            item.RuleFor(i => i.Name).NotEmpty().MaximumLength(100);
-            item.RuleFor(i => i.Quantity).GreaterThan(0).When(i => i.Quantity.HasValue);
-            item.RuleFor(i => i.Notes).MaximumLength(200);
+            item.RuleFor(i => i.Name).NotEmpty().MaximumLength(200);
+            item.RuleFor(i => i.Quantity).GreaterThan(0).LessThanOrEqualTo(9_999_999.999m).When(i => i.Quantity.HasValue);
+            item.RuleFor(i => i.Unit).MaximumLength(50);
+            item.RuleFor(i => i.Notes).MaximumLength(500);
+            item.RuleFor(i => i.OrderIndex).GreaterThanOrEqualTo(0);
         });
         RuleForEach(x => x.Steps).ChildRules(item =>
         {
@@ -48,6 +51,10 @@ public sealed class CreateRecipeCommandValidator : AbstractValidator<CreateRecip
             item.RuleFor(i => i.DurationMinutes).GreaterThanOrEqualTo(0);
         });
     }
+
+    internal static bool IsRecipeDifficulty(string? value) =>
+        Enum.TryParse<RecipeDifficulty>(value, ignoreCase: true, out var difficulty) &&
+        Enum.IsDefined(difficulty);
 }
 
 public sealed class CreateRecipeCommandHandler : IRequestHandler<CreateRecipeCommand, RecipeDetailDto>
@@ -75,7 +82,7 @@ public sealed class CreateRecipeCommandHandler : IRequestHandler<CreateRecipeCom
             Title = request.Title.Trim(), Slug = slug, Description = request.Description?.Trim(),
             CategoryId = request.CategoryId, AuthorId = currentUser.UserId!,
             PrepTimeMinutes = request.PrepTimeMinutes, CookTimeMinutes = request.CookTimeMinutes,
-            Servings = request.Servings, Difficulty = request.Difficulty.Trim(), Status = RecipeStatus.Draft
+            Servings = request.Servings, Difficulty = Enum.Parse<RecipeDifficulty>(request.Difficulty, true), Status = RecipeStatus.Draft
         };
         AddChildren(recipe, request.Ingredients, request.Steps, request.Nutrition);
         context.Recipes.Add(recipe);
@@ -147,12 +154,16 @@ public sealed class UpdateRecipeCommandValidator : AbstractValidator<UpdateRecip
         RuleFor(x => x.Id).NotEmpty(); RuleFor(x => x.Title).NotEmpty().Length(5, 200);
         RuleFor(x => x.CategoryId).NotEmpty(); RuleFor(x => x.Servings).GreaterThan(0);
         RuleFor(x => x.PrepTimeMinutes).GreaterThanOrEqualTo(0); RuleFor(x => x.CookTimeMinutes).GreaterThanOrEqualTo(0);
-        RuleFor(x => x.Difficulty).NotEmpty().MaximumLength(20); RuleFor(x => x.RowVersion).NotEmpty();
+        RuleFor(x => x.Difficulty).Must(value => CreateRecipeCommandValidator.IsRecipeDifficulty(value))
+            .WithMessage("Difficulty must be Easy, Medium, Hard, or Expert.");
+        RuleFor(x => x.RowVersion).NotEmpty();
         RuleForEach(x => x.Ingredients).ChildRules(item =>
         {
-            item.RuleFor(i => i.Name).NotEmpty().MaximumLength(100);
-            item.RuleFor(i => i.Quantity).GreaterThan(0).When(i => i.Quantity.HasValue);
-            item.RuleFor(i => i.Notes).MaximumLength(200);
+            item.RuleFor(i => i.Name).NotEmpty().MaximumLength(200);
+            item.RuleFor(i => i.Quantity).GreaterThan(0).LessThanOrEqualTo(9_999_999.999m).When(i => i.Quantity.HasValue);
+            item.RuleFor(i => i.Unit).MaximumLength(50);
+            item.RuleFor(i => i.Notes).MaximumLength(500);
+            item.RuleFor(i => i.OrderIndex).GreaterThanOrEqualTo(0);
         });
         RuleForEach(x => x.Steps).ChildRules(item =>
         {
@@ -182,7 +193,7 @@ public sealed class UpdateRecipeCommandHandler : IRequestHandler<UpdateRecipeCom
         context.SetOriginalRowVersion(recipe, request.RowVersion);
         recipe.Title = request.Title.Trim(); recipe.Description = request.Description?.Trim(); recipe.CategoryId = request.CategoryId;
         recipe.PrepTimeMinutes = request.PrepTimeMinutes; recipe.CookTimeMinutes = request.CookTimeMinutes;
-        recipe.Servings = request.Servings; recipe.Difficulty = request.Difficulty.Trim();
+        recipe.Servings = request.Servings; recipe.Difficulty = Enum.Parse<RecipeDifficulty>(request.Difficulty, true);
         recipe.Slug = CreateRecipeCommandHandler.Slugify(recipe.Title);
         foreach (var ingredient in recipe.Ingredients) ingredient.IsDeleted = true;
         foreach (var step in recipe.Steps) step.IsDeleted = true;

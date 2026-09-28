@@ -2,6 +2,7 @@ using CulinaryBlog.Application.Common.Models;
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Application.DTOs.Recipes;
+using CulinaryBlog.Application.Features.Recipes.Commands;
 using CulinaryBlog.Domain.Entities;
 using FluentValidation;
 using MediatR;
@@ -29,6 +30,9 @@ public sealed class GetRecipesQueryValidator : AbstractValidator<GetRecipesQuery
         RuleFor(x => x.PageSize).InclusiveBetween(1, 50);
         RuleFor(x => x.MaxCookTime).GreaterThanOrEqualTo(0).When(x => x.MaxCookTime.HasValue);
         RuleFor(x => x.MinServings).GreaterThan(0).When(x => x.MinServings.HasValue);
+        RuleFor(x => x.Difficulty)
+            .Must(value => string.IsNullOrWhiteSpace(value) || CreateRecipeCommandValidator.IsRecipeDifficulty(value))
+            .WithMessage("Difficulty must be Easy, Medium, Hard, or Expert.");
         RuleFor(x => x.SortBy).Must(value => SortFields.Contains(value.ToLowerInvariant()))
             .WithMessage("sortBy must be title, createdAt, cookTime, or prepTime.");
         RuleFor(x => x.SortOrder).Must(value => value.Equals("asc", StringComparison.OrdinalIgnoreCase) || value.Equals("desc", StringComparison.OrdinalIgnoreCase))
@@ -56,7 +60,11 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
                 (currentUser.UserId != null && x.AuthorId == currentUser.UserId));
 
         if (request.CategoryId.HasValue) query = query.Where(x => x.CategoryId == request.CategoryId);
-        if (!string.IsNullOrWhiteSpace(request.Difficulty)) query = query.Where(x => x.Difficulty == request.Difficulty);
+        if (!string.IsNullOrWhiteSpace(request.Difficulty))
+        {
+            var difficulty = Enum.Parse<RecipeDifficulty>(request.Difficulty, ignoreCase: true);
+            query = query.Where(x => x.Difficulty == difficulty);
+        }
         if (request.MaxCookTime.HasValue) query = query.Where(x => x.CookTimeMinutes <= request.MaxCookTime);
         if (request.MinServings.HasValue) query = query.Where(x => x.Servings >= request.MinServings);
 
@@ -70,11 +78,10 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
         };
 
         var totalCount = await query.CountAsync(cancellationToken);
-        var items = await query.Skip((request.Page - 1) * request.PageSize)
+        var recipes = await query.Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Select(x => new RecipeSummaryDto(x.Id, x.Title, x.Slug, x.Description, x.Difficulty,
-                x.CookTimeMinutes, x.Servings, x.Status, x.CategoryId, x.AuthorId, x.RowVersion))
             .ToListAsync(cancellationToken);
+        var items = recipes.Select(x => x.ToSummary()).ToList();
 
         return new PaginatedResult<RecipeSummaryDto>(items, totalCount, request.Page, request.PageSize);
     }

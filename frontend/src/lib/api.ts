@@ -30,6 +30,106 @@ export interface ApiError {
   errors?: Record<string, string[]>;
 }
 
+export interface RecipeIngredient {
+  id: string;
+  name: string;
+  quantity: number | null;
+  unit: string | null;
+  notes: string | null;
+  orderIndex: number;
+}
+
+export interface RecipeStep {
+  id: string;
+  stepNumber: number;
+  title: string | null;
+  description: string;
+  durationMinutes: number | null;
+  imageUrl: string | null;
+}
+
+export interface RecipeDetail {
+  id: string;
+  title: string;
+  slug: string;
+  ingredients: RecipeIngredient[];
+  steps: RecipeStep[];
+}
+
+export interface RecipeIngredientPayload {
+  name: string;
+  quantity: number | null;
+  unit: string | null;
+  notes: string | null;
+  orderIndex: number;
+}
+
+export interface RecipeStepPayload {
+  title: string;
+  description: string;
+  durationMinutes: number | null;
+  imageUrl: string | null;
+}
+
+async function recipeRequest<T>(path: string, token: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      Authorization: `Bearer ${token}`,
+      ...init.headers,
+    },
+  });
+
+  if (!response.ok) {
+    let body: any = {};
+    try {
+      body = await response.json();
+    } catch {
+      // Use the status fallback for empty or non-JSON responses.
+    }
+    const error: ApiError = {
+      status: response.status,
+      title: body.title || "Recipe request failed",
+      detail: body.detail || body.title || `Yêu cầu thất bại (HTTP ${response.status}).`,
+      errors: body.errors,
+    };
+    throw error;
+  }
+
+  if (response.status === 204) return undefined as T;
+  return await response.json() as T;
+}
+
+export async function getRecipeDetail(slug: string, token: string): Promise<RecipeDetail> {
+  return recipeRequest<RecipeDetail>(`/api/v1/recipes/${encodeURIComponent(slug)}`, token);
+}
+
+export async function addRecipeIngredient(recipeId: string, payload: RecipeIngredientPayload, token: string): Promise<RecipeIngredient> {
+  return recipeRequest<RecipeIngredient>(`/api/v1/recipes/${recipeId}/ingredients`, token, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function updateRecipeIngredient(recipeId: string, ingredientId: string, payload: RecipeIngredientPayload, token: string): Promise<RecipeIngredient> {
+  return recipeRequest<RecipeIngredient>(`/api/v1/recipes/${recipeId}/ingredients/${ingredientId}`, token, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export async function deleteRecipeIngredient(recipeId: string, ingredientId: string, token: string): Promise<void> {
+  return recipeRequest<void>(`/api/v1/recipes/${recipeId}/ingredients/${ingredientId}`, token, { method: "DELETE" });
+}
+
+export async function addRecipeStep(recipeId: string, payload: RecipeStepPayload, token: string): Promise<RecipeStep> {
+  return recipeRequest<RecipeStep>(`/api/v1/recipes/${recipeId}/steps`, token, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function updateRecipeStep(recipeId: string, stepId: string, payload: RecipeStepPayload, token: string): Promise<RecipeStep> {
+  return recipeRequest<RecipeStep>(`/api/v1/recipes/${recipeId}/steps/${stepId}`, token, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export async function deleteRecipeStep(recipeId: string, stepId: string, token: string): Promise<void> {
+  return recipeRequest<void>(`/api/v1/recipes/${recipeId}/steps/${stepId}`, token, { method: "DELETE" });
+}
+
 export async function registerApi(payload: RegisterPayload): Promise<RegisterResult> {
   const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
     method: "POST",

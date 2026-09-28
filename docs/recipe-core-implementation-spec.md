@@ -19,13 +19,13 @@ Dataset báo cáo phải thỏa các bất biến sau:
 
 ## Migration
 
-Migration `InitialRecipeSchema` nằm trong Infrastructure và được API áp dụng qua `Database.MigrateAsync()` trước seed. Migration tạo ApplicationUsers, Categories, Recipes, RecipeIngredients, RecipeSteps, RecipeImages và RecipeNutritions, bao gồm foreign keys, unique recipe slug và các index cần cho truy vấn.
+Schema runtime do migration chain của `AuthDbContext` sở hữu. `Lab02PersonalInitialDatabase` tạo Identity (`AspNetUsers`, `AspNetRoles`), Category, Recipe, RecipeIngredient và RecipeStep; `AlignAuthDbContextRecipeSchema` thêm RecipeImages/RecipeNutritions, chuẩn hóa RowVersion, cột thời lượng và index bước. `InitialRecipeSchema` thuộc migration chain cũ của `ApplicationDbContext`, không được API áp dụng.
 
-`ApplicationDbContextFactory` cung cấp design-time options cho EF CLI, vì vậy migration có thể được scaffold mà không cần khởi chạy web server hoặc kết nối database.
+`AuthDbContextFactory` cung cấp design-time options cho EF CLI. Đặt `ConnectionStrings__Postgres` trong User Secrets hoặc environment khi cần truy cập database; migration mới phải chỉ định `--context AuthDbContext`.
 
 ## Async random seeding
 
-`RandomDataSeeder.SeedAsync` là lớp duy nhất chịu trách nhiệm tạo dữ liệu báo cáo. Nó nhận `ApplicationDbContext`, `ILogger` và `CancellationToken`, dùng toàn bộ API bất đồng bộ của EF Core.
+`RandomDataSeeder.SeedAsync` nhận `AuthDbContext`, `UserManager<ApplicationUser>`, `RoleManager<IdentityRole>`, `ILogger` và `CancellationToken`; Identity user/role được tạo qua ASP.NET Identity, dữ liệu recipe/category dùng cùng context schema chuẩn.
 
 Seeder dùng author cố định, prefix slug `report-category-`/`report-recipe-` và random seed `20260921`. Nó tìm dữ liệu đã tồn tại, tạo phần còn thiếu, rồi gọi `SaveChangesAsync`. Recipe mới có:
 
@@ -80,7 +80,7 @@ robot --variable BASE_URL:http://localhost:5000 -d robot/results robot/recipe_re
 
 ## 1. Mục đích và phạm vi
 
-Tài liệu này ghi lại trạng thái triển khai module công thức nấu ăn theo `implementation_plan.md`, tập trung vào FR-RCP-001 đến FR-RCP-007. Đây là tài liệu kỹ thuật dùng để đọc code, kiểm thử API và phát triển các nghiệp vụ tiếp theo.
+Tài liệu này ghi lại trạng thái triển khai module công thức nấu ăn theo `implementation_plan.md`, gồm FR-RCP-001 đến FR-RCP-010. Đây là tài liệu kỹ thuật dùng để đọc code, kiểm thử API và phát triển các nghiệp vụ tiếp theo. Đặc tả API và các bước triển khai riêng cho FR-RCP-009/010 nằm tại [`recipe-management-fr009-fr010-spec.md`](recipe-management-fr009-fr010-spec.md).
 
 Phạm vi đã triển khai gồm:
 
@@ -99,7 +99,7 @@ Các quyết định trong plan được dùng làm hợp đồng hiện tại:
 
 | Chủ đề | Quyết định |
 |---|---|
-| Xóa | Soft delete: gọi `Remove` sẽ được `ApplicationDbContext.SaveChangesAsync` chuyển thành `IsDeleted = true`. |
+| Xóa | Soft delete: gọi `Remove` sẽ được `AuthDbContext.SaveChangesAsync` chuyển thành `IsDeleted = true`. |
 | Trạng thái | `Draft = 0`, `Published = 1`, `Archived = 2`. |
 | Hiển thị danh sách | Recipe `Published` được xem công khai; recipe khác chỉ hiện cho tác giả hoặc Admin. |
 | Hiển thị chi tiết | `Draft`/`Archived` yêu cầu owner hoặc Admin; recipe Published cho anonymous. |
@@ -127,11 +127,13 @@ Các entity con kế thừa `BaseEntity`, nên cũng chịu global query filter.
 
 ### Infrastructure
 
-`ApplicationDbContext` đăng ký các DbSet recipe và gọi `ApplyConfigurationsFromAssembly`. `SaveChangesAsync`:
+`AuthDbContext` là context runtime/migration chuẩn, kế thừa `IdentityDbContext` và implement `IApplicationDbContext`. Nó đăng ký DbSet cho Identity, Category, Recipe và toàn bộ recipe children; `SaveChangesAsync`:
 
 1. Gán `CreatedAt` cho entity mới.
 2. Gán `UpdatedAt` cho entity sửa.
 3. Chuyển thao tác delete thành update `IsDeleted = true`.
+
+`ApplicationDbContext` cùng migration chain `ApplicationDbContextModelSnapshot` là legacy artifacts giữ lại cho lịch sử và integration test hiện có. Runtime không đăng ký context này; không scaffold hoặc apply migration bằng context đó. Chỉ `AuthDbContext` sở hữu schema production.
 
 `RecipeConfiguration` cấu hình:
 
@@ -194,7 +196,7 @@ Validation chính:
 - CategoryId khác empty.
 - Prep/Cook time không âm.
 - Servings lớn hơn 0.
-- Difficulty không rỗng, tối đa 20 ký tự.
+- Difficulty thuộc `Easy`, `Medium`, `Hard`, `Expert`; domain lưu enum integer (1–4), API giữ contract string.
 - Ingredient name không rỗng.
 - Step description không rỗng.
 
@@ -277,7 +279,8 @@ Kết quả lần chạy cuối: toàn bộ solution tests `13 passed, 0 failed`
 | FR-RCP-005 | DONE | `PublishRecipeCommand`, child-data precondition |
 | FR-RCP-006 | DONE | `ArchiveRecipeCommand` |
 | FR-RCP-007 | DONE | `DeleteRecipeCommand`, DbContext soft delete |
-| FR-RCP-010 | DONE (backend) | Step commands, authenticated endpoints, validation, soft delete and renumbering; PostgreSQL migration and handler/HTTP tests |
+| FR-RCP-009 | DONE (code; tests pending) | Standalone ingredient contracts, commands, validation, owner/admin checks, soft delete, cache invalidation, endpoints and ingredient/step editor UI |
+| FR-RCP-010 | DONE (code; database verification pending) | Step commands, authenticated endpoints, validation, soft delete, renumbering, PostgreSQL advisory transaction lock for add/delete, migration and ingredient/step editor UI |
 | Redis cache | PARTIAL | Redis registration có; prefix invalidation chưa có |
 | Hangfire cleanup | NOT STARTED | Chưa có Hangfire job trong repository |
 | Integration verification | NOT STARTED | Chưa có Testcontainers recipe suite |
@@ -294,6 +297,10 @@ The backend exposes authenticated step management routes under `/api/v1/recipes/
 Only the recipe owner or an administrator can mutate its steps. Missing recipes/steps return 404; invalid payloads return 400 Problem Details; unauthorized ownership returns 403. Mutations invalidate the recipe detail cache and request recipe-list prefix invalidation through the existing cache contract.
 
 The `AddActiveRecipeStepOrderIndex` PostgreSQL migration increases `RecipeSteps.Title` from 150 to 200 characters and adds a unique `(RecipeId, StepNumber)` index filtered to active rows. FR-RCP-010 handler tests cover number assignment, content updates, soft delete/renumbering, authorization, validation and historical deleted-number collisions. HTTP integration tests cover authentication and Problem Details validation responses. Verification: targeted tests passed 9/9; full solution build passed with 0 warnings and 0 errors; all solution tests passed 68/68 (Application 45, Integration 20, Architecture 3). EF tooling discovers the new migration as pending; it has not been applied to PostgreSQL. Testcontainers/PostgreSQL execution and concurrent step changes remain follow-up verification; the step-renumbering race documented as `TECH-RISK-012` is not fully eliminated by these changes.
+
+## FR-RCP-009 — Ingredient management status
+
+Ingredient data is supported both as nested recipe data and through standalone POST/PUT/DELETE routes. Contracts and CQRS commands are implemented with owner/admin authorization, nullable positive quantity rules, canonical `OrderIndex`, soft delete and detail-cache invalidation. The frontend editor at `/dashboard/recipes/{slug}/components` provides add/edit/delete forms for ingredients and steps. Handler/HTTP automated tests for the new ingredient endpoints and frontend build verification are still pending. See [`recipe-management-fr009-fr010-spec.md`](recipe-management-fr009-fr010-spec.md) for contracts, acceptance criteria and verification steps.
 
 ## Conflict compliance audit — FR-RCP-001 through FR-RCP-007
 

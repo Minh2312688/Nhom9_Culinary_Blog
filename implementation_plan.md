@@ -9,7 +9,7 @@ Quy ước: `[x]` đã triển khai và kiểm tra build; `[~]` triển khai m�
 - [x] CQRS/API cho FR-RCP-001 đến FR-RCP-007.
 - [x] Redis distributed cache cho chi tiết recipe, TTL 5 phút.
 - [x] Tạo migration `InitialRecipeSchema` trong Infrastructure.
-- [x] Tạo `ApplicationDbContextFactory` để scaffold migration không cần chạy API.
+- [x] Tạo `AuthDbContextFactory` để scaffold migration; `ApplicationDbContextFactory` cũ đã bỏ khỏi workflow chuẩn.
 - [x] Tạo `RandomDataSeeder.SeedAsync` bất đồng bộ, idempotent và chỉ chạy khi `Seed:Enabled=true`.
 - [x] Seed tối thiểu 20 categories và 100 recipes.
 - [x] Mỗi recipe báo cáo có ít nhất 10 nguyên liệu và 5 bước chế biến.
@@ -30,11 +30,11 @@ Quy ước: `[x]` đã triển khai và kiểm tra build; `[~]` triển khai m�
 
 ## Migration và startup
 
-Migration nằm tại:
+Migration core cũ của `ApplicationDbContext` được giữ làm legacy history:
 
 `backend/src/CulinaryBlog.Infrastructure/Persistence/Migrations/20260921083055_InitialRecipeSchema.cs`
 
-Migration tạo các bảng ApplicationUsers, Categories, Recipes, RecipeIngredients, RecipeSteps, RecipeImages và RecipeNutritions cùng khóa ngoại, index slug và index quan hệ.
+Schema runtime hiện do migration chain `AuthDbContext` quản lý, bắt đầu tại `20260921191147_Lab02PersonalInitialDatabase`; migration `AlignAuthDbContextRecipeSchema` đưa model hiện tại vào cùng chain này.
 
 `Program.cs` chỉ gọi migration/seeder khi cấu hình:
 
@@ -164,9 +164,9 @@ Chi tiết kỹ thuật và giới hạn hiện tại được ghi tại [docs/r
 
 Thiết lập Entity Framework Core cấu hình qua Fluent API, bao gồm indexing và query filters.
 
-#### [x] `src/Infrastructure/Data/ApplicationDbContext.cs`
+#### [x] `src/Infrastructure/Persistence/AuthDbContext.cs`
 - Thêm `DbSet<Recipe>`, `DbSet<RecipeStep>`, `DbSet<RecipeIngredient>`, v.v.
-- Ghi đè `SaveChangesAsync` để tự động cập nhật `UpdatedAt` và quản lý concurrency (RowVersion).
+- Implement `IApplicationDbContext`; ghi đè `SaveChangesAsync` để quản lý audit timestamp và soft delete.
 
 #### [x] `src/Infrastructure/Data/Configurations/RecipeConfiguration.cs`
 - Đặt **Global Query Filter**: `builder.HasQueryFilter(r => !r.IsDeleted);`.
@@ -239,3 +239,22 @@ Sử dụng MediatR để phân tách các Use Case. Tất cả input phải đi
 - Added handler and HTTP integration tests. Targeted FR-RCP-010 tests passed (9/9); full solution build passed with 0 warnings and 0 errors; full solution tests passed (68/68: Application 45, Integration 20, Architecture 3).
 - `dotnet ef migrations list` discovers the new migration as pending. It was not applied because no PostgreSQL migration run was requested/configured for this verification.
 - Remaining: exercise the migration and mutation flows against PostgreSQL/Testcontainers; complete the step editor UI; address `TECH-RISK-012` for concurrent add/delete and multi-save renumber operations.
+
+## FR-RCP-009/010 status and developer handoff (2026-09-28)
+
+- FR-RCP-009 standalone backend implementation is present: contracts, commands, validators, owner/admin authorization, soft delete, cache invalidation, and POST/PUT/DELETE endpoints. A frontend ingredient editor is available at `/dashboard/recipes/{slug}/components`. Automated handler/HTTP tests remain pending.
+- FR-RCP-010 backend commands, routes, migration, and handler/HTTP tests are present. Add/delete use a PostgreSQL transaction-scoped advisory lock per recipe to serialize step-order mutations. The full solution build passed on 2026-09-28 with 0 warnings and 0 errors. The shared ingredient/step editor is implemented; apply the pending migration to PostgreSQL and verify locking and unique active step numbering with PostgreSQL/Testcontainers.
+- Frontend build verification is pending: `npm install --offline --ignore-scripts --no-save --package-lock=false` could not resolve uncached `@hookform/resolvers`; no dependency files were changed.
+- Detailed API payloads, rules, file locations, ordered implementation steps, and acceptance criteria: [`docs/recipe-management-fr009-fr010-spec.md`](docs/recipe-management-fr009-fr010-spec.md).
+
+## DbContext/model/schema reconciliation (2026-09-28)
+
+- [x] Chọn `AuthDbContext` làm context runtime và migration chuẩn; `IApplicationDbContext` được resolve từ cùng instance để recipe handlers và advisory lock cùng dùng một context.
+- [x] Đưa DbSet `RecipeImages`/`RecipeNutritions`, audit timestamp, soft delete và RowVersion vào `AuthDbContext`.
+- [x] Loại bỏ cấu hình `RecipeStep`/`RecipeIngredient` trùng có giới hạn cột khác nhau.
+- [x] Lưu `Recipe.Difficulty` bằng enum số theo Auth schema (Easy=1, Medium=2, Hard=3, Expert=4); API giữ tên enum dạng chuỗi.
+- [x] Xóa `Domain.Entities.ApplicationUser` có cột `Role`; Identity user chuẩn là `Infrastructure.Identity.ApplicationUser`, role dùng ASP.NET Identity.
+- [x] Scaffold migration `AlignAuthDbContextRecipeSchema`: đổi `TimerMinutes` thành `DurationMinutes`, cho phép `RecipeSteps.Title` nullable, bổ sung default RowVersion, tạo bảng RecipeImages/RecipeNutritions và partial unique index cho bước chưa xóa mềm.
+- [x] Bỏ production registration/design-time factory của `ApplicationDbContext`. Context và migration cũ được giữ làm legacy cho integration test/lịch sử; không tạo hoặc áp dụng migration mới bằng context này.
+- [ ] Áp dụng migration và xác minh schema/history trên PostgreSQL đích. Chưa thực hiện vì PostgreSQL từ chối xác thực với cấu hình hiện có; cần cập nhật `ConnectionStrings__Postgres` an toàn trước khi tiếp tục.
+- [ ] Chạy xác minh tích hợp trên PostgreSQL cho migration, RowVersion, soft delete và mutation step order.

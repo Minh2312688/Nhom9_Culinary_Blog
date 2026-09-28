@@ -2,8 +2,11 @@ using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 namespace CulinaryBlog.Infrastructure.Persistence;
-// ApplicationDbContext implement IApplicationDbContext (interface từ Application Layer)
-// → Application Layer không phụ thuộc EF Core, chỉ phụ thuộc interface
+/// <summary>
+/// Legacy context retained for existing integration tests and migration history.
+/// Runtime services and new migrations use <see cref="AuthDbContext"/>.
+/// Do not register this context or create new migrations for it.
+/// </summary>
 public class ApplicationDbContext : DbContext, IApplicationDbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)

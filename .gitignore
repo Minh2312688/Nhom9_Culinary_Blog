@@ -4,8 +4,7 @@
 .vs/
 *.user
 *.suo
-[Bb]in/
-[Oo]bj/
+
 # IDE
 .idea/
 .vscode/

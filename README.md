@@ -186,9 +186,6 @@ Cấu trúc có thể được bổ sung khi các module mới được tích h�
 - FR-RCP-001 → FR-RCP-007.
 - FR-RCP-009.
 - FR-RCP-010.
-- Ingredient CRUD: POST/PUT/DELETE `/api/v1/recipes/{id}/ingredients`.
-- Step CRUD: POST/PUT/DELETE `/api/v1/recipes/{id}/steps`; step numbering is server-managed.
-- Ingredient/step editor: `/dashboard/recipes/[slug]/components` (code added; frontend build and PostgreSQL migration verification pending).
 - Tạo / sửa / xóa Recipe.
 - Ingredient.
 - Recipe Step.
@@ -246,7 +243,6 @@ Cấu trúc có thể được bổ sung khi các module mới được tích h�
 - `/dashboard/recipes`
 - `/dashboard/recipes/new`
 - `/dashboard/recipes/[id]/edit`
-- `/dashboard/recipes/[slug]/components` (manage ingredients and steps)
 
 **UI / Form**
 
@@ -573,11 +569,10 @@ Project sử dụng:
 - Entity Framework Core.
 - EF Core Migration.
 
-Các model chính hiện có (schema runtime do `AuthDbContext` sở hữu):
+Các model chính hiện có:
 
 ```text
-AspNetUsers (ApplicationUser)
-AspNetRoles / AspNetUserRoles
+ApplicationUser
 RefreshToken
 Category
 Recipe
@@ -585,7 +580,7 @@ RecipeIngredient
 RecipeStep
 ```
 
-Database schema được quản lý bằng Migration của `AuthDbContext`. `ApplicationDbContext` và migration chain cũ chỉ được giữ lại phục vụ lịch sử/test; không dùng để scaffold hoặc apply migration mới.
+Database schema được quản lý bằng Migration.
 
 Không sử dụng `EnsureCreated()` để thay thế workflow Migration hiện tại.
 
@@ -598,8 +593,6 @@ dotnet ef migrations list `
   --context AuthDbContext
 ```
 
-EF CLI đọc connection từ biến môi trường `ConnectionStrings__Postgres`; không ghi mật khẩu trực tiếp vào factory hoặc commit vào repository.
-
 Apply migration:
 
 ```powershell
@@ -609,12 +602,6 @@ dotnet ef database update `
   --context AuthDbContext
 ```
 
-### Chuyển database legacy sang AuthDbContext
-
-Không apply AuthDbContext migrations trực tiếp lên database `culinary_blog` đang có dữ liệu legacy. Runbook và importer cho phương án giữ nguyên nguồn, tạo database đích riêng, chạy migrations rồi nhập dữ liệu nằm tại [`docs/postgresql-data-migration-plan.md`](docs/postgresql-data-migration-plan.md).
-
-Importer mặc định chỉ chạy preflight. Chỉ truyền `--apply` sau khi đã tạo và xác minh backup nguồn; cần cấu hình riêng `ConnectionStrings__PostgresSource` và `ConnectionStrings__PostgresTarget`. Không commit các biến môi trường hoặc connection string.
-
 ### Lưu ý khi làm việc nhóm
 
 - Không tự ý sửa migration của thành viên khác.
@@ -622,7 +609,7 @@ Importer mặc định chỉ chạy preflight. Chỉ truyền `--apply` sau khi 
 - Không tạo Entity trùng.
 - Không reset Docker volume nếu chưa kiểm tra dữ liệu.
 - DbContext là file có nguy cơ conflict cao, cần hạn chế chỉnh song song.
-- `AuthDbContext` hiện là context chuẩn duy nhất ở runtime; các lệnh EF phải chỉ định `--context AuthDbContext`.
+- DbContext hiện tại có thể tiếp tục được hợp nhất khi nhóm tích hợp database chính thức.
 
 ---
 

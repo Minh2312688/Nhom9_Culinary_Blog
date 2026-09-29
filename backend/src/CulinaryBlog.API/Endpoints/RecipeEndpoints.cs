@@ -26,10 +26,7 @@ public static class RecipeEndpoints
             .WithName("GetRecipeBySlug").Produces<RecipeDetailDto>(200).ProducesProblem(403).ProducesProblem(404);
 
         group.MapPost("/", async (CreateRecipeCommand command, ISender sender, CancellationToken ct) =>
-        {
-            var recipe = await sender.Send(command, ct);
-            return Results.Created($"/api/v1/recipes/{recipe.Slug}", recipe);
-        })
+            Results.Created($"/api/v1/recipes/{command.Title}", await sender.Send(command, ct)))
             .RequireAuthorization().WithName("CreateRecipe").Produces<RecipeDetailDto>(201).ProducesProblem(400).ProducesProblem(403);
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateRecipeCommand command, ISender sender, CancellationToken ct) =>
@@ -47,35 +44,6 @@ public static class RecipeEndpoints
         group.MapDelete("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
         { await sender.Send(new DeleteRecipeCommand(id), ct); return Results.NoContent(); })
             .RequireAuthorization().WithName("DeleteRecipe").Produces(204).ProducesProblem(403).ProducesProblem(404);
-
-        group.MapPost("/{id:guid}/ingredients", async (
-            Guid id, AddRecipeIngredientRequest request, ISender sender, CancellationToken ct) =>
-        {
-            var result = await sender.Send(new AddRecipeIngredientCommand(
-                id, request.Name, request.Quantity, request.Unit, request.Notes, request.OrderIndex), ct);
-            return Results.Created($"/api/v1/recipes/{id}/ingredients/{result.Id}", result);
-        })
-            .RequireAuthorization().WithName("AddRecipeIngredient")
-            .Produces<RecipeIngredientDto>(201).ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
-
-        group.MapPut("/{id:guid}/ingredients/{ingredientId:guid}", async (
-            Guid id, Guid ingredientId, ReplaceRecipeIngredientRequest request, ISender sender, CancellationToken ct) =>
-        {
-            var result = await sender.Send(new UpdateRecipeIngredientCommand(
-                id, ingredientId, request.Name, request.Quantity, request.Unit, request.Notes, request.OrderIndex), ct);
-            return Results.Ok(result);
-        })
-            .RequireAuthorization().WithName("UpdateRecipeIngredient")
-            .Produces<RecipeIngredientDto>(200).ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
-
-        group.MapDelete("/{id:guid}/ingredients/{ingredientId:guid}", async (
-            Guid id, Guid ingredientId, ISender sender, CancellationToken ct) =>
-        {
-            await sender.Send(new DeleteRecipeIngredientCommand(id, ingredientId), ct);
-            return Results.NoContent();
-        })
-            .RequireAuthorization().WithName("DeleteRecipeIngredient")
-            .Produces(204).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
 
         group.MapPost("/{id:guid}/steps", async (
             Guid id, AddRecipeStepRequest request, ISender sender, CancellationToken ct) =>

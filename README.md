@@ -524,7 +524,7 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 
 | Hạng mục | Trạng thái | Đã hoàn thành | Còn lại / Phụ thuộc |
 |---|---|---|---|
-| FR-CAT-001 → FR-CAT-005 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
+| FR-CAT-001 → FR-CAT-005 | `HOÀN THÀNH` | CRUD, slug, Redis category cache, HTML Name validation cho Create/Update và Category tests đã hoàn tất | Không còn hạng mục Category; lỗi cấu hình MinIO thuộc phạm vi File Service |
 | FR-FILE-001 / 002 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
 | FR-JOB-001 → 003 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
 | FR-OBS-001 → 003 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |

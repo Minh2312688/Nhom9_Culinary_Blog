@@ -20,5 +20,6 @@
     <PackageReference Include="Google.Apis.Auth" />
     <PackageReference Include="StackExchange.Redis" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+    <PackageReference Include="Minio" />
   </ItemGroup>
 </Project>

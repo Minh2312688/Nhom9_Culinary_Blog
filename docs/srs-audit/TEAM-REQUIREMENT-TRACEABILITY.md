@@ -56,11 +56,11 @@ Quy ước trạng thái:
 | **FR-AUTH-005** | **X** | | X | | **TV1** | CurrentUserService, DbContext (TV2) | None | **NOT_STARTED** |
 | **FR-AUTH-006** | **X** | | X | | **TV1** | JWT Middleware, User Profile UI (TV3) | CONFLICT-009 | **BLOCKED** |
 | **FR-AUTH-007** | **X** | | X | | **TV1** | ApplicationUser, Profile UI (TV3) | CONFLICT-009, CONFLICT-011 | **BLOCKED** |
-| **FR-CAT-001** | | X | X | **X** | **TV4** | DbContext (TV2), Category UI (TV3) | CONFLICT-020 | **BLOCKED** |
-| **FR-CAT-002** | | X | X | **X** | **TV4** | Recipe Queries (TV2), Category Detail UI (TV3) | CONFLICT-012 | **BLOCKED** |
-| **FR-CAT-003** | | X | X | **X** | **TV4** | Admin Authorization (TV1), DbContext (TV2) | CONFLICT-020 | **BLOCKED** |
-| **FR-CAT-004** | | X | X | **X** | **TV4** | Admin Authorization (TV1), DbContext (TV2) | CONFLICT-017 | **BLOCKED** |
-| **FR-CAT-005** | | X | X | **X** | **TV4** | Recipe Foreign Key check (TV2) | CONFLICT-002 | **BLOCKED** |
+| **FR-CAT-001** | | X | X | **X** | **TV4** | DbContext (TV2), Category UI (TV3) | CONFLICT-020 resolved: Redis 30 minutes | **VERIFIED** |
+| **FR-CAT-002** | | X | X | **X** | **TV4** | Recipe Queries (TV2), Category Detail UI (TV3) | Contract clarified: Category DTO only; recipes fetched separately | **VERIFIED** |
+| **FR-CAT-003** | | X | X | **X** | **TV4** | Admin Authorization (TV1), DbContext (TV2) | HTML Name validation verified for Create; slug collision returns 409 | **VERIFIED** |
+| **FR-CAT-004** | | X | X | **X** | **TV4** | Admin Authorization (TV1), DbContext (TV2) | CONFLICT-017 resolved; HTML Name validation verified; slug preserved | **VERIFIED** |
+| **FR-CAT-005** | | X | X | **X** | **TV4** | Recipe Foreign Key check (TV2) | CONFLICT-002 resolved: soft delete; active Recipe returns 409 | **VERIFIED** |
 | **FR-RCP-001** | | **X** | X | | **TV2** | Backend query implemented; Search/Filter and Recipe Card UI (TV3) | None (conflicts decided; see audit) | **IN_PROGRESS** |
 | **FR-RCP-002** | | **X** | X | | **TV2** | Backend detail/cache implemented; Detail UI (TV3) | None (conflicts decided; see audit) | **IN_PROGRESS** |
 | **FR-RCP-003** | | **X** | X | | **TV2** | Backend create implemented; Wizard UI (TV3) | TECH-RISK-003 (slug collision under concurrency) | **IN_PROGRESS** |
@@ -232,7 +232,7 @@ Quy ước trạng thái:
 | **Recipe CRUD & State Machine** | Unit Test | **TV2** | Chuyển trạng thái Draft -> Published -> Archived đúng business rules; không publish nếu thiếu step/ingredient. |
 | **Recipe Concurrency Control** | Integration Test (PostgreSQL Testcontainer) | **TV2** | Hai request cập nhật cùng recipe với RowVersion cũ: 1 thành công, 1 nhận HTTP 409 Conflict. |
 | **Full-Text Search Accuracy** | Integration Test (PostgreSQL) | **TV2** | Tìm kiếm không dấu tiếng Việt (unaccent) trả đúng kết quả; rank theo ts_rank_cd chính xác. |
-| **Category CRUD & Slug Generation** | Unit & Integration Test | **TV4** | Tên có dấu sinh slug không dấu chuẩn; trùng tên tự động thêm suffix `-1`, `-2`; xóa khi còn recipe trả lỗi 400. |
+| **Category CRUD & Slug Generation** | Unit & Integration Test | **TV4** | Tên có dấu sinh slug không dấu chuẩn; collision slug trả HTTP 409, không thêm suffix; xóa khi còn Recipe active trả HTTP 409; Name không chứa HTML cho Create/Update. |
 | **File Storage & Magic Bytes** | Unit & Integration Test (MinIO Testcontainer) | **TV4** | Đổi đuôi file .exe thành .jpg bị chặn bởi magic bytes check; upload ảnh hợp lệ lưu đúng bucket, max 5MB. |
 | **Hangfire Background Execution** | Integration Test | **TV4** | Welcome email enqueue thành công; retry 3 lần khi SMTP timeout; job không thất bại ngầm. |
 | **Health Checks Endpoints** | Integration Test | **TV4** | `/health/live` luôn trả 200; `/health/ready` trả 503 khi DB hoặc Redis tắt; trả 200 khi cả hai hoạt động. |

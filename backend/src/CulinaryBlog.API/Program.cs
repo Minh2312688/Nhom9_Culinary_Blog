@@ -1,13 +1,19 @@
 using System.Threading.RateLimiting;
 using CulinaryBlog.API.Endpoints;
+using CulinaryBlog.API.Middleware;
 using CulinaryBlog.Application;
+using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+// Đăng ký các service của các layer
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CulinaryBlog.API.CurrentUserService>();
 
 // CORS for Frontend (Next.js) - SRS NFR-SEC-005: Configured origins only, never wildcard.
 // Development allows local defaults (3000/3001); Non-Development strictly requires configured origins.
@@ -82,6 +88,7 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
+app.UseMiddleware<ApiExceptionMiddleware>();
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
@@ -93,7 +100,11 @@ app.MapGet("/", () => Results.Ok(new
     phase = "TV1 - Giai doan 2 Auth",
     status = "running"
 }));
-
+app.UseAuthentication();
+app.UseAuthorization();
+// Đăng ký tất cả endpoints
+app.MapCategoryEndpoints();
+app.MapRecipeEndpoints();
 app.MapSystemEndpoints();
 app.MapAuthEndpoints();
 
@@ -113,5 +124,3 @@ if (app.Environment.IsDevelopment())
 }
 
 app.Run();
-
-public partial class Program;

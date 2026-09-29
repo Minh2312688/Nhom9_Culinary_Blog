@@ -279,13 +279,18 @@ Kết quả lần chạy cuối: toàn bộ solution tests `13 passed, 0 failed`
 | FR-RCP-005 | DONE | `PublishRecipeCommand`, child-data precondition |
 | FR-RCP-006 | DONE | `ArchiveRecipeCommand` |
 | FR-RCP-007 | DONE | `DeleteRecipeCommand`, DbContext soft delete |
+<<<<<<< HEAD
 | FR-RCP-009 | DONE (kiểm thử handler/HTTP và ghi PostgreSQL đã xác minh 2026-09-28) | Contract ingredient riêng, command, validation, quyền chủ sở hữu/admin, xóa mềm, invalidation cache, endpoint và giao diện chỉnh sửa nguyên liệu/bước nấu |
 | FR-RCP-010 | DONE (kiểm thử handler/HTTP và ghi PostgreSQL đã xác minh 2026-09-28; tiếp tục theo dõi TECH-RISK-012) | Command step, endpoint có xác thực, validation, xóa mềm, đánh lại số thứ tự, advisory lock, migration và giao diện chỉnh sửa nguyên liệu/bước nấu |
+=======
+| FR-RCP-010 | DONE (backend) | Step commands, authenticated endpoints, validation, soft delete and renumbering; PostgreSQL migration and handler/HTTP tests |
+>>>>>>> origin/main
 | Redis cache | PARTIAL | Redis registration có; prefix invalidation chưa có |
 | Hangfire cleanup | NOT STARTED | Chưa có Hangfire job trong repository |
 | Xác minh tích hợp PostgreSQL | PARTIAL | Verifier đã kiểm tra lịch sử migration, Category có RowVersion cũ, xóa mềm/query filter của Category/Recipe, mutation step tuần tự, add/add và add/delete đồng thời; tiếp tục theo dõi các tình huống tranh chấp bổ sung |
 | Mock/demo data implementation | REMOVED | Seeder, seed configuration and generated-data Robot suite removed |
 
+<<<<<<< HEAD
 ## FR-RCP-010 — Quản lý bước nấu
 
 Backend cung cấp các route quản lý step yêu cầu xác thực tại `/api/v1/recipes/{id}/steps`:
@@ -301,6 +306,19 @@ Migration PostgreSQL `AddActiveRecipeStepOrderIndex` tăng độ dài `RecipeSte
 ## FR-RCP-009 — Trạng thái quản lý nguyên liệu
 
 Dữ liệu ingredient được hỗ trợ dạng thành phần của recipe và qua các route POST/PUT/DELETE riêng. Contract và CQRS command đã triển khai cùng phân quyền owner/admin, quantity cho phép null nhưng nếu có phải là số dương, dùng `OrderIndex` làm thứ tự chuẩn, xóa mềm và invalidation cache chi tiết. Handler/HTTP automated tests đạt; kiểm tra trực tiếp qua API xác nhận POST ingredient ghi được bản ghi vào PostgreSQL. Giao diện tại `/dashboard/recipes/{slug}/components` có form thêm/sửa/xóa ingredient và step; chưa xác minh build frontend. Contract, tiêu chí nghiệm thu, kết quả database và cách kiểm tra nằm tại [`recipe-management-fr009-fr010-spec.md`](recipe-management-fr009-fr010-spec.md).
+=======
+## FR-RCP-010 — Recipe step management
+
+The backend exposes authenticated step management routes under `/api/v1/recipes/{id}/steps`:
+
+- `POST /api/v1/recipes/{id}/steps` creates a step. The server assigns `StepNumber` as the current maximum (including soft-deleted rows) plus one; clients cannot choose the number.
+- `PUT /api/v1/recipes/{id}/steps/{stepId}` replaces `Title`, `Description`, optional `DurationMinutes`, and optional `ImageUrl`. The server-owned `StepNumber` is unchanged.
+- `DELETE /api/v1/recipes/{id}/steps/{stepId}` soft-deletes the selected step and renumbers active steps contiguously from 1. Existing deleted rows are moved to unused negative numbers to avoid collisions with historical step numbers.
+
+Only the recipe owner or an administrator can mutate its steps. Missing recipes/steps return 404; invalid payloads return 400 Problem Details; unauthorized ownership returns 403. Mutations invalidate the recipe detail cache and request recipe-list prefix invalidation through the existing cache contract.
+
+The `AddActiveRecipeStepOrderIndex` PostgreSQL migration increases `RecipeSteps.Title` from 150 to 200 characters and adds a unique `(RecipeId, StepNumber)` index filtered to active rows. FR-RCP-010 handler tests cover number assignment, content updates, soft delete/renumbering, authorization, validation and historical deleted-number collisions. HTTP integration tests cover authentication and Problem Details validation responses. Verification: targeted tests passed 9/9; full solution build passed with 0 warnings and 0 errors; all solution tests passed 68/68 (Application 45, Integration 20, Architecture 3). EF tooling discovers the new migration as pending; it has not been applied to PostgreSQL. Testcontainers/PostgreSQL execution and concurrent step changes remain follow-up verification; the step-renumbering race documented as `TECH-RISK-012` is not fully eliminated by these changes.
+>>>>>>> origin/main
 
 ## Conflict compliance audit — FR-RCP-001 through FR-RCP-007
 
@@ -318,6 +336,7 @@ Checked against the decisions recorded in `docs/srs-audit/SRS-CONFLICTS-AND-DECI
 | Cross-cutting — CONFLICT-011, -025 | Compliant: validation returns HTTP 400 Problem Details; domain entities use one `BaseEntity`, while `ApplicationUser` derives directly from `IdentityUser<string>`. The unused duplicate BaseEntity declaration was removed. |
 
 Regression tests were added for nullable/positive ingredient quantities on Create and Update, old/new slug cache invalidation, and recipe soft deletion. Final verification: solution build succeeded with 0 warnings and 0 errors; all tests passed (72 total: Application 47, Integration 22, Architecture 3). PostgreSQL-specific concurrency behavior and slug collisions under simultaneous creates remain operational risks; they are not decisions in these conflicts.
+<<<<<<< HEAD
 
 ## PostgreSQL schema adoption status (2026-09-28)
 
@@ -326,3 +345,5 @@ The legacy source `culinary_blog` retains its ApplicationDbContext migration his
 All three AuthDbContext migrations are applied to the target: `Lab02PersonalInitialDatabase`, `AlignAuthDbContextRecipeSchema`, and `AddPostgresRowVersionTriggers`. The importer copied 1 user, 20 categories, 100 recipes, 1,000 ingredients, 500 steps and 100 nutrition rows; there were 0 recipe images. Counts, IDs and mapped values passed checks before the import transaction committed.
 
 The first live RowVersion check showed stale updates were accepted. Migration `AddPostgresRowVersionTriggers` now changes the bytea token on update for all six BaseEntity tables. The PostgreSQL verifier passed checks for migration history, temporary Identity password validation and role membership, stale Category updates, Category/Recipe soft delete/query filtering, sequential step add/delete/renumbering, two concurrent adds receiving consecutive numbers and a concurrent add/delete retaining consecutive numbering. It cleans its temporary rows. The source backup was restored into the isolated `culinary_blog_backup_verify` database; read-only schema and row-count checks matched the importer preflight. The app User-scope connection now targets `culinary_blog_auth`; the Production API is running and its recipe-list smoke check passed. The imported user's actual password remains to be verified by user sign-in. A Production API smoke test against the target also passed; it exposed and fixed case-sensitive validation of the default recipe sort field. See [`postgresql-data-migration-plan.md`](postgresql-data-migration-plan.md) for the run record and mappings.
+=======
+>>>>>>> origin/main

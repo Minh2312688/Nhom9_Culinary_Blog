@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+<<<<<<< HEAD
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.DTOs.Auth;
 using CulinaryBlog.Domain.Entities;
@@ -9,15 +10,26 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+=======
+using CulinaryBlog.Application.DTOs.Auth;
+>>>>>>> origin/main
 using Xunit;
 
 namespace CulinaryBlog.Integration.Tests.Endpoints;
 
+<<<<<<< HEAD
 public sealed class RecipeStepEndpointsTests : IClassFixture<RecipeStepWebApplicationFactory>
 {
     private readonly RecipeStepWebApplicationFactory factory;
 
     public RecipeStepEndpointsTests(RecipeStepWebApplicationFactory factory) => this.factory = factory;
+=======
+public sealed class RecipeStepEndpointsTests : IClassFixture<CustomAuthWebApplicationFactory>
+{
+    private readonly CustomAuthWebApplicationFactory factory;
+
+    public RecipeStepEndpointsTests(CustomAuthWebApplicationFactory factory) => this.factory = factory;
+>>>>>>> origin/main
 
     [Fact]
     public async Task StepRoutes_RequireAuthentication()
@@ -38,7 +50,11 @@ public sealed class RecipeStepEndpointsTests : IClassFixture<RecipeStepWebApplic
     [Fact]
     public async Task AddStep_InvalidContent_Returns400ProblemDetails()
     {
+<<<<<<< HEAD
         var (client, _) = await CreateAuthenticatedClientAsync();
+=======
+        var client = await CreateAuthenticatedClientAsync();
+>>>>>>> origin/main
         var response = await client.PostAsJsonAsync($"/api/v1/recipes/{Guid.NewGuid()}/steps", new
         {
             title = " ", description = " ", durationMinutes = -2, imageUrl = (string?)null,
@@ -53,6 +69,7 @@ public sealed class RecipeStepEndpointsTests : IClassFixture<RecipeStepWebApplic
         Assert.Contains("DurationMinutes", body, StringComparison.OrdinalIgnoreCase);
     }
 
+<<<<<<< HEAD
     [Fact]
     public async Task StepLifecycle_CreatesUpdatesAndSoftDeletesThroughApi()
     {
@@ -88,26 +105,36 @@ public sealed class RecipeStepEndpointsTests : IClassFixture<RecipeStepWebApplic
         Assert.DoesNotContain(detail!.Steps, item => item.Id == created.Id);
     }
 
+=======
+>>>>>>> origin/main
     private static object StepRequest() => new
     {
         title = "Heat", description = "Heat the pan.", durationMinutes = (int?)1,
         imageUrl = (string?)null
     };
 
+<<<<<<< HEAD
     private async Task<(HttpClient Client, string UserId)> CreateAuthenticatedClientAsync()
+=======
+    private async Task<HttpClient> CreateAuthenticatedClientAsync()
+>>>>>>> origin/main
     {
         var client = factory.CreateIsolatedClient();
         var email = $"step_{Guid.NewGuid():N}@example.com";
         const string password = "P@ssword123";
         var register = await client.PostAsJsonAsync("/api/v1/auth/register", new RegisterRequestDto(email, password, "Step Tester"));
         Assert.Equal(HttpStatusCode.Created, register.StatusCode);
+<<<<<<< HEAD
         var registeredUser = await register.Content.ReadFromJsonAsync<RegisterResponseDto>();
         Assert.NotNull(registeredUser);
+=======
+>>>>>>> origin/main
         var login = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequestDto(email, password));
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         var tokens = await login.Content.ReadFromJsonAsync<AuthResponseDto>();
         Assert.NotNull(tokens);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens!.AccessToken);
+<<<<<<< HEAD
         return (client, registeredUser!.UserId);
     }
 
@@ -163,5 +190,8 @@ public sealed class RecipeStepWebApplicationFactory : CustomAuthWebApplicationFa
     {
         public Task CommitAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+=======
+        return client;
+>>>>>>> origin/main
     }
 }

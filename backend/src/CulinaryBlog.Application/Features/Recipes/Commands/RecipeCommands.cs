@@ -34,6 +34,7 @@ public sealed class CreateRecipeCommandValidator : AbstractValidator<CreateRecip
         RuleFor(x => x.PrepTimeMinutes).GreaterThanOrEqualTo(0);
         RuleFor(x => x.CookTimeMinutes).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Servings).GreaterThan(0);
+<<<<<<< HEAD
         RuleFor(x => x.Difficulty).Must(IsRecipeDifficulty)
             .WithMessage("Difficulty must be Easy, Medium, Hard, or Expert.");
         RuleForEach(x => x.Ingredients).ChildRules(item =>
@@ -43,6 +44,14 @@ public sealed class CreateRecipeCommandValidator : AbstractValidator<CreateRecip
             item.RuleFor(i => i.Unit).MaximumLength(50);
             item.RuleFor(i => i.Notes).MaximumLength(500);
             item.RuleFor(i => i.OrderIndex).GreaterThanOrEqualTo(0);
+=======
+        RuleFor(x => x.Difficulty).NotEmpty().MaximumLength(20);
+        RuleForEach(x => x.Ingredients).ChildRules(item =>
+        {
+            item.RuleFor(i => i.Name).NotEmpty().MaximumLength(100);
+            item.RuleFor(i => i.Quantity).GreaterThan(0).When(i => i.Quantity.HasValue);
+            item.RuleFor(i => i.Notes).MaximumLength(200);
+>>>>>>> origin/main
         });
         RuleForEach(x => x.Steps).ChildRules(item =>
         {
@@ -154,6 +163,7 @@ public sealed class UpdateRecipeCommandValidator : AbstractValidator<UpdateRecip
         RuleFor(x => x.Id).NotEmpty(); RuleFor(x => x.Title).NotEmpty().Length(5, 200);
         RuleFor(x => x.CategoryId).NotEmpty(); RuleFor(x => x.Servings).GreaterThan(0);
         RuleFor(x => x.PrepTimeMinutes).GreaterThanOrEqualTo(0); RuleFor(x => x.CookTimeMinutes).GreaterThanOrEqualTo(0);
+<<<<<<< HEAD
         RuleFor(x => x.Difficulty).Must(value => CreateRecipeCommandValidator.IsRecipeDifficulty(value))
             .WithMessage("Difficulty must be Easy, Medium, Hard, or Expert.");
         RuleFor(x => x.RowVersion).NotEmpty();
@@ -164,6 +174,14 @@ public sealed class UpdateRecipeCommandValidator : AbstractValidator<UpdateRecip
             item.RuleFor(i => i.Unit).MaximumLength(50);
             item.RuleFor(i => i.Notes).MaximumLength(500);
             item.RuleFor(i => i.OrderIndex).GreaterThanOrEqualTo(0);
+=======
+        RuleFor(x => x.Difficulty).NotEmpty().MaximumLength(20); RuleFor(x => x.RowVersion).NotEmpty();
+        RuleForEach(x => x.Ingredients).ChildRules(item =>
+        {
+            item.RuleFor(i => i.Name).NotEmpty().MaximumLength(100);
+            item.RuleFor(i => i.Quantity).GreaterThan(0).When(i => i.Quantity.HasValue);
+            item.RuleFor(i => i.Notes).MaximumLength(200);
+>>>>>>> origin/main
         });
         RuleForEach(x => x.Steps).ChildRules(item =>
         {

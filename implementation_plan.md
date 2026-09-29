@@ -230,6 +230,7 @@ Sử dụng MediatR để phân tách các Use Case. Tất cả input phải đi
 - Kiểm tra dữ liệu trong PGAdmin để đảm bảo `IsDeleted` hoạt động đúng thay vì mất record.
 - Dùng Redis CLI (`monitor`) để verify cache hit/miss và invalidation.
 
+<<<<<<< HEAD
 ## Cập nhật triển khai FR-RCP-010 (2026-09-25)
 
 - Đã thêm `AddRecipeStepCommand`, `UpdateRecipeStepCommand` và `DeleteRecipeStepCommand` cùng FluentValidation, kiểm tra quyền owner/admin, invalidation cache, xóa mềm và đánh lại số liên tục cho các step đang hoạt động.
@@ -280,3 +281,14 @@ Sử dụng MediatR để phân tách các Use Case. Tất cả input phải đi
 - [x] Tìm thấy `dulieu.backup` ở project root; chữ ký `PGDMP` xác nhận PostgreSQL custom format. Restore pgAdmin vào DB tạm thành công; đã đối chiếu schema và row counts read-only.
 - [x] Chuyển User-scope `ConnectionStrings__Postgres` sang `culinary_blog_auth`, giữ nguyên host/credential; tạo `Jwt__Key` ngẫu nhiên 512-bit trong User-scope vì app chưa cấu hình key. Production API đang chạy trên `http://127.0.0.1:5000`; root và GET recipes trả thành công (100 tổng, 3 item). Chạy Production nên không migration/seed database lúc startup.
 - [ ] Hoàn tất nghiệm thu sau khi người dùng đăng nhập được bằng tài khoản import; giữ nguồn để rollback trong cửa sổ cutover.
+=======
+## FR-RCP-010 implementation update (2026-09-25)
+
+- Added `AddRecipeStepCommand`, `UpdateRecipeStepCommand`, and `DeleteRecipeStepCommand` with FluentValidation, recipe owner/admin checks, cache invalidation, soft deletion, and contiguous active-step renumbering.
+- Added authenticated `POST`, `PUT`, and `DELETE` step endpoints. `StepNumber` is server-assigned on create and preserved on update.
+- Added API exception middleware that returns validation errors as Problem Details and maps authorization, not-found, and conflict errors to HTTP status codes.
+- Added PostgreSQL migration `20260925090000_AddActiveRecipeStepOrderIndex` to align Title length (200) and enforce unique active step order. The regular EF migration scaffold currently detects unrelated drift from the pre-existing snapshot, so this migration is intentionally scoped to the two FR-RCP-010 schema changes.
+- Added handler and HTTP integration tests. Targeted FR-RCP-010 tests passed (9/9); full solution build passed with 0 warnings and 0 errors; full solution tests passed (68/68: Application 45, Integration 20, Architecture 3).
+- `dotnet ef migrations list` discovers the new migration as pending. It was not applied because no PostgreSQL migration run was requested/configured for this verification.
+- Remaining: exercise the migration and mutation flows against PostgreSQL/Testcontainers; complete the step editor UI; address `TECH-RISK-012` for concurrent add/delete and multi-save renumber operations.
+>>>>>>> origin/main

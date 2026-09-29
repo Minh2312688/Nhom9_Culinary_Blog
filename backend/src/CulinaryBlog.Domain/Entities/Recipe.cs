@@ -12,7 +12,7 @@ public class Recipe : BaseEntity
     public int PrepTimeMinutes { get; set; }
     public int CookTimeMinutes { get; set; }
     public int Servings { get; set; }
-    public string Difficulty { get; set; } = "Easy";
+    public RecipeDifficulty Difficulty { get; set; } = RecipeDifficulty.Easy;
     public RecipeStatus Status { get; set; } = RecipeStatus.Draft;
 
     public ICollection<RecipeIngredient> Ingredients { get; set; } = new List<RecipeIngredient>();

@@ -69,4 +69,26 @@ public sealed class RecipeValidatorsTests
         Assert.Contains(result.Errors, error => error.PropertyName == nameof(GetRecipesQuery.SortBy));
         Assert.Contains(result.Errors, error => error.PropertyName == nameof(GetRecipesQuery.SortOrder));
     }
+
+    [Theory]
+    [InlineData("title")]
+    [InlineData("createdAt")]
+    [InlineData("createdat")]
+    [InlineData("cookTime")]
+    [InlineData("prepTime")]
+    public async Task GetRecipes_ShouldAcceptEverySupportedSortField(string sortBy)
+    {
+        var validator = new GetRecipesQueryValidator();
+        var result = await validator.ValidateAsync(new GetRecipesQuery(SortBy: sortBy));
+
+        Assert.DoesNotContain(result.Errors, error => error.PropertyName == nameof(GetRecipesQuery.SortBy));
+    }
+
+    [Fact]
+    public async Task GetRecipes_ShouldAcceptTheDefaultSortField()
+    {
+        var result = await new GetRecipesQueryValidator().ValidateAsync(new GetRecipesQuery());
+
+        Assert.True(result.IsValid);
+    }
 }

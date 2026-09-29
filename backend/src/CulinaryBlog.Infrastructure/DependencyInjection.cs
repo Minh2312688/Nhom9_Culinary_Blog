@@ -32,10 +32,9 @@ public static class DependencyInjection
 
         services.AddDbContext<AuthDbContext>(options =>
             options.UseNpgsql(postgresConnection));
-
-        services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(postgresConnection));
         services.AddScoped<IApplicationDbContext>(serviceProvider =>
-            serviceProvider.GetRequiredService<ApplicationDbContext>());
+            serviceProvider.GetRequiredService<AuthDbContext>());
+        services.AddScoped<IRecipeMutationLock, PostgresRecipeMutationLock>();
 
         var redisConnection = configuration["Redis:ConnectionString"];
         if (string.IsNullOrWhiteSpace(redisConnection))

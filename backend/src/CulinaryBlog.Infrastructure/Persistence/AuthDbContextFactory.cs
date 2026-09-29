@@ -10,8 +10,12 @@ public class AuthDbContextFactory : IDesignTimeDbContextFactory<AuthDbContext>
 {
     public AuthDbContext CreateDbContext(string[] args)
     {
+        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Postgres")
+            ?? "Host=localhost;Port=5432;Database=culinary_blog;Username=culinary";
         var optionsBuilder = new DbContextOptionsBuilder<AuthDbContext>();
-        optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=culinary_blog;Username=culinary;Password=change_this_postgres_password");
+        optionsBuilder.UseNpgsql(
+            connectionString,
+            options => options.MigrationsAssembly(typeof(AuthDbContext).Assembly.FullName));
 
         return new AuthDbContext(optionsBuilder.Options);
     }

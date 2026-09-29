@@ -36,6 +36,10 @@ public static class DependencyInjection
         services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(postgresConnection));
         services.AddScoped<IApplicationDbContext>(serviceProvider =>
             serviceProvider.GetRequiredService<ApplicationDbContext>());
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IRecipeRepository, RecipeRepository>();
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<ICategoryCache, DistributedCategoryCache>();
 
         var redisConnection = configuration["Redis:ConnectionString"];
         if (string.IsNullOrWhiteSpace(redisConnection))

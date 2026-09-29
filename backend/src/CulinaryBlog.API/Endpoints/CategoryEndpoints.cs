@@ -1,51 +1,68 @@
 using CulinaryBlog.Application.Common.Models;
 using CulinaryBlog.Application.DTOs;
 using CulinaryBlog.Application.Features.Categories.Commands.CreateCategory;
+using CulinaryBlog.Application.Features.Categories.Commands.DeleteCategory;
+using CulinaryBlog.Application.Features.Categories.Commands.UpdateCategory;
 using CulinaryBlog.Application.Features.Categories.Queries.GetCategories;
+using CulinaryBlog.Application.Features.Categories.Queries.GetCategoryBySlug;
+using CulinaryBlog.Domain.Constants;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
-// URL Path Versioning: /api/v1/categories, /api/v2/categories
-// Khi cần breaking change: tạo /api/v2 với interface mới,
-// giữ nguyên /api/v1 để không làm hỏng client cũ
+
 namespace CulinaryBlog.API.Endpoints;
+
 public static class CategoryEndpoints
 {
-    public static IEndpointRouteBuilder MapCategoryEndpoints(
-        this IEndpointRouteBuilder endpoints)
+    public static IEndpointRouteBuilder MapCategoryEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup("/api/v1/categories")
-            .WithTags("Categories"); // Nhóm trong Scalar UI
-        // GET — lấy danh sách phân trang
-        group.MapGet("/", async (
-            [AsParameters] GetCategoriesQuery query, // Bind query string tự động
-            ISender sender,
-            CancellationToken ct) =>
-            {
-                var result = await sender.Send(query, ct);
-                return Results.Ok(result);
-            })
+        var group = endpoints.MapGroup("/api/v1/categories").WithTags("Categories");
+
+        group.MapGet("/", async ([AsParameters] GetCategoriesQuery query, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(query, ct)))
             .WithName("GetCategories")
-            .WithSummary("Lấy danh sách danh mục có phân trang")
-            .WithDescription("Hỗ trợ search, sort, và pagination. " +
-            "Sử dụng ?search=... để tìm kiếm theo tên hoặc mô tả.")
-            .Produces<PaginatedResult<CategoryDto>>(200);
-        // POST — tạo danh mục mới
-        group.MapPost("/", async (
-            CreateCategoryCommand command,
-            ISender sender,
-            CancellationToken ct) =>
-            {
-                var result = await sender.Send(command, ct);
-                // Trả về 201 Created với Location header trỏ đến resource mới
-                return Results.Created($"/api/v1/categories/{result.Id}", result);
-            })
+            .Produces<PaginatedResult<CategoryDto>>(200)
+            .ProducesProblem(400);
+
+        group.MapGet("/{slug}", async (string slug, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new GetCategoryBySlugQuery(slug), ct)))
+            .WithName("GetCategoryBySlug")
+            .Produces<CategoryDto>(200)
+            .ProducesProblem(404);
+
+        group.MapPost("/", async (CreateCategoryCommand command, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(command, ct);
+            return Results.Created($"/api/v1/categories/{result.Slug}", result);
+        })
+            .RequireAuthorization(policy => policy.RequireRole(AppRoles.Admin))
             .WithName("CreateCategory")
-            .WithSummary("Tạo danh mục mới")
             .Produces<CategoryDto>(201)
-            .ProducesProblem(400) // Validation error
-            .ProducesProblem(409); // Duplicate slug
+            .ProducesProblem(400)
+            .ProducesProblem(409);
+
+        group.MapPut("/{id:guid}", async (Guid id, UpdateCategoryBody body, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new UpdateCategoryCommand(id, body.Name, body.Description, body.ImageUrl, body.OrderIndex), ct)))
+            .RequireAuthorization(policy => policy.RequireRole(AppRoles.Admin))
+            .WithName("UpdateCategory")
+            .Produces<CategoryDto>(200)
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(409);
+
+        group.MapDelete("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
+        {
+            await sender.Send(new DeleteCategoryCommand(id), ct);
+            return Results.NoContent();
+        })
+            .RequireAuthorization(policy => policy.RequireRole(AppRoles.Admin))
+            .WithName("DeleteCategory")
+            .Produces(204)
+            .ProducesProblem(404)
+            .ProducesProblem(409);
+
         return endpoints;
     }
-}
 
+    public sealed record UpdateCategoryBody(string Name, string? Description, string? ImageUrl, int OrderIndex);
+}

@@ -38,18 +38,18 @@ public sealed class GetRecipesQueryValidator : AbstractValidator<GetRecipesQuery
 
 public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, PaginatedResult<RecipeSummaryDto>>
 {
-    private readonly IApplicationDbContext context;
+    private readonly IRecipeRepository recipes;
     private readonly ICurrentUserService currentUser;
 
-    public GetRecipesQueryHandler(IApplicationDbContext context, ICurrentUserService currentUser)
+    public GetRecipesQueryHandler(IRecipeRepository recipes, ICurrentUserService currentUser)
     {
-        this.context = context;
+        this.recipes = recipes;
         this.currentUser = currentUser;
     }
 
     public async Task<PaginatedResult<RecipeSummaryDto>> Handle(GetRecipesQuery request, CancellationToken cancellationToken)
     {
-        var query = context.Recipes.AsNoTracking().AsQueryable();
+        var query = recipes.Query.AsNoTracking();
         query = currentUser.IsAdmin
             ? query
             : query.Where(x => x.Status == RecipeStatus.Published ||

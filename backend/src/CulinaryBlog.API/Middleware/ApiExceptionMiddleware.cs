@@ -2,6 +2,7 @@ using CulinaryBlog.Application.Common.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using CulinaryBlog.Domain.Exceptions;
 
 namespace CulinaryBlog.API.Middleware;
 
@@ -47,6 +48,7 @@ public sealed class ApiExceptionMiddleware(RequestDelegate next, ILogger<ApiExce
         NotFoundException => Results.Problem(statusCode: 404, title: "Not Found", detail: exception.Message, instance: path),
         UnauthorizedException => Results.Problem(statusCode: 401, title: "Unauthorized", detail: exception.Message, instance: path),
         ConcurrencyException or ConflictException => Results.Problem(statusCode: 409, title: "Conflict", detail: exception.Message, instance: path),
+        DomainException => Results.Problem(statusCode: 400, title: "Domain rule violation", detail: exception.Message, instance: path),
         InvalidOperationException => Results.Problem(statusCode: 400, title: "Bad Request", detail: exception.Message, instance: path),
         _ => null
     };

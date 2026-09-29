@@ -3,6 +3,7 @@ using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Application.DTOs.Recipes;
 using CulinaryBlog.Domain.Entities;
+using CulinaryBlog.Domain.Exceptions;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -52,13 +53,18 @@ public sealed class CreateRecipeCommandValidator : AbstractValidator<CreateRecip
 
 public sealed class CreateRecipeCommandHandler : IRequestHandler<CreateRecipeCommand, RecipeDetailDto>
 {
-    private readonly IApplicationDbContext context;
+    private readonly IRecipeRepository recipes;
+    private readonly ICategoryRepository categories;
+    private readonly IUnitOfWork unitOfWork;
     private readonly ICurrentUserService currentUser;
     private readonly IRecipeCache cache;
 
-    public CreateRecipeCommandHandler(IApplicationDbContext context, ICurrentUserService currentUser, IRecipeCache cache)
+    public CreateRecipeCommandHandler(IRecipeRepository recipes, ICategoryRepository categories,
+        IUnitOfWork unitOfWork, ICurrentUserService currentUser, IRecipeCache cache)
     {
-        this.context = context;
+        this.recipes = recipes;
+        this.categories = categories;
+        this.unitOfWork = unitOfWork;
         this.currentUser = currentUser;
         this.cache = cache;
     }
@@ -66,7 +72,7 @@ public sealed class CreateRecipeCommandHandler : IRequestHandler<CreateRecipeCom
     public async Task<RecipeDetailDto> Handle(CreateRecipeCommand request, CancellationToken cancellationToken)
     {
         EnsureCanEdit();
-        if (!await context.Categories.AnyAsync(x => x.Id == request.CategoryId, cancellationToken))
+        if (!await categories.Query.AnyAsync(x => x.Id == request.CategoryId, cancellationToken))
             throw new NotFoundException(nameof(Category), request.CategoryId);
 
         var slug = await CreateUniqueSlugAsync(request.Title, cancellationToken);
@@ -78,8 +84,8 @@ public sealed class CreateRecipeCommandHandler : IRequestHandler<CreateRecipeCom
             Servings = request.Servings, Difficulty = request.Difficulty.Trim(), Status = RecipeStatus.Draft
         };
         AddChildren(recipe, request.Ingredients, request.Steps, request.Nutrition);
-        context.Recipes.Add(recipe);
-        await context.SaveChangesAsync(cancellationToken);
+        recipes.Add(recipe);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
         await cache.RemoveByPrefixAsync("recipes:", cancellationToken);
         return recipe.ToDetail();
     }
@@ -95,7 +101,7 @@ public sealed class CreateRecipeCommandHandler : IRequestHandler<CreateRecipeCom
         var baseSlug = Slugify(title);
         var slug = baseSlug;
         var suffix = 2;
-        while (await context.Recipes.IgnoreQueryFilters().AnyAsync(x => x.Slug == slug, cancellationToken))
+        while (await recipes.Query.IgnoreQueryFilters().AnyAsync(x => x.Slug == slug, cancellationToken))
             slug = $"{baseSlug}-{suffix++}";
         return slug;
     }
@@ -225,9 +231,9 @@ public sealed class RecipeLifecycleHandler :
     private async Task ChangeStatus(Guid id, RecipeStatus status, CancellationToken ct, bool requireChildren)
     {
         var recipe = await GetOwnedRecipe(id, ct);
-        if (requireChildren && (recipe.Steps.Count == 0 || recipe.Ingredients.Count == 0))
-            throw new InvalidOperationException("A recipe must have at least one step and one ingredient before publishing.");
-        recipe.Status = status; await context.SaveChangesAsync(ct);
+        if (requireChildren) recipe.Publish();
+        else recipe.Status = status;
+        await context.SaveChangesAsync(ct);
         await cache.RemoveAsync($"recipes:slug:{recipe.Slug}", ct); await cache.RemoveByPrefixAsync("recipes:", ct);
     }
 

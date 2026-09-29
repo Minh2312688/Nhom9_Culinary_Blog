@@ -2,6 +2,7 @@ using MediatR;
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Application.Common.Exceptions;
+using Microsoft.EntityFrameworkCore;
 namespace CulinaryBlog.Application.Features.Categories.Commands.DeleteCategory;
 // Command xóa category — chỉ cần ID, không trả về data (Unit = void trong MediatR)
 public record DeleteCategoryCommand(Guid Id) : IRequest<Unit>;
@@ -9,8 +10,9 @@ public record DeleteCategoryCommand(Guid Id) : IRequest<Unit>;
 public class DeleteCategoryCommandHandler : IRequestHandler<DeleteCategoryCommand, Unit>
 {
  private readonly IApplicationDbContext _context;
- public DeleteCategoryCommandHandler(IApplicationDbContext context)
- => _context = context;
+ private readonly CulinaryBlog.Application.Contracts.ICategoryCache _cache;
+ public DeleteCategoryCommandHandler(IApplicationDbContext context, CulinaryBlog.Application.Contracts.ICategoryCache cache)
+ { _context = context; _cache = cache; }
  public async Task<Unit> Handle(
  DeleteCategoryCommand request,
  CancellationToken cancellationToken)
@@ -18,10 +20,13 @@ public class DeleteCategoryCommandHandler : IRequestHandler<DeleteCategoryComman
  // Tìm entity — ném NotFoundException nếu không tồn tại
  // (NotFoundException sẽ được catch ở Global Exception Handler — Chương 5)
  var category = await _context.Categories
- .FindAsync([request.Id], cancellationToken)
+ .SingleOrDefaultAsync(item => item.Id == request.Id, cancellationToken)
  ?? throw new NotFoundException(nameof(Category), request.Id);
- _context.Categories.Remove(category);
+ if (await _context.Recipes.AnyAsync(recipe => recipe.CategoryId == category.Id, cancellationToken))
+     throw new ConflictException("A category with active recipes cannot be deleted.");
+ category.Delete();
  await _context.SaveChangesAsync(cancellationToken);
+ await _cache.InvalidateAsync(cancellationToken);
  return Unit.Value; // Tương đương void trong MediatR
  }
 }

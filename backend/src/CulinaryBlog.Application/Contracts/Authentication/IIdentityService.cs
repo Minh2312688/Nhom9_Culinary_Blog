@@ -25,6 +25,19 @@ public sealed record GoogleAuthResult(
     string? ErrorMessage = null,
     bool IsInvalidToken = false);
 
+public sealed record UserProfileResult(
+    bool Succeeded,
+    string? UserId,
+    string? Email,
+    string? DisplayName,
+    string? AvatarUrl,
+    string? Bio,
+    bool EmailConfirmed,
+    DateTimeOffset CreatedAt,
+    bool IsActive,
+    bool IsLockedOut,
+    IList<string>? Roles);
+
 public interface IIdentityService
 {
     Task<RegisterResult> RegisterUserAsync(
@@ -43,4 +56,6 @@ public interface IIdentityService
         string idToken,
         string defaultRole,
         CancellationToken cancellationToken = default);
+
+    Task<UserProfileResult?> GetUserProfileByIdAsync(string userId, CancellationToken cancellationToken = default);
 }

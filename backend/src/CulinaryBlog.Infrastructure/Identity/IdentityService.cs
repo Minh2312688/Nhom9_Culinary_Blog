@@ -209,4 +209,31 @@ public class IdentityService : IIdentityService
             Email: user.Email,
             Roles: roles);
     }
+
+    public async Task<UserProfileResult?> GetUserProfileByIdAsync(
+        string userId,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            return null;
+        }
+
+        var isLocked = await _userManager.IsLockedOutAsync(user);
+        var roles = await _userManager.GetRolesAsync(user);
+
+        return new UserProfileResult(
+            Succeeded: true,
+            UserId: user.Id,
+            Email: user.Email,
+            DisplayName: user.DisplayName,
+            AvatarUrl: user.AvatarUrl,
+            Bio: user.Bio,
+            EmailConfirmed: user.EmailConfirmed,
+            CreatedAt: user.CreatedAt,
+            Roles: roles,
+            IsActive: user.IsActive,
+            IsLockedOut: isLocked);
+    }
 }

@@ -4,6 +4,11 @@ public interface IObjectStorageClient
 {
     Task EnsureBucketExistsAsync(string bucketName, CancellationToken cancellationToken);
 
+    Task EnsureBucketPolicyAsync(
+        string bucketName,
+        string policyJson,
+        CancellationToken cancellationToken);
+
     Task UploadAsync(
         string bucketName,
         string objectName,

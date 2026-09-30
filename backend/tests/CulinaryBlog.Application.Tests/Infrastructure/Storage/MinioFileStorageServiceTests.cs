@@ -97,12 +97,22 @@ public sealed class MinioFileStorageServiceTests
     private sealed class RecordingObjectStorageClient : IObjectStorageClient
     {
         public List<string> EnsureBucketCalls { get; } = [];
+        public List<(string Bucket, string PolicyJson)> EnsureBucketPolicyCalls { get; } = [];
         public List<UploadCall> Uploads { get; } = [];
         public List<string> DeletedObjects { get; } = [];
 
         public Task EnsureBucketExistsAsync(string bucketName, CancellationToken cancellationToken)
         {
             EnsureBucketCalls.Add(bucketName);
+            return Task.CompletedTask;
+        }
+
+        public Task EnsureBucketPolicyAsync(
+            string bucketName,
+            string policyJson,
+            CancellationToken cancellationToken)
+        {
+            EnsureBucketPolicyCalls.Add((bucketName, policyJson));
             return Task.CompletedTask;
         }
 

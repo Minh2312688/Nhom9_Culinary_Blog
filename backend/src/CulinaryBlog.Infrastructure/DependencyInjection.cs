@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.IdentityModel.Tokens;
 using Minio;
@@ -79,6 +80,13 @@ public static class DependencyInjection
             return client.Build();
         });
         services.AddSingleton<IObjectStorageClient, MinioObjectStorageClient>();
+
+        // TV4: bucket + public-read (s3:GetObject) policy are prepared automatically on startup.
+        var storageBucket = configuration["MinIO:Bucket"] ?? "culinary-blog";
+        services.AddHostedService(serviceProvider => new StorageStartupInitializer(
+            serviceProvider.GetRequiredService<IObjectStorageClient>(),
+            serviceProvider.GetRequiredService<ILogger<StorageStartupInitializer>>(),
+            storageBucket));
         services.AddScoped<IFileValidationService, FileValidationService>();
         services.AddScoped<IFileStorageService>(serviceProvider =>
             new MinioFileStorageService(

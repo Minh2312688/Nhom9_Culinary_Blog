@@ -7,7 +7,6 @@ using CulinaryBlog.Application.Features.Auth.Logout;
 using CulinaryBlog.Application.Features.Auth.Profile;
 using CulinaryBlog.Application.Features.Auth.TokenRefresh;
 using CulinaryBlog.Application.Features.Auth.Register;
-using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -28,27 +27,9 @@ public static class AuthEndpoints
             ISender sender,
             CancellationToken cancellationToken) =>
         {
-            try
-            {
-                var command = new RegisterCommand(request.Email, request.Password, request.DisplayName);
-                var result = await sender.Send(command, cancellationToken);
-                return Results.Created($"/api/v1/users/{result.UserId}", result);
-            }
-            catch (ValidationException ex)
-            {
-                return Results.ValidationProblem(
-                    ex.Errors
-                        .GroupBy(e => e.PropertyName)
-                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()),
-                    statusCode: StatusCodes.Status400BadRequest);
-            }
-            catch (ConflictException ex)
-            {
-                return Results.Problem(
-                    title: "Conflict",
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status409Conflict);
-            }
+            var command = new RegisterCommand(request.Email, request.Password, request.DisplayName);
+            var result = await sender.Send(command, cancellationToken);
+            return Results.Created($"/api/v1/users/{result.UserId}", result);
         });
 
         // FR-AUTH-002: Login
@@ -57,34 +38,9 @@ public static class AuthEndpoints
             ISender sender,
             CancellationToken cancellationToken) =>
         {
-            try
-            {
-                var command = new LoginCommand(request.Email, request.Password);
-                var result = await sender.Send(command, cancellationToken);
-                return Results.Ok(result);
-            }
-            catch (ValidationException ex)
-            {
-                return Results.ValidationProblem(
-                    ex.Errors
-                        .GroupBy(e => e.PropertyName)
-                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()),
-                    statusCode: StatusCodes.Status400BadRequest);
-            }
-            catch (UnauthorizedException ex)
-            {
-                return Results.Problem(
-                    title: "Unauthorized",
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status401Unauthorized);
-            }
-            catch (AccountLockedException ex)
-            {
-                return Results.Problem(
-                    title: "Locked",
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status423Locked);
-            }
+            var command = new LoginCommand(request.Email, request.Password);
+            var result = await sender.Send(command, cancellationToken);
+            return Results.Ok(result);
         });
 
         // FR-AUTH-003: Google Login
@@ -93,34 +49,9 @@ public static class AuthEndpoints
             ISender sender,
             CancellationToken cancellationToken) =>
         {
-            try
-            {
-                var command = new GoogleLoginCommand(request.IdToken);
-                var result = await sender.Send(command, cancellationToken);
-                return Results.Ok(result);
-            }
-            catch (ValidationException ex)
-            {
-                return Results.ValidationProblem(
-                    ex.Errors
-                        .GroupBy(e => e.PropertyName)
-                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()),
-                    statusCode: StatusCodes.Status400BadRequest);
-            }
-            catch (InvalidGoogleTokenException ex)
-            {
-                return Results.Problem(
-                    title: "Bad Request",
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status400BadRequest);
-            }
-            catch (UnauthorizedException ex)
-            {
-                return Results.Problem(
-                    title: "Unauthorized",
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status401Unauthorized);
-            }
+            var command = new GoogleLoginCommand(request.IdToken);
+            var result = await sender.Send(command, cancellationToken);
+            return Results.Ok(result);
         });
 
         // FR-AUTH-004: Refresh Token Rotation
@@ -130,29 +61,11 @@ public static class AuthEndpoints
             ISender sender,
             CancellationToken cancellationToken) =>
         {
-            try
-            {
-                var command = new RefreshTokenCommand(
-                    request.RefreshToken,
-                    httpContext.Connection.RemoteIpAddress?.ToString());
-                var result = await sender.Send(command, cancellationToken);
-                return Results.Ok(result);
-            }
-            catch (ValidationException ex)
-            {
-                return Results.ValidationProblem(
-                    ex.Errors
-                        .GroupBy(e => e.PropertyName)
-                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()),
-                    statusCode: StatusCodes.Status400BadRequest);
-            }
-            catch (UnauthorizedException ex)
-            {
-                return Results.Problem(
-                    title: "Unauthorized",
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status401Unauthorized);
-            }
+            var command = new RefreshTokenCommand(
+                request.RefreshToken,
+                httpContext.Connection.RemoteIpAddress?.ToString());
+            var result = await sender.Send(command, cancellationToken);
+            return Results.Ok(result);
         });
 
         // FR-AUTH-005: Logout (Idempotent)
@@ -167,26 +80,12 @@ public static class AuthEndpoints
 
             if (string.IsNullOrEmpty(userId))
             {
-                return Results.Problem(
-                    title: "Unauthorized",
-                    detail: "User is not authenticated.",
-                    statusCode: StatusCodes.Status401Unauthorized);
+                throw new UnauthorizedException("User is not authenticated.");
             }
 
-            try
-            {
-                var command = new LogoutCommand(request.RefreshToken, userId);
-                await sender.Send(command, cancellationToken);
-                return Results.NoContent();
-            }
-            catch (ValidationException ex)
-            {
-                return Results.ValidationProblem(
-                    ex.Errors
-                        .GroupBy(e => e.PropertyName)
-                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()),
-                    statusCode: StatusCodes.Status400BadRequest);
-            }
+            var command = new LogoutCommand(request.RefreshToken, userId);
+            await sender.Send(command, cancellationToken);
+            return Results.NoContent();
         }).RequireAuthorization();
 
         // FR-AUTH-006: View Current Profile
@@ -200,32 +99,12 @@ public static class AuthEndpoints
 
             if (string.IsNullOrEmpty(userId))
             {
-                return Results.Problem(
-                    title: "Unauthorized",
-                    detail: "User is not authenticated.",
-                    statusCode: StatusCodes.Status401Unauthorized);
+                throw new UnauthorizedException("User is not authenticated.");
             }
 
-            try
-            {
-                var query = new GetCurrentUserQuery(userId);
-                var result = await sender.Send(query, cancellationToken);
-                return Results.Ok(result);
-            }
-            catch (NotFoundException ex)
-            {
-                return Results.Problem(
-                    title: "Not Found",
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status404NotFound);
-            }
-            catch (UnauthorizedException ex)
-            {
-                return Results.Problem(
-                    title: "Unauthorized",
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status401Unauthorized);
-            }
+            var query = new GetCurrentUserQuery(userId);
+            var result = await sender.Send(query, cancellationToken);
+            return Results.Ok(result);
         }).RequireAuthorization();
 
         return endpoints;

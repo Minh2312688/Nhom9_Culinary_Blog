@@ -10,6 +10,8 @@ public interface IRefreshTokenRepository
 
     Task UpdateRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken = default);
 
+    void Update(RefreshToken token);
+
     Task RotateRefreshTokenAsync(RefreshToken oldToken, RefreshToken newToken, CancellationToken cancellationToken = default);
 
     Task<bool> TryRotateRefreshTokenAsync(RefreshToken oldToken, RefreshToken newToken, CancellationToken cancellationToken = default);

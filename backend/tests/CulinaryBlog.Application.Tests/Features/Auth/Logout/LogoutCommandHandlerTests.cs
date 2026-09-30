@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Contracts.Authentication;
+using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Application.Features.Auth.Logout;
 using CulinaryBlog.Domain.Entities;
 using FluentAssertions;
@@ -13,6 +14,7 @@ public class LogoutCommandHandlerTests
     private readonly Mock<IRefreshTokenRepository> _refreshTokenRepositoryMock = new();
     private readonly Mock<IJwtTokenGenerator> _jwtTokenGeneratorMock = new();
     private readonly Mock<ILogger<LogoutCommandHandler>> _loggerMock = new();
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly LogoutCommandHandler _handler;
 
     public LogoutCommandHandlerTests()
@@ -20,7 +22,8 @@ public class LogoutCommandHandlerTests
         _handler = new LogoutCommandHandler(
             _refreshTokenRepositoryMock.Object,
             _jwtTokenGeneratorMock.Object,
-            _loggerMock.Object);
+            _loggerMock.Object,
+            _unitOfWorkMock.Object);
     }
 
     [Fact]
@@ -54,8 +57,8 @@ public class LogoutCommandHandlerTests
 
         // Assert
         existingToken.RevokedAt.Should().NotBeNull();
-        _refreshTokenRepositoryMock.Verify(x => x.UpdateRefreshTokenAsync(
-            existingToken, It.IsAny<CancellationToken>()), Times.Once);
+        _refreshTokenRepositoryMock.Verify(x => x.Update(existingToken), Times.Once);
+        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -80,8 +83,8 @@ public class LogoutCommandHandlerTests
 
         // Assert: must succeed with no exception
         await act.Should().NotThrowAsync();
-        _refreshTokenRepositoryMock.Verify(x => x.UpdateRefreshTokenAsync(
-            It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
+        _refreshTokenRepositoryMock.Verify(x => x.Update(It.IsAny<RefreshToken>()), Times.Never);
+        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -113,8 +116,8 @@ public class LogoutCommandHandlerTests
         // Act & Assert
         var act = async () => await _handler.Handle(command, CancellationToken.None);
         await act.Should().NotThrowAsync();
-        _refreshTokenRepositoryMock.Verify(x => x.UpdateRefreshTokenAsync(
-            It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
+        _refreshTokenRepositoryMock.Verify(x => x.Update(It.IsAny<RefreshToken>()), Times.Never);
+        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -149,7 +152,7 @@ public class LogoutCommandHandlerTests
 
         // Assert: Victim's token MUST NOT be revoked!
         victimToken.RevokedAt.Should().BeNull();
-        _refreshTokenRepositoryMock.Verify(x => x.UpdateRefreshTokenAsync(
-            It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()), Times.Never);
+        _refreshTokenRepositoryMock.Verify(x => x.Update(It.IsAny<RefreshToken>()), Times.Never);
+        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

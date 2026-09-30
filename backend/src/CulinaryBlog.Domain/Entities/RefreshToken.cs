@@ -1,3 +1,5 @@
+using CulinaryBlog.Domain.Exceptions;
+
 namespace CulinaryBlog.Domain.Entities;
 
 public class RefreshToken
@@ -12,4 +14,18 @@ public class RefreshToken
     public string? CreatedByIp { get; set; }
 
     public bool IsActive => RevokedAt == null && DateTimeOffset.UtcNow < ExpiresAt;
+
+    public void Revoke(DateTimeOffset revokedAt, string? replacedByTokenHash = null)
+    {
+        if (RevokedAt != null)
+        {
+            throw new InvalidTokenStateException("Refresh token has already been revoked.");
+        }
+
+        RevokedAt = revokedAt;
+        if (!string.IsNullOrEmpty(replacedByTokenHash))
+        {
+            ReplacedByTokenHash = replacedByTokenHash;
+        }
+    }
 }

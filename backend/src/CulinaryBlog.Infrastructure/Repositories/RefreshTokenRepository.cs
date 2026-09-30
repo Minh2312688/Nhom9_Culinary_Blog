@@ -32,6 +32,11 @@ public class RefreshTokenRepository : IRefreshTokenRepository
         await _context.SaveChangesAsync(cancellationToken);
     }
 
+    public void Update(RefreshToken token)
+    {
+        _context.RefreshTokens.Update(token);
+    }
+
     private static readonly object _inMemorySyncLock = new();
 
     public async Task RotateRefreshTokenAsync(RefreshToken oldToken, RefreshToken newToken, CancellationToken cancellationToken = default)

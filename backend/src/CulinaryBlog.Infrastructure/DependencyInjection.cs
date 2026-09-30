@@ -1,5 +1,6 @@
 using System.Text;
 using CulinaryBlog.Application.Contracts.Authentication;
+using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Infrastructure.Authentication;
 using CulinaryBlog.Infrastructure.Identity;
 using CulinaryBlog.Infrastructure.Notifications;
@@ -95,6 +96,7 @@ public static class DependencyInjection
         services.AddAuthorization();
 
         // Core Auth Services
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IJwtTokenGenerator, JwtService>();

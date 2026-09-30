@@ -64,7 +64,7 @@ builder.Services.AddRateLimiter(options =>
     {
         var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
 
-        if (builder.Environment.IsDevelopment() &&
+        if ((builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing")) &&
             httpContext.Request.Headers.TryGetValue("X-Test-Client-IP", out var testIp))
         {
             ipAddress = testIp.ToString();
@@ -82,6 +82,8 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
+app.UseMiddleware<CulinaryBlog.API.Middleware.GlobalExceptionMiddleware>();
+
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
@@ -96,6 +98,13 @@ app.MapGet("/", () => Results.Ok(new
 
 app.MapSystemEndpoints();
 app.MapAuthEndpoints();
+
+// INTEGRATION TESTING ONLY: Endpoints for testing GlobalExceptionMiddleware RFC 7807 problem details
+if (app.Environment.IsEnvironment("Testing"))
+{
+    app.MapGet("/api/v1/test/throw-500", () => { throw new InvalidOperationException("Simulated unexpected crash for middleware verification."); });
+    app.MapGet("/api/v1/test/throw-domain", () => { throw new CulinaryBlog.Domain.Exceptions.InvalidTokenStateException("Simulated domain rule violation."); });
+}
 
 // LAB-02 DATABASE MIGRATION & SEEDING (DEVELOPMENT ONLY)
 if (app.Environment.IsDevelopment())

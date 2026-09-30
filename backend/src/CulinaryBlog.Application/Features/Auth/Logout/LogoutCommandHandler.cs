@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Contracts.Authentication;
+using CulinaryBlog.Application.Contracts.Persistence;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -9,15 +10,18 @@ public sealed class LogoutCommandHandler : IRequestHandler<LogoutCommand>
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly ILogger<LogoutCommandHandler> _logger;
+    private readonly IUnitOfWork _unitOfWork;
 
     public LogoutCommandHandler(
         IRefreshTokenRepository refreshTokenRepository,
         IJwtTokenGenerator jwtTokenGenerator,
-        ILogger<LogoutCommandHandler> logger)
+        ILogger<LogoutCommandHandler> logger,
+        IUnitOfWork unitOfWork)
     {
         _refreshTokenRepository = refreshTokenRepository;
         _jwtTokenGenerator = jwtTokenGenerator;
         _logger = logger;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task Handle(LogoutCommand request, CancellationToken cancellationToken)
@@ -42,8 +46,9 @@ public sealed class LogoutCommandHandler : IRequestHandler<LogoutCommand>
         // 3. If token is not revoked -> mark revoked. If already revoked, return normally.
         if (existingToken.RevokedAt == null)
         {
-            existingToken.RevokedAt = DateTimeOffset.UtcNow;
-            await _refreshTokenRepository.UpdateRefreshTokenAsync(existingToken, cancellationToken);
+            existingToken.Revoke(DateTimeOffset.UtcNow);
+            _refreshTokenRepository.Update(existingToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
     }
 }

@@ -173,6 +173,11 @@ namespace CulinaryBlog.Infrastructure.Persistence.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("character varying(250)");
 
+                    b.Property<NpgsqlTypes.NpgsqlTsVector>("SearchVector")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("tsvector");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
@@ -191,6 +196,10 @@ namespace CulinaryBlog.Infrastructure.Persistence.Migrations
                     b.HasIndex("AuthorId");
 
                     b.HasIndex("CategoryId");
+
+                    b.HasIndex("SearchVector")
+                        .HasDatabaseName("IDX_Recipe_Search")
+                        .HasMethod("GIN");
 
                     b.HasIndex("Slug")
                         .IsUnique();

@@ -6,6 +6,7 @@ using CulinaryBlog.Domain.Entities;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 namespace CulinaryBlog.Application.Features.Recipes.Queries;
 
@@ -17,7 +18,8 @@ public sealed record GetRecipesQuery(
     int? MaxCookTime = null,
     int? MinServings = null,
     string SortBy = "createdAt",
-    string SortOrder = "desc") : IRequest<PaginatedResult<RecipeSummaryDto>>;
+    string SortOrder = "desc",
+    string? Search = null) : IRequest<PaginatedResult<RecipeSummaryDto>>;
 
 public sealed class GetRecipesQueryValidator : AbstractValidator<GetRecipesQuery>
 {
@@ -29,6 +31,7 @@ public sealed class GetRecipesQueryValidator : AbstractValidator<GetRecipesQuery
         RuleFor(x => x.PageSize).InclusiveBetween(1, 50);
         RuleFor(x => x.MaxCookTime).GreaterThanOrEqualTo(0).When(x => x.MaxCookTime.HasValue);
         RuleFor(x => x.MinServings).GreaterThan(0).When(x => x.MinServings.HasValue);
+        RuleFor(x => x.Search).MaximumLength(100).When(x => x.Search is not null);
         RuleFor(x => x.SortBy).Must(value => SortFields.Contains(value.ToLowerInvariant()))
             .WithMessage("sortBy must be title, createdAt, cookTime, or prepTime.");
         RuleFor(x => x.SortOrder).Must(value => value.Equals("asc", StringComparison.OrdinalIgnoreCase) || value.Equals("desc", StringComparison.OrdinalIgnoreCase))
@@ -40,15 +43,38 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
 {
     private readonly IRecipeRepository recipes;
     private readonly ICurrentUserService currentUser;
+    private readonly IRecipeCache cache;
 
-    public GetRecipesQueryHandler(IRecipeRepository recipes, ICurrentUserService currentUser)
+    public GetRecipesQueryHandler(IRecipeRepository recipes, ICurrentUserService currentUser, IRecipeCache cache)
     {
         this.recipes = recipes;
         this.currentUser = currentUser;
+        this.cache = cache;
     }
 
     public async Task<PaginatedResult<RecipeSummaryDto>> Handle(GetRecipesQuery request, CancellationToken cancellationToken)
     {
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var terms = Regex.Matches(request.Search, @"[\p{L}\p{N}]+")
+                .Select(match => match.Value)
+                .ToArray();
+
+            if (terms.Length > 0)
+            {
+                var normalized = string.Join(' ', terms).ToLowerInvariant();
+                var visibility = currentUser.IsAdmin ? "admin" : currentUser.UserId ?? "anonymous";
+                var cacheKey = $"recipes:search:v1:{visibility}:{request.Page}:{request.PageSize}:{normalized}";
+                var cached = await cache.GetAsync<PaginatedResult<RecipeSummaryDto>>(cacheKey, cancellationToken);
+                if (cached is not null) return cached;
+
+                var result = await recipes.SearchAsync(normalized, currentUser.UserId, currentUser.IsAdmin,
+                    request.Page, request.PageSize, cancellationToken);
+                await cache.SetAsync(cacheKey, result, TimeSpan.FromSeconds(60), cancellationToken);
+                return result;
+            }
+        }
+
         var query = recipes.Query.AsNoTracking();
         query = currentUser.IsAdmin
             ? query

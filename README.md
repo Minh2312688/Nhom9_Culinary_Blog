@@ -400,8 +400,16 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 |---:|---|---|
 | 1 | Dương Văn Minh | FR-RCP-9,10 |
 | 2 | Nguyễn Phạm Phú Nam | FR-Auth-4,5,6, làm màn hình profile|
-| 3 | Mai Quý Phước | FR-CAT-1,2,3,4,5 | 
+| 3 | Mai Quý Phước | FR-File | 
 | 4 | Trần Hữu Phan Lâm | Hoàn thành các màn hình tuần 2 phân công. Làm giao diện /dashboard,/dashboard/recipe,/dashboard/categories |
+### Tuần 4
+
+| STT | Thành viên | Công việc được giao |
+|---:|---|---|
+| 1 | Dương Văn Minh | FR-SRCH-001,002 |
+| 2 | Nguyễn Phạm Phú Nam | FR-Auth-007|
+| 3 | Mai Quý Phước | FR-JOB-001,002 | 
+| 4 | Trần Hữu Phan Lâm | Hoàn thành tất cả các màn hình giao diện đã phân công từ tuần 2 và tuần 3 |
 
 ---
 

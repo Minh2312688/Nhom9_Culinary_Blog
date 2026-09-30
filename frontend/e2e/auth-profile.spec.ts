@@ -148,4 +148,140 @@ test.describe("FR-AUTH-006 & FR-AUTH-005: Profile & Logout E2E", () => {
     const token = await page.evaluate(() => sessionStorage.getItem("culinary_access_token"));
     expect(token).toBeNull();
   });
+
+  test("should allow editing profile and save changes successfully (FR-AUTH-007)", async ({ page }) => {
+    let currentProfile = {
+      id: "chef-123",
+      email: "chef@example.com",
+      displayName: "Master Chef Nam",
+      avatarUrl: "https://example.com/initial-avatar.jpg",
+      bio: "Initial culinary bio",
+      emailConfirmed: true,
+      createdAt: "2026-01-15T00:00:00Z",
+      roles: ["Author"],
+    };
+
+    await page.route("**/api/v1/auth/me", async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(currentProfile),
+        });
+      } else if (route.request().method() === "PATCH") {
+        const payload = route.request().postDataJSON();
+        currentProfile = {
+          ...currentProfile,
+          displayName: payload.displayName || currentProfile.displayName,
+          avatarUrl: payload.avatarUrl !== undefined ? payload.avatarUrl : currentProfile.avatarUrl,
+          bio: payload.bio !== undefined ? payload.bio : currentProfile.bio,
+        };
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(currentProfile),
+        });
+      }
+    });
+
+    await page.addInitScript(() => {
+      sessionStorage.setItem("culinary_access_token", "mock_access_token");
+      sessionStorage.setItem("culinary_refresh_token", "mock_refresh_token");
+    });
+
+    await page.goto("/profile");
+
+    // 1. Enter edit mode
+    const editBtn = page.getByRole("button", { name: "Chỉnh sửa" });
+    await expect(editBtn).toBeVisible();
+    await editBtn.click();
+
+    // 2. Form should be visible and prefilled
+    const displayNameInput = page.locator("#edit-display-name");
+    await expect(displayNameInput).toHaveValue("Master Chef Nam");
+
+    // 3. Edit DisplayName and Bio
+    await displayNameInput.fill("Master Chef Phu Nam");
+    const bioInput = page.locator("#edit-bio");
+    await bioInput.fill("Refined master of traditional Vietnamese spices.");
+
+    // 4. Submit save
+    const saveBtn = page.locator("#save-profile-button");
+    await saveBtn.click();
+
+    // 5. Verify success feedback and updated profile content rendered
+    await expect(page.getByText("Cập nhật hồ sơ thành công!")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Master Chef Phu Nam" })).toBeVisible();
+    await expect(page.getByText("Refined master of traditional Vietnamese spices.")).toBeVisible();
+  });
+
+  test("should show validation error when invalid avatar URL is entered (FR-AUTH-007)", async ({ page }) => {
+    await page.route("**/api/v1/auth/me", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "chef-123",
+          email: "chef@example.com",
+          displayName: "Master Chef Nam",
+          avatarUrl: null,
+          bio: null,
+          emailConfirmed: true,
+          createdAt: "2026-01-15T00:00:00Z",
+          roles: ["Author"],
+        }),
+      });
+    });
+
+    await page.addInitScript(() => {
+      sessionStorage.setItem("culinary_access_token", "mock_access_token");
+      sessionStorage.setItem("culinary_refresh_token", "mock_refresh_token");
+    });
+
+    await page.goto("/profile");
+    await page.getByRole("button", { name: "Chỉnh sửa" }).click();
+
+    // Fill invalid avatar URL
+    await page.locator("#edit-avatar-url").fill("ftp://invalid-avatar-url.jpg");
+    await page.locator("#save-profile-button").click();
+
+    // Must show validation error and stay in edit form
+    await expect(page.getByText(/URL ảnh đại diện phải có giao thức http:\/\/ hoặc https:\/\//)).toBeVisible();
+    await expect(page.locator("#save-profile-button")).toBeVisible();
+  });
+
+  test("should cancel edit mode and retain original values without saving (FR-AUTH-007)", async ({ page }) => {
+    await page.route("**/api/v1/auth/me", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "chef-123",
+          email: "chef@example.com",
+          displayName: "Original Chef Name",
+          avatarUrl: null,
+          bio: "Original Bio",
+          emailConfirmed: true,
+          createdAt: "2026-01-15T00:00:00Z",
+          roles: ["Author"],
+        }),
+      });
+    });
+
+    await page.addInitScript(() => {
+      sessionStorage.setItem("culinary_access_token", "mock_access_token");
+      sessionStorage.setItem("culinary_refresh_token", "mock_refresh_token");
+    });
+
+    await page.goto("/profile");
+    await page.getByRole("button", { name: "Chỉnh sửa" }).click();
+
+    // Modify field then cancel
+    await page.locator("#edit-display-name").fill("Discarded Name");
+    await page.locator("#cancel-edit-button").click();
+
+    // Edit form should close and original display name remains
+    await expect(page.locator("#save-profile-button")).not.toBeVisible();
+    await expect(page.getByRole("heading", { name: "Original Chef Name" })).toBeVisible();
+  });
 });

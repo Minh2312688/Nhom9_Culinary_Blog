@@ -228,6 +228,59 @@ public static class AuthEndpoints
             }
         }).RequireAuthorization();
 
+        // FR-AUTH-007: Update Current Profile
+        authGroup.MapPatch("/me", async (
+            UpdateProfileRequestDto request,
+            ClaimsPrincipal user,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? user.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Results.Problem(
+                    title: "Unauthorized",
+                    detail: "User is not authenticated.",
+                    statusCode: StatusCodes.Status401Unauthorized);
+            }
+
+            try
+            {
+                var command = new UpdateProfileCommand(
+                    userId,
+                    request.DisplayName,
+                    request.AvatarUrl,
+                    request.Bio);
+
+                var result = await sender.Send(command, cancellationToken);
+                return Results.Ok(result);
+            }
+            catch (ValidationException ex)
+            {
+                return Results.ValidationProblem(
+                    ex.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()),
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+            catch (NotFoundException ex)
+            {
+                return Results.Problem(
+                    title: "Not Found",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status404NotFound);
+            }
+            catch (UnauthorizedException ex)
+            {
+                return Results.Problem(
+                    title: "Unauthorized",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status401Unauthorized);
+            }
+        }).RequireAuthorization();
+
         return endpoints;
     }
 }

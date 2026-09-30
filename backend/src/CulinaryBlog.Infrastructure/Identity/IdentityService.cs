@@ -236,4 +236,56 @@ public class IdentityService : IIdentityService
             IsActive: user.IsActive,
             IsLockedOut: isLocked);
     }
+
+    public async Task<UserProfileResult?> UpdateUserProfileAsync(
+        string userId,
+        string? displayName,
+        string? avatarUrl,
+        string? bio,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            return null;
+        }
+
+        if (displayName != null)
+        {
+            user.DisplayName = displayName.Trim();
+        }
+
+        if (avatarUrl != null)
+        {
+            user.AvatarUrl = string.IsNullOrWhiteSpace(avatarUrl) ? null : avatarUrl.Trim();
+        }
+
+        if (bio != null)
+        {
+            user.Bio = string.IsNullOrWhiteSpace(bio) ? null : bio.Trim();
+        }
+
+        var updateResult = await _userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+            var errors = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+            throw new InvalidOperationException($"Failed to update user profile: {errors}");
+        }
+
+        var isLocked = await _userManager.IsLockedOutAsync(user);
+        var roles = await _userManager.GetRolesAsync(user);
+
+        return new UserProfileResult(
+            Succeeded: true,
+            UserId: user.Id,
+            Email: user.Email,
+            DisplayName: user.DisplayName,
+            AvatarUrl: user.AvatarUrl,
+            Bio: user.Bio,
+            EmailConfirmed: user.EmailConfirmed,
+            CreatedAt: user.CreatedAt,
+            Roles: roles,
+            IsActive: user.IsActive,
+            IsLockedOut: isLocked);
+    }
 }

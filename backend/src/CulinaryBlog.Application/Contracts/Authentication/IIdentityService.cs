@@ -60,4 +60,11 @@ public interface IIdentityService
     Task<UserProfileResult?> GetUserProfileByIdAsync(
         string userId,
         CancellationToken cancellationToken = default);
+
+    Task<UserProfileResult?> UpdateUserProfileAsync(
+        string userId,
+        string? displayName,
+        string? avatarUrl,
+        string? bio,
+        CancellationToken cancellationToken = default);
 }

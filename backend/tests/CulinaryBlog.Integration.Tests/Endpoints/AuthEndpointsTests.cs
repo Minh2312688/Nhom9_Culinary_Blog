@@ -476,4 +476,160 @@ public class AuthEndpointsTests : IClassFixture<CustomAuthWebApplicationFactory>
         revokedTokens.Should().ContainSingle(t => t.ReplacedByTokenHash == activeTokens[0].TokenHash,
             "old token must be revoked and reference the single active child token");
     }
+
+    [Fact]
+    public async Task UpdateProfile_Authenticated_ValidPayload_ShouldReturn200Ok_AndPersistToDatabase()
+    {
+        // Arrange: Register and login
+        var client = _factory.CreateIsolatedClient();
+        var email = $"patch_{Guid.NewGuid():N}@example.com";
+        var password = "P@ssword123!";
+        var originalName = "Initial Chef";
+
+        await client.PostAsJsonAsync("/api/v1/auth/register", new RegisterRequestDto(email, password, originalName));
+        var loginRes = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequestDto(email, password));
+        var authResult = await loginRes.Content.ReadFromJsonAsync<AuthResponseDto>();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authResult!.AccessToken);
+
+        var updatePayload = new UpdateProfileRequestDto(
+            DisplayName: "Master Chef Nam",
+            AvatarUrl: "https://example.com/chef-nam.jpg",
+            Bio: "Passionate Vietnamese culinary specialist.");
+
+        // Act
+        var patchResponse = await client.PatchAsJsonAsync("/api/v1/auth/me", updatePayload);
+
+        // Assert 1: HTTP 200 OK
+        patchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var profile = await patchResponse.Content.ReadFromJsonAsync<UserProfileDto>();
+        profile.Should().NotBeNull();
+        profile!.DisplayName.Should().Be(updatePayload.DisplayName);
+        profile.AvatarUrl.Should().Be(updatePayload.AvatarUrl);
+        profile.Bio.Should().Be(updatePayload.Bio);
+        profile.Email.Should().Be(email);
+
+        // Assert 2: Database actually contains updated values
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+        var dbUser = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        dbUser.Should().NotBeNull();
+        dbUser!.DisplayName.Should().Be(updatePayload.DisplayName);
+        dbUser.AvatarUrl.Should().Be(updatePayload.AvatarUrl);
+        dbUser.Bio.Should().Be(updatePayload.Bio);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_PartialUpdate_OmittedFieldsMustRemainUnchanged()
+    {
+        // Arrange: Register and login
+        var client = _factory.CreateIsolatedClient();
+        var email = $"partial_{Guid.NewGuid():N}@example.com";
+        var password = "P@ssword123!";
+
+        await client.PostAsJsonAsync("/api/v1/auth/register", new RegisterRequestDto(email, password, "First Name"));
+        var loginRes = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequestDto(email, password));
+        var authResult = await loginRes.Content.ReadFromJsonAsync<AuthResponseDto>();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authResult!.AccessToken);
+
+        // First update: set avatar and bio
+        var setupPayload = new UpdateProfileRequestDto(
+            DisplayName: "Chef Stage 1",
+            AvatarUrl: "https://example.com/stage1.jpg",
+            Bio: "Original Bio Content");
+        await client.PatchAsJsonAsync("/api/v1/auth/me", setupPayload);
+
+        // Act: Partial update providing ONLY DisplayName (avatarUrl and bio are null/omitted)
+        var partialPayload = new UpdateProfileRequestDto(
+            DisplayName: "Chef Stage 2",
+            AvatarUrl: null,
+            Bio: null);
+        var response = await client.PatchAsJsonAsync("/api/v1/auth/me", partialPayload);
+
+        // Assert: DisplayName updated, AvatarUrl and Bio retained
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var profile = await response.Content.ReadFromJsonAsync<UserProfileDto>();
+        profile.Should().NotBeNull();
+        profile!.DisplayName.Should().Be("Chef Stage 2");
+        profile.AvatarUrl.Should().Be("https://example.com/stage1.jpg");
+        profile.Bio.Should().Be("Original Bio Content");
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+        var dbUser = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        dbUser!.DisplayName.Should().Be("Chef Stage 2");
+        dbUser.AvatarUrl.Should().Be("https://example.com/stage1.jpg");
+        dbUser.Bio.Should().Be("Original Bio Content");
+    }
+
+    [Fact]
+    public async Task UpdateProfile_Unauthenticated_ShouldReturn401Unauthorized()
+    {
+        // Arrange: client without Bearer token
+        var client = _factory.CreateIsolatedClient();
+        var payload = new UpdateProfileRequestDto("Sneaky Update", null, null);
+
+        // Act
+        var response = await client.PatchAsJsonAsync("/api/v1/auth/me", payload);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_InvalidInput_ShouldReturn400ProblemDetails()
+    {
+        // Arrange: Login valid user
+        var client = _factory.CreateIsolatedClient();
+        var email = $"invalid_{Guid.NewGuid():N}@example.com";
+        var password = "P@ssword123!";
+
+        await client.PostAsJsonAsync("/api/v1/auth/register", new RegisterRequestDto(email, password, "Valid User"));
+        var loginRes = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequestDto(email, password));
+        var authResult = await loginRes.Content.ReadFromJsonAsync<AuthResponseDto>();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authResult!.AccessToken);
+
+        // Case A: Empty request body (all fields null)
+        var emptyPayload = new UpdateProfileRequestDto(null, null, null);
+        var resEmpty = await client.PatchAsJsonAsync("/api/v1/auth/me", emptyPayload);
+        resEmpty.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        // Case B: Invalid Avatar URL scheme
+        var invalidUrlPayload = new UpdateProfileRequestDto("Valid Name", "not-a-valid-url", null);
+        var resInvalidUrl = await client.PatchAsJsonAsync("/api/v1/auth/me", invalidUrlPayload);
+        resInvalidUrl.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task UpdateProfile_CannotChangeEmailOrUserName_ThroughEndpoint()
+    {
+        // Arrange
+        var client = _factory.CreateIsolatedClient();
+        var email = $"immutable_{Guid.NewGuid():N}@example.com";
+        var password = "P@ssword123!";
+
+        await client.PostAsJsonAsync("/api/v1/auth/register", new RegisterRequestDto(email, password, "Immutable User"));
+        var loginRes = await client.PostAsJsonAsync("/api/v1/auth/login", new LoginRequestDto(email, password));
+        var authResult = await loginRes.Content.ReadFromJsonAsync<AuthResponseDto>();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authResult!.AccessToken);
+
+        // Act: Attempt to send email and userName via raw JSON
+        var rawJson = "{\"displayName\":\"Safe New Name\",\"email\":\"hacker@evil.com\",\"userName\":\"evil_user\"}";
+        var content = new StringContent(rawJson, System.Text.Encoding.UTF8, "application/json");
+        var response = await client.PatchAsync("/api/v1/auth/me", content);
+
+        // Assert: Endpoint updates displayName, but does NOT modify email or userName
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+        var userInDb = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        userInDb.Should().NotBeNull();
+        userInDb!.DisplayName.Should().Be("Safe New Name");
+        userInDb.Email.Should().Be(email);
+        userInDb.UserName.Should().Be(email);
+
+        var hackerUser = await db.Users.FirstOrDefaultAsync(u => u.Email == "hacker@evil.com");
+        hackerUser.Should().BeNull();
+    }
 }

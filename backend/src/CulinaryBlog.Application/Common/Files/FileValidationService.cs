@@ -6,7 +6,7 @@ namespace CulinaryBlog.Application.Common.Files;
 /// <summary>
 /// Kiểm tra file ảnh trước khi lưu trữ: kích thước, magic bytes và tính nhất quán
 /// giữa nội dung thật với extension/MIME client khai báo (CONS-007, NFR-SEC-004).
-/// Không gọi object storage: đây là bước chuẩn bị cho FR-FILE-001 (MinIO foundation).
+/// MinIO storage invokes this service before writing the object.
 /// </summary>
 public sealed class FileValidationService : IFileValidationService
 {

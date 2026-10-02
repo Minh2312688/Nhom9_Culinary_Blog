@@ -18,6 +18,34 @@ public sealed class RecipeValidatorsTests
         Assert.Contains(result.Errors, error => error.PropertyName == nameof(CreateRecipeCommand.Servings));
     }
 
+    [Theory]
+    [InlineData("Easy")]
+    [InlineData("medium")]
+    [InlineData("HARD")]
+    [InlineData("Expert")]
+    public async Task CreateRecipe_ShouldAcceptDifficultyEnumNamesIgnoringCase(string difficulty)
+    {
+        var validator = new CreateRecipeCommandValidator();
+
+        var result = await validator.ValidateAsync(new CreateRecipeCommand(
+            "Valid recipe", null, Guid.NewGuid(), 0, 0, 1, difficulty));
+
+        Assert.DoesNotContain(result.Errors, error => error.PropertyName == nameof(CreateRecipeCommand.Difficulty));
+    }
+
+    [Theory]
+    [InlineData("Novice")]
+    [InlineData("1")]
+    public async Task CreateRecipe_ShouldRejectDifficultyOutsideEnum(string difficulty)
+    {
+        var validator = new CreateRecipeCommandValidator();
+
+        var result = await validator.ValidateAsync(new CreateRecipeCommand(
+            "Valid recipe", null, Guid.NewGuid(), 0, 0, 1, difficulty));
+
+        Assert.Contains(result.Errors, error => error.PropertyName == nameof(CreateRecipeCommand.Difficulty));
+    }
+
     [Fact]
     public async Task CreateRecipe_ShouldAllowMissingIngredientQuantityButRejectNonPositiveQuantity()
     {
@@ -60,6 +88,18 @@ public sealed class RecipeValidatorsTests
     }
 
     [Fact]
+    public async Task UpdateRecipe_ShouldRejectDifficultyOutsideEnum()
+    {
+        var validator = new UpdateRecipeCommandValidator();
+        var command = new UpdateRecipeCommand(
+            Guid.NewGuid(), "Valid recipe", null, Guid.NewGuid(), 5, 10, 2, "Novice", [1]);
+
+        var result = await validator.ValidateAsync(command);
+
+        Assert.Contains(result.Errors, error => error.PropertyName == nameof(UpdateRecipeCommand.Difficulty));
+    }
+
+    [Fact]
     public async Task GetRecipes_ShouldRejectUnsupportedSorting()
     {
         var validator = new GetRecipesQueryValidator();
@@ -68,5 +108,66 @@ public sealed class RecipeValidatorsTests
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, error => error.PropertyName == nameof(GetRecipesQuery.SortBy));
         Assert.Contains(result.Errors, error => error.PropertyName == nameof(GetRecipesQuery.SortOrder));
+    }
+
+    [Fact]
+    public async Task GetRecipes_SearchLength100IsAcceptedAnd101IsRejected()
+    {
+        var validator = new GetRecipesQueryValidator();
+
+        var accepted = await validator.ValidateAsync(new GetRecipesQuery(Search: new string('a', 100)));
+        var rejected = await validator.ValidateAsync(new GetRecipesQuery(Search: new string('a', 101)));
+
+        Assert.DoesNotContain(accepted.Errors, error => error.PropertyName == nameof(GetRecipesQuery.Search));
+        Assert.Contains(rejected.Errors, error => error.PropertyName == nameof(GetRecipesQuery.Search));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task GetRecipes_ShouldRejectNonPositiveMaxCookTime(int maxCookTime)
+    {
+        var validator = new GetRecipesQueryValidator();
+
+        var result = await validator.ValidateAsync(new GetRecipesQuery(MaxCookTime: maxCookTime));
+
+        Assert.Contains(result.Errors, error => error.PropertyName == nameof(GetRecipesQuery.MaxCookTime));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task GetRecipes_ShouldRejectNonPositiveMinServings(int minServings)
+    {
+        var validator = new GetRecipesQueryValidator();
+
+        var result = await validator.ValidateAsync(new GetRecipesQuery(MinServings: minServings));
+
+        Assert.Contains(result.Errors, error => error.PropertyName == nameof(GetRecipesQuery.MinServings));
+    }
+
+    [Theory]
+    [InlineData("Easy")]
+    [InlineData("medium")]
+    [InlineData("HARD")]
+    public async Task GetRecipes_ShouldAcceptSupportedDifficultyIgnoringCase(string difficulty)
+    {
+        var validator = new GetRecipesQueryValidator();
+
+        var result = await validator.ValidateAsync(new GetRecipesQuery(Difficulty: difficulty));
+
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData("Expert")]
+    [InlineData("Impossible")]
+    public async Task GetRecipes_ShouldRejectUnsupportedDifficulty(string difficulty)
+    {
+        var validator = new GetRecipesQueryValidator();
+
+        var result = await validator.ValidateAsync(new GetRecipesQuery(Difficulty: difficulty));
+
+        Assert.Contains(result.Errors, error => error.PropertyName == nameof(GetRecipesQuery.Difficulty));
     }
 }

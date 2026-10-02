@@ -10,6 +10,7 @@ public interface IRecipeRepository
     IQueryable<RecipeStep> Steps { get; }
     Task<PaginatedResult<RecipeSummaryDto>> SearchAsync(
         string query, string? userId, bool isAdmin, int page, int pageSize,
+        Guid? categoryId = null, RecipeDifficulty? difficulty = null, int? maxCookTime = null, int? minServings = null,
         CancellationToken cancellationToken = default);
     void Add(Recipe recipe);
     void Remove(Recipe recipe);

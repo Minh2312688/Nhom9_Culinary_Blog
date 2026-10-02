@@ -252,7 +252,7 @@ dotnet build backend\CulinaryBlog.sln --no-restore
 dotnet test backend\tests\CulinaryBlog.Application.Tests\CulinaryBlog.Application.Tests.csproj --no-restore
 ```
 
-Kết quả lần chạy cuối: toàn bộ solution tests `13 passed, 0 failed`, trong đó Application tests `8 passed` và Integration tests `2 passed`; build thành công. Trong quá trình kiểm tra, composition root cũng được bổ sung mapping cho System endpoints và root status để integration tests không nhận 404. Build còn cảnh báo dependency hiện hữu do `Microsoft.EntityFrameworkCore.Relational` 10.0.4 và 10.0.12 cùng xuất hiện trong dependency graph.
+Kết quả xác minh ngày 2026-10-02: các test project chạy tuần tự với `--maxcpucount:1` đạt `494 passed, 0 failed` (Application 435, Integration 56, Architecture 3); solution build thành công. Frontend TypeScript và production build cũng đạt. Coverage hiện có recipe query/commands, Difficulty enum mapping, recipe image handlers, endpoint authentication, multipart validation và sanitized storage-unavailable 503. Chưa chạy các thao tác MinIO/PostgreSQL thật; FR-JOB-002 thumbnail queue chưa có trong backend.
 
 ## 8. Việc còn lại và hướng phát triển
 
@@ -262,7 +262,7 @@ Kết quả lần chạy cuối: toàn bộ solution tests `13 passed, 0 failed`
 4. Hoàn thiện JWT/Identity và resource authorization thực tế.
 5. Thêm Hangfire job xóa các URL ảnh sau soft delete, hoặc xác định rõ chính sách giữ ảnh.
 6. Tạo cache key registry/Redis adapter để invalidation theo prefix thực sự hoạt động.
-7. Bổ sung endpoint quản lý Ingredients, Steps và Images độc lập theo FR-RCP-008..010.
+7. FR-RCP-008 image routes/handlers đã được thêm; FR-RCP-009 ingredients endpoints còn lại. FR-RCP-010 step endpoints đã được triển khai.
 8. Chuẩn hóa toàn bộ package EF Core về cùng một phiên bản để loại cảnh báo build.
 9. Chạy manual flow: create Draft -> add nested data -> publish -> archive -> delete; kiểm tra record vẫn tồn tại với `IsDeleted = true`.
 
@@ -277,6 +277,7 @@ Kết quả lần chạy cuối: toàn bộ solution tests `13 passed, 0 failed`
 | FR-RCP-005 | DONE | `PublishRecipeCommand`, child-data precondition |
 | FR-RCP-006 | DONE | `ArchiveRecipeCommand` |
 | FR-RCP-007 | DONE | `DeleteRecipeCommand`, DbContext soft delete |
+| FR-RCP-008 | PARTIAL | Image upload/primary/delete routes, MinIO adapter registration and handlers exist; FR-JOB-002 thumbnail queue and live MinIO/PostgreSQL verification remain pending |
 | FR-RCP-010 | DONE (backend) | Step commands, authenticated endpoints, validation, soft delete and renumbering; PostgreSQL migration and handler/HTTP tests |
 | Redis cache | PARTIAL | Redis registration có; prefix invalidation chưa có |
 | Hangfire cleanup | NOT STARTED | Chưa có Hangfire job trong repository |

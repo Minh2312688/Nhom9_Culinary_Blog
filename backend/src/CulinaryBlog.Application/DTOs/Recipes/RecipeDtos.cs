@@ -36,4 +36,5 @@ public sealed record RecipeDetailDto(
 public sealed record RecipeIngredientDto(Guid Id, string Name, decimal? Quantity, string? Unit, string? Notes, int OrderIndex);
 public sealed record RecipeStepDto(Guid Id, int StepNumber, string? Title, string Description, int? DurationMinutes, string? ImageUrl);
 public sealed record RecipeImageDto(Guid Id, string OriginalUrl, string? MediumUrl, string? ThumbnailUrl, string? AltText, bool IsPrimary, int OrderIndex);
+public sealed record RecipeImageUploadDto(Guid ImageId, string OriginalUrl, string? AltText, bool IsPrimary);
 public sealed record RecipeNutritionDto(int Calories, decimal Protein, decimal Carbohydrates, decimal Fat, decimal Fiber, decimal Sodium);

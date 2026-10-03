@@ -38,13 +38,21 @@ public sealed class StorageStartupInitializer : IHostedService
                 "MinIO bucket '{Bucket}' is ready with public-read policy limited to s3:GetObject.",
                 bucketName);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Host shutdown must not be reported as a MinIO connectivity problem.
+            throw;
+        }
         catch (Exception ex)
         {
             // MinIO may not be reachable yet in local development; never block application startup.
+            // Only the bucket check is retried on demand by the storage service; the public-read
+            // policy is applied on the next successful startup.
             logger.LogWarning(
                 ex,
                 "MinIO storage initialization skipped for bucket '{Bucket}'. " +
-                "Bucket/object uploads will be retried on demand.",
+                "The bucket is ensured on demand, but the public-read policy " +
+                "requires a later successful startup.",
                 bucketName);
         }
     }

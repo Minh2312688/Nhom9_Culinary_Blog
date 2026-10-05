@@ -28,6 +28,16 @@ internal sealed class MinioObjectStorageClient : IObjectStorageClient
         }
     }
 
+    public Task EnsureBucketPolicyAsync(
+        string bucketName,
+        string policyJson,
+        CancellationToken cancellationToken)
+        => client.SetPolicyAsync(
+            new SetPolicyArgs()
+                .WithBucket(bucketName)
+                .WithPolicy(policyJson),
+            cancellationToken);
+
     public Task UploadAsync(
         string bucketName,
         string objectName,

@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.IdentityModel.Tokens;
 using Minio;
@@ -79,16 +80,24 @@ public static class DependencyInjection
                 publicBaseUrl));
         }
 
-        var redisConnection = configuration["Redis:ConnectionString"];
-        if (string.IsNullOrWhiteSpace(redisConnection))
-        {
-            services.AddDistributedMemoryCache();
-        }
-        else
-        {
-            services.AddStackExchangeRedisCache(options => options.Configuration = redisConnection);
-        }
-        services.AddScoped<IRecipeCache, DistributedRecipeCache>();
+            return client.Build();
+        });
+        services.AddSingleton<IObjectStorageClient, MinioObjectStorageClient>();
+
+        // TV4: bucket + public-read (s3:GetObject) policy are prepared automatically on startup.
+        var storageBucket = configuration["MinIO:Bucket"] ?? "culinary-blog";
+        services.AddHostedService(serviceProvider => new StorageStartupInitializer(
+            serviceProvider.GetRequiredService<IObjectStorageClient>(),
+            serviceProvider.GetRequiredService<ILogger<StorageStartupInitializer>>(),
+            storageBucket));
+        services.AddScoped<IFileValidationService, FileValidationService>();
+        services.AddScoped<IFileStorageService>(serviceProvider =>
+            new MinioFileStorageService(
+                serviceProvider.GetRequiredService<IObjectStorageClient>(),
+                serviceProvider.GetRequiredService<IFileValidationService>(),
+                configuration["MinIO:Bucket"] ?? "culinary-blog",
+                configuration["MinIO:PublicBaseUrl"] ??
+                    $"{(bool.TryParse(configuration["MinIO:UseSSL"], out var ssl) && ssl ? "https" : "http")}://{minioEndpoint}/{configuration["MinIO:Bucket"] ?? "culinary-blog"}"));
 
         // ASP.NET Core Identity configuration
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>

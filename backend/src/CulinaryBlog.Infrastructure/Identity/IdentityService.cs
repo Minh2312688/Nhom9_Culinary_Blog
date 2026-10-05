@@ -209,4 +209,15 @@ public class IdentityService : IIdentityService
             Email: user.Email,
             Roles: roles);
     }
+
+    public async Task<UserProfileResult?> GetUserProfileByIdAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return null;
+
+        return new UserProfileResult(
+            true, user.Id, user.Email, user.DisplayName, user.AvatarUrl, user.Bio,
+            user.EmailConfirmed, user.CreatedAt, user.IsActive,
+            await _userManager.IsLockedOutAsync(user), await _userManager.GetRolesAsync(user));
+    }
 }

@@ -105,6 +105,7 @@ app.UseAuthorization();
 // Đăng ký tất cả endpoints
 app.MapCategoryEndpoints();
 app.MapRecipeEndpoints();
+app.MapRecipeImageEndpoints();
 app.MapSystemEndpoints();
 app.MapAuthEndpoints();
 

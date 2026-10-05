@@ -18,13 +18,13 @@ public sealed class GetRecipeBySlugQueryValidator : AbstractValidator<GetRecipeB
 
 public sealed class GetRecipeBySlugQueryHandler : IRequestHandler<GetRecipeBySlugQuery, RecipeDetailDto>
 {
-    private readonly IApplicationDbContext context;
+    private readonly IRecipeRepository recipes;
     private readonly ICurrentUserService currentUser;
     private readonly IRecipeCache cache;
 
-    public GetRecipeBySlugQueryHandler(IApplicationDbContext context, ICurrentUserService currentUser, IRecipeCache cache)
+    public GetRecipeBySlugQueryHandler(IRecipeRepository recipes, ICurrentUserService currentUser, IRecipeCache cache)
     {
-        this.context = context;
+        this.recipes = recipes;
         this.currentUser = currentUser;
         this.cache = cache;
     }
@@ -35,7 +35,7 @@ public sealed class GetRecipeBySlugQueryHandler : IRequestHandler<GetRecipeBySlu
         var cached = await cache.GetAsync<RecipeDetailDto>(cacheKey, cancellationToken);
         if (cached is not null && CanView(cached.Status, cached.AuthorId)) return cached;
 
-        var recipe = await context.Recipes.AsNoTracking()
+        var recipe = await recipes.Query.AsNoTracking()
             .Include(x => x.Ingredients)
             .Include(x => x.Steps)
             .Include(x => x.Images)

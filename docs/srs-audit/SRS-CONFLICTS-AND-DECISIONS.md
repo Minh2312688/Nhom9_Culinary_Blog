@@ -36,7 +36,7 @@ Tài liệu này ghi nhận toàn bộ các điểm mâu thuẫn thực tế, ch
 | **CONFLICT-013** | Google OAuth Contract | Mâu thuẫn payload và luồng xác thực Google OAuth2 giữa các chương. | **ExternalLoginInfo / Code + PKCE:** §3.1 Frontend gửi ExternalLoginInfo; §5.3 quy định Auth Code + PKCE. | **Client ID Token:** §8.1 endpoint contract nhận `{ idToken: "string" }`. | DECIDED | Use Google OAuth Authorization Code flow with PKCE and a backend callback. | Đại diện nhóm (xác nhận chính thức trong hội thoại) | 2026-09-23 | TV1 Auth (Phase 2) / TV3 Frontend |
 | **CONFLICT-014** | Concurrency Conflict HTTP Status | Mâu thuẫn mã trạng thái HTTP trả về khi xảy ra xung đột đồng thời (RowVersion). | **`HTTP 409 Conflict`:** Chuẩn RESTful và FR-RCP-004. | **`HTTP 422 Unprocessable Entity`:** Quy định trong bảng Error Codes Phụ lục A/B. | DECIDED | Return HTTP 409 Conflict for optimistic concurrency failures. | Đại diện nhóm (xác nhận chính thức trong hội thoại) | 2026-09-23 | TV2 Recipe / Exception Handler |
 | **CONFLICT-015** | RecipeStep StepNumber Generation | Mâu thuẫn trách nhiệm sinh số thứ tự bước nấu ăn (client truyền hay server tự tăng). | **Server tự tăng:** Server tự tính `Max(StepNumber) + 1`, client không truyền. | **Client chỉ định:** Payload request yêu cầu client truyền tường minh `stepNumber: int`. | DECIDED | The server assigns StepNumber as Max(StepNumber) + 1; clients do not send it. | Đại diện nhóm (xác nhận chính thức trong hội thoại) | 2026-09-23 | TV2 Recipe Steps / API |
-| **CONFLICT-016** | Search Query Cache TTL | Mâu thuẫn thời gian sống (TTL) bộ nhớ đệm kết quả tìm kiếm giữa FR và NFR. | **TTL = 5 phút** (hoặc không cache kết quả dynamic). | **TTL = 1 phút (60s)** cho các query phổ biến trong Redis. | DECIDED | Cache popular/common search queries in Redis for 60 seconds. | Đại diện nhóm (xác nhận chính thức trong hội thoại) | 2026-09-23 | TV2 Search / Redis Cache |
+| **CONFLICT-016** | Search Query Cache TTL and Popularity | Mâu thuẫn TTL; thiếu ngưỡng/cơ chế nhận diện truy vấn phổ biến. | **TTL = 5 phút** (hoặc không cache kết quả dynamic). | **TTL = 1 phút (60s)** cho các query phổ biến trong Redis. | IMPLEMENTED | Chỉ đếm search không kèm filter. Cùng query/phạm vi gọi ít nhất 3 lần trong cửa sổ 5 phút mới cache trang kết quả 60 giây. Bộ đếm là gần đúng qua IDistributedCache; fallback DB khi Redis lỗi. | Người yêu cầu giao agent tự quyết, 2026-10-02 | TV2 Search / Redis Cache |
 | **CONFLICT-017** | Category Update Allowed Fields | Mâu thuẫn các trường được phép sửa khi gọi `PUT /api/v1/categories/{id}`. | **Chỉ Name + Description:** Ngăn client tự ý đổi ImageUrl/OrderIndex qua endpoint này. | **Name + Description + ImageUrl + OrderIndex:** Cho phép cập nhật toàn bộ thuộc tính. | DECIDED | Category update accepts Name, Description, ImageUrl, and OrderIndex. | Đại diện nhóm (xác nhận chính thức trong hội thoại) | 2026-09-23 | TV4 Category API / UI |
 | **CONFLICT-018** | Refresh Token Entropy | Mâu thuẫn về độ dài và entropy của Refresh Token giữa FR-AUTH-001 và NFR-SEC-002. | **512-bit entropy:** Theo đặc tả FR-AUTH-001 (trang 18). | **128-bit crypto random:** Theo đặc tả NFR-SEC-002 (trang 41) kết hợp hash SHA-256. | DECIDED | Generate refresh tokens from 128-bit cryptographically secure randomness, store only SHA-256 hashes, and use a seven-day lifetime. | Đại diện nhóm (xác nhận chính thức trong hội thoại) | 2026-09-23 | TV1 Auth (Phase 2) |
 | **CONFLICT-019** | Recipe Detail Cache TTL / Mechanism | Mâu thuẫn về cơ chế cache và TTL của chi tiết công thức nấu ăn. | **Output Cache TTL 60m:** ASP.NET Core Output Cache tagged "recipes" (FR-RCP-002 trang 28). | **Redis Cache TTL 5m:** Redis distributed cache theo cache-aside pattern (NFR-PERF-003 trang 40). | DECIDED | Use Redis distributed cache-aside for recipe detail with a five-minute TTL. | Đại diện nhóm (xác nhận chính thức trong hội thoại) | 2026-09-23 | TV2 Recipe / Cache |
@@ -50,6 +50,19 @@ Tài liệu này ghi nhận toàn bộ các điểm mâu thuẫn thực tế, ch
 ---
 
 ## 3. Chi tiết bằng chứng đối chiếu 25 Conflicts (Traceability Evidence)
+
+### Quy ước route tìm kiếm (SRS §8.3)
+- **Quyết định triển khai:** endpoint chuẩn `GET /api/v1/recipes/search?q={keyword}`; các query phân trang và filter FR-SRCH-002 có thể kết hợp trên endpoint này.
+- **Lý do:** khớp route `/recipes/search?q=` của SRS §8.3 và dùng chung prefix API phiên bản hiện tại.
+- **Trạng thái:** `IMPLEMENTED`; route list `/api/v1/recipes/` dành cho list/filter thông thường.
+- **Ngày/người yêu cầu:** 2026-10-02.
+
+### CONFLICT-016: Chính sách cache popularity đã chọn
+- **Ngưỡng:** cùng truy vấn chuẩn hóa trong cùng phạm vi visibility được quan sát ít nhất 3 lần trong cửa sổ 5 phút.
+- **TTL kết quả:** 60 giây theo quyết định CONFLICT-016; key gồm query, phân trang, sort và phạm vi guest/user/admin. Search có bất kỳ filter nào không cache.
+- **Cơ chế:** bộ đếm Redis qua IRecipeCache/IDistributedCache; phép đọc-tăng-ghi là gần đúng khi request đồng thời. Lỗi Redis được xử lý như cache miss và truy vấn tiếp tục xuống PostgreSQL.
+- **Ưu điểm:** chỉ cache truy vấn lặp lại, giảm tải PostgreSQL cho từ khóa phổ biến, tuân thủ TTL một phút, không trộn kết quả giữa user và guest.
+- **Nhược điểm:** bộ đếm không atomic nên ngưỡng có thể đến sớm/muộn khi có đồng thời; ít lợi ích cho query phân tán; kết quả có thể cũ tối đa 60 giây; filter động tiếp tục không cache.
 
 ### CONFLICT-001: Recipe Delete Strategy
 - **Mô tả:** FR-RCP-007 mô tả Hard Delete; trong khi Data Model và API mô tả Soft Delete.
@@ -212,28 +225,6 @@ Tài liệu này ghi nhận toàn bộ các điểm mâu thuẫn thực tế, ch
 - **Decision:** Use Redis distributed cache for Category with a 30-minute TTL.
 - **Confirmed by:** Đại diện nhóm (xác nhận chính thức trong hội thoại), 2026-09-23.
 - **Status:** `DECIDED`
-
-## 3. TV4 Category contract confirmations (2026-09-27)
-
-The following Category API choices were confirmed by the TV4 module owner for
-the current implementation. They clarify the module contract but do not claim
-approval by other team members; the team may record formal approval separately.
-
-- Create accepts `Name` and optional `Description` only; `ImageUrl` and
-  `OrderIndex` are not part of the create request.
-- Renaming a Category preserves its existing slug so the current URL remains
-  valid.
-- `GET /api/v1/categories/{slug}` returns a Category DTO only. The client
-  requests recipes separately using
-  `/api/v1/recipes?categoryId={id}&page=...`.
-- A slug collision returns HTTP 409; the server does not append a numeric
-  suffix.
-- Deleting a Category with active (not soft-deleted) recipes returns HTTP 409.
-  Category deletion itself is soft delete using `IsDeleted`, as already decided
-  in CONFLICT-002.
-- Category `Name` rejects HTML markup for both create and update. The shared
-  validator rule and its unit/integration tests have been implemented and
-  verified.
 
 ### CONFLICT-021: Recipe List Author Visibility
 - **Mô tả:** Mâu thuẫn về quyền xem bài viết của chính tác giả (Author) trong danh sách công thức tại `FR-RCP-001`.

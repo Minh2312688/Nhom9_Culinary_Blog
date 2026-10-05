@@ -1,3 +1,5 @@
+namespace CulinaryBlog.Application.Contracts;
+
 public interface ICategoryCache
 {
     /// <summary>Đọc cache theo logical key. Trả null khi miss hoặc khi Redis lỗi.</summary>

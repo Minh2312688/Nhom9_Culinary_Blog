@@ -4,6 +4,8 @@ using CulinaryBlog.Application.Features.Categories.Commands.CreateCategory;
 using CulinaryBlog.Application.Features.Categories.Commands.UpdateCategory;
 using CulinaryBlog.Application.Features.Categories.Queries.GetCategories;
 using CulinaryBlog.Application.Features.Categories.Queries.GetCategoryBySlug;
+using CulinaryBlog.Infrastructure.Persistence;
+using CulinaryBlog.Infrastructure.Repositories;
 using FluentAssertions;
 using FluentValidation;
 using MediatR;
@@ -25,6 +27,8 @@ public class CategoryDependencyInjectionTests
         services.AddLogging();
         services.AddApplication();
         services.AddScoped<IApplicationDbContext>(_ => context);
+        services.AddScoped<IUnitOfWork>(_ => new UnitOfWork(context));
+        services.AddScoped<ICategoryRepository>(_ => new CategoryRepository(context));
         // Category handlers phụ thuộc ICategoryCache; unit test dùng fake in-memory.
         services.AddSingleton<ICategoryCache, FakeCategoryCache>();
 

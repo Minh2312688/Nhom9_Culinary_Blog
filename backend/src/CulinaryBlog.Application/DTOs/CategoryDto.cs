@@ -9,11 +9,6 @@ public record CategoryDto(
  string? Description,
  string? ImageUrl,
  int OrderIndex,
- DateTime CreatedAt
-)
-{
- // FR-CAT-001: số Recipe Published của category (không tính Draft/Archived và không tính
- // recipe đã soft delete). Không phải tham số primary constructor để giữ projection Mapster
- // của list chỉ SELECT các cột có sẵn ở entity; handler gán sau bằng một truy vấn group by.
- public int RecipeCount { get; init; }
-};
+ DateTime CreatedAt,
+ int RecipeCount = 0
+);

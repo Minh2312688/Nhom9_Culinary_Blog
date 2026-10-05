@@ -1,8 +1,7 @@
 using MediatR;
-using CulinaryBlog.Application.Common.Exceptions;
-using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Domain.Entities;
+using CulinaryBlog.Application.Common.Exceptions;
 using Microsoft.EntityFrameworkCore;
 namespace CulinaryBlog.Application.Features.Categories.Commands.DeleteCategory;
 // Command xóa category — chỉ cần ID, không trả về data (Unit = void trong MediatR)
@@ -11,30 +10,20 @@ public record DeleteCategoryCommand(Guid Id) : IRequest<Unit>;
 public class DeleteCategoryCommandHandler : IRequestHandler<DeleteCategoryCommand, Unit>
 {
  private readonly IApplicationDbContext _context;
- private readonly ICategoryCache _cache;
- public DeleteCategoryCommandHandler(IApplicationDbContext context, ICategoryCache cache)
- {
- _context = context;
- _cache = cache;
- }
+ private readonly CulinaryBlog.Application.Contracts.ICategoryCache _cache;
+ public DeleteCategoryCommandHandler(IApplicationDbContext context, CulinaryBlog.Application.Contracts.ICategoryCache cache)
+ { _context = context; _cache = cache; }
  public async Task<Unit> Handle(
  DeleteCategoryCommand request,
  CancellationToken cancellationToken)
  {
- // Query có global query filter nên category đã soft delete trả về NotFound
+ // Tìm entity — ném NotFoundException nếu không tồn tại
+ // (NotFoundException sẽ được catch ở Global Exception Handler — Chương 5)
  var category = await _context.Categories
- .SingleOrDefaultAsync(c => c.Id == request.Id, cancellationToken)
+ .SingleOrDefaultAsync(item => item.Id == request.Id, cancellationToken)
  ?? throw new NotFoundException(nameof(Category), request.Id);
- // Delete guard: chỉ Recipe active (không bị soft delete) mới chặn xóa Category.
- // Đây là hướng an toàn hiện tại; chưa được ghi chính thức vào SRS-CONFLICTS-AND-DECISIONS.md.
- var hasActiveRecipes = await _context.Recipes
- .AnyAsync(r => r.CategoryId == request.Id, cancellationToken);
- if (hasActiveRecipes)
- {
- throw new ConflictException(
- "Category cannot be deleted while it still has recipes.");
- }
- // Soft delete (CONFLICT-002): giữ row, IsDeleted = true, không thêm DeletedAt
+ if (await _context.Recipes.AnyAsync(recipe => recipe.CategoryId == category.Id, cancellationToken))
+     throw new ConflictException("A category with active recipes cannot be deleted.");
  category.Delete();
  await _context.SaveChangesAsync(cancellationToken);
  await _cache.InvalidateAsync(cancellationToken);

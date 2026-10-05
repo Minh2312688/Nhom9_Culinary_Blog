@@ -10,12 +10,13 @@ namespace CulinaryBlog.Application.Features.Categories.Commands.CreateCategory;
 public class CreateCategoryCommandHandler
  : IRequestHandler<CreateCategoryCommand, CategoryDto>
 {
- private readonly IApplicationDbContext _context;
+ private readonly ICategoryRepository _categories;
+ private readonly IUnitOfWork _unitOfWork;
  private readonly ICategoryCache _cache;
- // Constructor Injection — DI container tự động cung cấp IApplicationDbContext
- public CreateCategoryCommandHandler(IApplicationDbContext context, ICategoryCache cache)
+ public CreateCategoryCommandHandler(ICategoryRepository categories, IUnitOfWork unitOfWork, ICategoryCache cache)
  {
- _context = context;
+ _categories = categories;
+ _unitOfWork = unitOfWork;
  _cache = cache;
  }
  public async Task<CategoryDto> Handle(
@@ -24,21 +25,14 @@ public class CreateCategoryCommandHandler
  {
  // 1. Tạo entity qua Domain factory method — đảm bảo business rules
  var category = Category.Create(request.Name, request.Description);
- // 2. Chặn trùng slug: IX_Categories_Slug là unique và vẫn giữ row đã soft delete
- var slugTaken = await _context.Categories
- .IgnoreQueryFilters()
- .AnyAsync(c => c.Slug == category.Slug, cancellationToken);
- if (slugTaken)
- {
- throw new ConflictException($"A category with slug \"{category.Slug}\" already exists.");
- }
- // 3. Thêm vào DbContext (chưa ghi vào database)
- _context.Categories.Add(category);
- // 4. Ghi vào database (thực thi SQL INSERT)
- await _context.SaveChangesAsync(cancellationToken);
- // 5. Invalidate cache để list/detail không còn dữ liệu cũ
+ if (await _categories.Query.IgnoreQueryFilters().AnyAsync(existing => existing.Slug == category.Slug, cancellationToken))
+     throw new ConflictException($"A category with slug '{category.Slug}' already exists.");
+ // 2. Thêm vào DbContext (chưa ghi vào database)
+ _categories.Add(category);
+ // 3. Ghi vào database (thực thi SQL INSERT)
+ await _unitOfWork.SaveChangesAsync(cancellationToken);
  await _cache.InvalidateAsync(cancellationToken);
- // 6. Map sang DTO để trả về — Presentation Layer không nhận raw Entity
+ // 4. Map sang DTO để trả về — Presentation Layer không nhận raw Entity
  return category.Adapt<CategoryDto>();
  }
 }

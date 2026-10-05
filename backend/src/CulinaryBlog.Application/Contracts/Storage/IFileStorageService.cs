@@ -2,8 +2,7 @@ namespace CulinaryBlog.Application.Contracts.Storage;
 
 /// <summary>
 /// Contract upload/xóa file dùng chung cho category, recipe image và các module cần lưu file.
-/// Task hiện tại (MinIO foundation) chỉ chốt contract: chưa có implementation MinIO,
-/// nên FR-FILE-001/FR-FILE-002 chưa hoàn thành toàn bộ.
+/// Infrastructure implements this contract with MinIO; Application handlers depend only on this interface.
 /// </summary>
 public interface IFileStorageService
 {

@@ -18,7 +18,7 @@ public class RecipeConfiguration : IEntityTypeConfiguration<Recipe>
 
         builder.Property(x => x.Title).IsRequired().HasMaxLength(200);
         builder.Property(x => x.Slug).IsRequired().HasMaxLength(250);
-        builder.Property(x => x.Difficulty).HasMaxLength(20);
+        builder.Property(x => x.Difficulty).HasConversion<string>().HasMaxLength(20);
         builder.Property(x => x.AuthorId).IsRequired().HasMaxLength(450);
 
         builder.Property(x => x.RowVersion)

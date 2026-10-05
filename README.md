@@ -400,8 +400,16 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 |---:|---|---|
 | 1 | Dương Văn Minh | FR-RCP-9,10 |
 | 2 | Nguyễn Phạm Phú Nam | FR-Auth-4,5,6, làm màn hình profile|
-| 3 | Mai Quý Phước | FR-CAT-1,2,3,4,5 | 
+| 3 | Mai Quý Phước |Hoàn thiện FR-CAT-1,2,3,4,5 và FR-File-001 | 
 | 4 | Trần Hữu Phan Lâm | Hoàn thành các màn hình tuần 2 phân công. Làm giao diện /dashboard,/dashboard/recipe,/dashboard/categories |
+### Tuần 4
+
+| STT | Thành viên | Công việc được giao |
+|---:|---|---|
+| 1 | Dương Văn Minh | FR-SRCH-001,002 |
+| 2 | Nguyễn Phạm Phú Nam | FR-Auth-007|
+| 3 | Mai Quý Phước | Hoàn thiện FR-File-001 và FR_File-002 | 
+| 4 | Trần Hữu Phan Lâm | Hoàn thành tất cả các màn hình giao diện đã phân công từ tuần 2 và tuần 3 |
 
 ---
 
@@ -524,7 +532,7 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 
 | Hạng mục | Trạng thái | Đã hoàn thành | Còn lại / Phụ thuộc |
 |---|---|---|---|
-| FR-CAT-001 → FR-CAT-005 | `HOÀN THÀNH` | CRUD, slug, Redis category cache, HTML Name validation cho Create/Update và Category tests đã hoàn tất | Không còn hạng mục Category; lỗi cấu hình MinIO thuộc phạm vi File Service |
+| FR-CAT-001 → FR-CAT-005 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
 | FR-FILE-001 / 002 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
 | FR-JOB-001 → 003 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
 | FR-OBS-001 → 003 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |

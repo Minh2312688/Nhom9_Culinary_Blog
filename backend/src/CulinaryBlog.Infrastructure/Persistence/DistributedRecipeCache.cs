@@ -24,7 +24,7 @@ public sealed class DistributedRecipeCache : IRecipeCache
             var value = await cache.GetStringAsync(key, cancellationToken);
             return value is null ? default : JsonSerializer.Deserialize<T>(value);
         }
-        catch (Exception exception) when (exception is RedisConnectionException or TimeoutException)
+        catch (Exception exception) when (exception is RedisConnectionException or TimeoutException or JsonException)
         {
             logger.LogWarning(exception, "Cache read failed for {CacheKey}; continuing with database.", key);
             return default;

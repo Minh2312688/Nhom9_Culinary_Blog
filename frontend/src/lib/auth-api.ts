@@ -105,3 +105,48 @@ export async function getProfileApi(accessToken: string): Promise<UserProfile> {
 
   return await response.json();
 }
+
+export interface UpdateProfileRequest {
+  displayName?: string | null;
+  avatarUrl?: string | null;
+  bio?: string | null;
+}
+
+export async function updateProfileApi(
+  accessToken: string,
+  request: UpdateProfileRequest
+): Promise<UserProfile> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    let errorData: any = {};
+    try {
+      errorData = await response.json();
+    } catch {
+      // Non-JSON response
+    }
+
+    const error: ApiError = {
+      status: response.status,
+      title: errorData.title || "Profile Update Error",
+      detail:
+        errorData.detail ||
+        (response.status === 401
+          ? "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại."
+          : response.status === 404
+          ? "Không tìm thấy thông tin người dùng."
+          : "Không thể cập nhật thông tin hồ sơ."),
+      errors: errorData.errors,
+    };
+    throw error;
+  }
+
+  return await response.json();
+}

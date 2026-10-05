@@ -829,11 +829,11 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **Validation:** Từ khóa <= 100 ký tự.
 - **Authorization:** Anonymous.
 - **HTTP method:** GET
-- **Endpoint:** `/api/v1/recipes?search={q}`
+- **Endpoint:** `/api/v1/recipes/search?q={q}`
 - **Success status:** 200 OK
 - **Error statuses:** 400 Bad Request, 500 Internal Server Error
 - **Entities affected:** `Recipe`
-- **Cache behavior:** Cache query phổ biến 1m (NFR) hoặc 5m / không cache (FR).
+- **Cache behavior:** Query không kèm filter được cache 60 giây sau ít nhất 3 lần trong cửa sổ 5 phút cho cùng query/phạm vi visibility; query có filter không cache. Bộ đếm popularity là gần đúng qua IDistributedCache.
 - **External dependency:** PostgreSQL FTS engine.
 - **Owner:** TV2 (Primary), TV3 (Search UI).
 - **Dependencies on other members:** TV3 (Search input bar & debounce).
@@ -843,7 +843,7 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **Related Data Model:** §7.2 (cột tsvector, GIN index).
 - **Conflict IDs:** `CONFLICT-016`.
 - **Technical Risk IDs:** `TECH-RISK-004` (Unaccent extension initialization).
-- **Status:** **CONFLICT**
+- **Status:** **IMPLEMENTED** (policy popularity ở CONFLICT-016; route theo §8.3).
 
 ### FR-SRCH-002: Lọc Công thức (Filter Recipes)
 - **ID:** FR-SRCH-002
@@ -1810,7 +1810,7 @@ Base URL: `/api/v1`. Toàn bộ response chuẩn hóa JSON theo envelope `{ data
 | 12 | Category | `DELETE` | `/categories/{id}` | (None) | (Empty body) | Bearer + Admin | 204 No Content | 403: Forbidden, 404: Not found, 409: Có recipes thuộc category này | `FR-CAT-005` | `CONFLICT-002` |
 | 13 | Recipe | `GET` | `/recipes` | `?page&pageSize&sortBy&sortOrder&categoryId&difficulty&minPrepTime&maxPrepTime` | `200: PagedResult<RecipeSummaryDto>` | Không (Author xem thêm Draft) | 200 OK | 400: validation | `FR-RCP-001` | `CONFLICT-003`, `CONFLICT-012`, `CONFLICT-021` |
 | 14 | Recipe | `GET` | `/recipes/{slug}` | (None) | `200: RecipeDetailDto` (kèm steps, ingredients, images, nutrition) | Không (Draft: Author/Admin) | 200 OK | 404: Not found, 403: Draft | `FR-RCP-002` | `CONFLICT-008`, `CONFLICT-019` |
-| 15 | Recipe | `GET` | `/recipes/search` | `?q={keyword}&page&pageSize&categoryId&difficulty` | `200: PagedResult<RecipeSummaryDto>` | Không | 200 OK | 400: query < 2 ký tự | `FR-SRCH-001..004` | `CONFLICT-003`, `CONFLICT-012`, `CONFLICT-016` |
+| 15 | Recipe | `GET` | `/recipes/search` | `?q={keyword}&page&pageSize&categoryId&difficulty&maxCookTime&minServings` | `200: PagedResult<RecipeSummaryDto>` | Guest sees Published; author sees own recipes; Admin sees all | 200 OK | 400: invalid query/filter | `FR-SRCH-001..004` | `CONFLICT-003`, `CONFLICT-012`, `CONFLICT-016` |
 | 16 | Recipe | `POST` | `/recipes` | `{ title, description, categoryId, prepTime, cookTime, servings, difficulty, instructions, nutrition? }` | `201: RecipeDetailDto` | Bearer (Author/Admin) | 201 Created | 400, 401, 403, 404 | `FR-RCP-003` | `CONFLICT-008` (4 vs 6 chỉ số dinh dưỡng) |
 | 17 | Recipe | `PUT` | `/recipes/{id}` | `{ title?, description?, categoryId?, prepTime?, cookTime?, servings?, difficulty?, instructions?, nutrition? }` | `200: RecipeDetailDto` | Bearer (Owner/Admin) | 200 OK | 400, 401, 403, 404, 409 (Concurrency) | `FR-RCP-004` | `CONFLICT-008`, `CONFLICT-014` |
 | 18 | Recipe | `PATCH` | `/recipes/{id}/publish` | (None) | `200: { id, status: "Published", publishedAt }` | Bearer (Owner/Admin) | 200 OK | 400: validation, 401, 403, 404 | `FR-RCP-005` | Không |
@@ -1818,7 +1818,7 @@ Base URL: `/api/v1`. Toàn bộ response chuẩn hóa JSON theo envelope `{ data
 | 20 | Recipe | `PATCH` | `/recipes/{id}/archive` | (None) | `200: { id, status: "Archived" }` | Bearer (Owner/Admin) | 200 OK | 401, 403, 404 | `FR-RCP-006` | Không |
 | 21 | Recipe | `DELETE` | `/recipes/{id}` | (None) | (Empty body) | Bearer (Owner/Admin) | 204 No Content | 401, 403, 404 | `FR-RCP-007` | `CONFLICT-001` (Soft vs Hard delete) |
 | 22 | Images | `POST` | `/recipes/{id}/images` | `multipart/form-data: file (image), altText?, isPrimary?` | `201: { imageId, originalUrl, altText, isPrimary }` | Bearer (Owner/Admin) | 201 Created | 400: MIME invalid / size > 5MB, 401, 403, 404 | `FR-RCP-008`, `FR-FILE-001` | `CONFLICT-024` (Payload shape & property name) |
-| 23 | Images | `PATCH` | `/recipes/{id}/images/{imageId}` | `{ altText?, isPrimary?, orderIndex? }` | `200: image updated` | Bearer (Owner/Admin) | 200 OK | 400, 401, 403, 404 | `FR-RCP-008` | `CONFLICT-023` (Set-primary contract) |
+| 23 | Images | `PATCH` | `/recipes/{id}/images/{imageId}/primary` | (None) | `200: image updated` | Bearer (Owner/Admin) | 200 OK | 401, 403, 404 | `FR-RCP-008` | `CONFLICT-023` (dedicated set-primary route) |
 | 24 | Images | `DELETE` | `/recipes/{id}/images/{imageId}` | (None) | (Empty body) | Bearer (Owner/Admin) | 204 No Content | 400: không cho xóa ảnh primary duy nhất, 401, 403, 404 | `FR-RCP-008` | Không |
 | 25 | Steps | `POST` | `/recipes/{id}/steps` | `{ stepNumber, title, description, timerMinutes?, imageUrl? }` | `201: RecipeStepDto` | Bearer (Owner/Admin) | 201 Created | 400, 401, 403, 404 | `FR-RCP-010` | `CONFLICT-006`, `CONFLICT-007`, `CONFLICT-015` |
 | 26 | Steps | `PUT` | `/recipes/{id}/steps/{stepId}` | `{ stepNumber?, title?, description?, timerMinutes?, imageUrl? }` | `200: RecipeStepDto` | Bearer (Owner/Admin) | 200 OK | 400, 401, 403, 404 | `FR-RCP-010` | `CONFLICT-006`, `CONFLICT-007`, `CONFLICT-015` |
@@ -2011,15 +2011,15 @@ Tất cả 24 mâu thuẫn dưới đây đều được trích xuất từ vi�
 | **CONFLICT-013** | Google OAuth Contract | §3.1 FR-AUTH-003 p.21: Gửi `{ code, redirectUri }` đổi token | §8.1 p.61: Gửi trực tiếp `{ idToken }` lên backend | TV1, TV3 | **OPEN** |
 | **CONFLICT-014** | Concurrency Conflict HTTP Status | §3.3 FR-RCP-004 p.31 & §8.3 p.63: Lỗi concurrency trả HTTP 409 Conflict | Phụ lục A p.67 & Phụ lục B p.68: Lỗi CONCURRENCY_CONFLICT trả HTTP 422 Unprocessable Entity | TV2 | **OPEN** |
 | **CONFLICT-015** | RecipeStep StepNumber Generation | §3.3 FR-RCP-009 p.34: Server tự động tính `StepNumber` | §8.5 p.65: Client gửi `stepNumber` trong Request Body | TV2, TV3 | **OPEN** |
-| **CONFLICT-016** | Search Query Cache TTL | §3.4 FR-SRCH-001 p.36: Cache kết quả tìm kiếm 5 phút | §4.1 NFR-PERF-003 p.39: Không cache search query trên Redis | TV2 | **OPEN** |
+| **CONFLICT-016** | Search Query Cache TTL | §3.4 FR-SRCH-001 p.36: Cache kết quả tìm kiếm 5 phút | §4.1 NFR-PERF-003 p.39: Không cache search query trên Redis | TV2 | **IMPLEMENTED** — xem quyết định popularity 3 lần/5 phút, TTL kết quả 60 giây tại decision log |
 | **CONFLICT-017** | Category Update Allowed Fields | §3.2 FR-CAT-004 p.26: Chỉ cho phép cập nhật `name`, `description` | §8.2 p.63: Cho phép cập nhật thêm `imageUrl` và `orderIndex` | TV4 | **OPEN** |
 | **CONFLICT-018** | Refresh Token Entropy | §3.1 FR-AUTH-004 p.22: Tạo token ngẫu nhiên 32 bytes (256-bit) | §4.2 NFR-SEC-002 p.40: Tạo token ngẫu nhiên 64 bytes (512-bit) | TV1 | **OPEN** |
 | **CONFLICT-019** | Recipe Detail Cache TTL / Tech | §3.3 FR-RCP-002 p.29: Cache In-Memory 10 phút | §4.1 NFR-PERF-003 p.39: Cache Redis phân tán 30 phút | TV2 | **OPEN** |
 | **CONFLICT-020** | Category Cache Technology / TTL | §3.2 FR-CAT-001 p.24: In-Memory IMemoryCache 60 phút | §4.1 NFR-PERF-003 p.39: Redis phân tán (Distributed Cache) 24h | TV4 | **OPEN** |
 | **CONFLICT-021** | Recipe List Author Visibility | §3.3 FR-RCP-001 p.28 (Mô tả): Thấy Draft & Archived của mình | §3.3 FR-RCP-001 p.28 (Step 4): Chỉ thấy Published và Draft của mình | TV2, TV3 | **OPEN** |
 | **CONFLICT-022** | Browser Version Support Matrix | §2.4.3 p.14: Hỗ trợ Chrome 90+, Firefox 88+, Safari 14+ | §5.4.2 p.49: Yêu cầu tối thiểu Chrome 112+, Firefox 113+, Safari 16+ | TV3 | **OPEN** |
-| **CONFLICT-023** | Recipe Image Set-Primary Endpoint Contract | §3.3 FR-RCP-008 p.34: Route `PATCH /api/v1/recipes/{id}/images/{imageId}/primary` | §8.4 p.64: Route `PATCH /recipes/{id}/images/{imageId}` body `{ altText?, isPrimary?, orderIndex? }` | TV2, TV4 | **OPEN** |
-| **CONFLICT-024** | Recipe Image Upload Response Shape / URL Property Naming | §3.3 FR-RCP-008 p.34: Upload ảnh trả HTTP 201 với `{ url, isPrimary }` | §8.4 p.64: Upload trả HTTP 201 với `{ imageId, originalUrl, altText, isPrimary }` & §7.5 p.58 cột DB là `OriginalUrl` | TV2, TV4 | **OPEN** |
+| **CONFLICT-023** | Recipe Image Set-Primary Endpoint Contract | §3.3 FR-RCP-008 p.34: Route `PATCH /api/v1/recipes/{id}/images/{imageId}/primary` | §8.4 p.64: Route `PATCH /recipes/{id}/images/{imageId}` body `{ altText?, isPrimary?, orderIndex? }` | TV2, TV4 | **DECIDED** — dùng endpoint chuyên biệt `/primary` |
+| **CONFLICT-024** | Recipe Image Upload Response Shape / URL Property Naming | §3.3 FR-RCP-008 p.34: Upload ảnh trả HTTP 201 với `{ url, isPrimary }` | §8.4 p.64: Upload trả HTTP 201 với `{ imageId, originalUrl, altText, isPrimary }` & §7.5 p.58 cột DB là `OriginalUrl` | TV2, TV4 | **DECIDED** — dùng payload đầy đủ `{ imageId, originalUrl, altText, isPrimary }` |
 | **CONFLICT-025** | BaseEntity Inheritance vs ApplicationUser Identity Inheritance | §6.4 p.52, §7.1 p.54: Quy định tất cả entities kế thừa BaseEntity (có Id, CreatedAt, UpdatedAt, IsDeleted, RowVersion) | §7.7 p.58–59: ApplicationUser kế thừa IdentityUser<string>, không mô tả kế thừa BaseEntity (không có RowVersion, IsDeleted) | TV1, TV2 | **OPEN** |
 
 ---

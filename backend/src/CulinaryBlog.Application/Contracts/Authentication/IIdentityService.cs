@@ -34,9 +34,9 @@ public sealed record UserProfileResult(
     string? Bio,
     bool EmailConfirmed,
     DateTimeOffset CreatedAt,
-    IList<string>? Roles,
-    bool IsActive = true,
-    bool IsLockedOut = false);
+    bool IsActive,
+    bool IsLockedOut,
+    IList<string>? Roles);
 
 public interface IIdentityService
 {

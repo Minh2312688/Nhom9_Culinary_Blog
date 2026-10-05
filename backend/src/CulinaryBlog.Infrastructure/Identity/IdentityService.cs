@@ -210,31 +210,15 @@ public class IdentityService : IIdentityService
             Roles: roles);
     }
 
-    public async Task<UserProfileResult?> GetUserProfileByIdAsync(
-        string userId,
-        CancellationToken cancellationToken = default)
+    public async Task<UserProfileResult?> GetUserProfileByIdAsync(string userId, CancellationToken cancellationToken = default)
     {
         var user = await _userManager.FindByIdAsync(userId);
-        if (user == null)
-        {
-            return null;
-        }
-
-        var isLocked = await _userManager.IsLockedOutAsync(user);
-        var roles = await _userManager.GetRolesAsync(user);
+        if (user is null) return null;
 
         return new UserProfileResult(
-            Succeeded: true,
-            UserId: user.Id,
-            Email: user.Email,
-            DisplayName: user.DisplayName,
-            AvatarUrl: user.AvatarUrl,
-            Bio: user.Bio,
-            EmailConfirmed: user.EmailConfirmed,
-            CreatedAt: user.CreatedAt,
-            Roles: roles,
-            IsActive: user.IsActive,
-            IsLockedOut: isLocked);
+            true, user.Id, user.Email, user.DisplayName, user.AvatarUrl, user.Bio,
+            user.EmailConfirmed, user.CreatedAt, user.IsActive,
+            await _userManager.IsLockedOutAsync(user), await _userManager.GetRolesAsync(user));
     }
 
     public async Task<UserProfileResult?> UpdateUserProfileAsync(

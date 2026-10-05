@@ -1,19 +1,26 @@
 using System.Text;
 using CulinaryBlog.Application.Contracts.Authentication;
+using CulinaryBlog.Application.Contracts;
+using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Infrastructure.Authentication;
 using CulinaryBlog.Infrastructure.Identity;
 using CulinaryBlog.Infrastructure.Notifications;
 using CulinaryBlog.Infrastructure.Persistence;
 using CulinaryBlog.Infrastructure.Repositories;
+using CulinaryBlog.Infrastructure.Storage;
+using CulinaryBlog.Application.Common.Files;
+using CulinaryBlog.Application.Contracts.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.IdentityModel.Tokens;
+using Minio;
 
 namespace CulinaryBlog.Infrastructure;
-
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
@@ -30,6 +37,67 @@ public static class DependencyInjection
 
         services.AddDbContext<AuthDbContext>(options =>
             options.UseNpgsql(postgresConnection));
+
+        services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(postgresConnection));
+        services.AddScoped<IApplicationDbContext>(serviceProvider =>
+            serviceProvider.GetRequiredService<ApplicationDbContext>());
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IRecipeRepository, RecipeRepository>();
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<ICategoryCache, DistributedCategoryCache>();
+
+        var minioEndpoint = configuration["MinIO:Endpoint"];
+        var minioAccessKey = configuration["MinIO:AccessKey"];
+        var minioSecretKey = configuration["MinIO:SecretKey"];
+        var minioUseSsl = bool.TryParse(configuration["MinIO:UseSSL"], out var parsedUseSsl) && parsedUseSsl;
+        var bucketName = configuration["MinIO:BucketName"] ?? "culinary-blog";
+        services.AddSingleton<IFileValidationService, FileValidationService>();
+
+        if (string.IsNullOrWhiteSpace(minioEndpoint) ||
+            string.IsNullOrWhiteSpace(minioAccessKey) ||
+            string.IsNullOrWhiteSpace(minioSecretKey))
+        {
+            services.AddScoped<IFileStorageService, UnavailableFileStorageService>();
+        }
+        else
+        {
+            var publicBaseUrl = configuration["MinIO:PublicBaseUrl"] ??
+                $"{(minioUseSsl ? "https" : "http")}://{minioEndpoint}/{bucketName}";
+
+            services.AddSingleton<IMinioClient>(_ =>
+            {
+                var client = new MinioClient()
+                    .WithEndpoint(minioEndpoint)
+                    .WithCredentials(minioAccessKey, minioSecretKey);
+                if (minioUseSsl) client = client.WithSSL();
+                return client.Build();
+            });
+            services.AddSingleton<IObjectStorageClient, MinioObjectStorageClient>();
+            services.AddScoped<IFileStorageService>(provider => new MinioFileStorageService(
+                provider.GetRequiredService<IObjectStorageClient>(),
+                provider.GetRequiredService<IFileValidationService>(),
+                bucketName,
+                publicBaseUrl));
+        }
+
+            return client.Build();
+        });
+        services.AddSingleton<IObjectStorageClient, MinioObjectStorageClient>();
+
+        // TV4: bucket + public-read (s3:GetObject) policy are prepared automatically on startup.
+        var storageBucket = configuration["MinIO:Bucket"] ?? "culinary-blog";
+        services.AddHostedService(serviceProvider => new StorageStartupInitializer(
+            serviceProvider.GetRequiredService<IObjectStorageClient>(),
+            serviceProvider.GetRequiredService<ILogger<StorageStartupInitializer>>(),
+            storageBucket));
+        services.AddScoped<IFileValidationService, FileValidationService>();
+        services.AddScoped<IFileStorageService>(serviceProvider =>
+            new MinioFileStorageService(
+                serviceProvider.GetRequiredService<IObjectStorageClient>(),
+                serviceProvider.GetRequiredService<IFileValidationService>(),
+                configuration["MinIO:Bucket"] ?? "culinary-blog",
+                configuration["MinIO:PublicBaseUrl"] ??
+                    $"{(bool.TryParse(configuration["MinIO:UseSSL"], out var ssl) && ssl ? "https" : "http")}://{minioEndpoint}/{configuration["MinIO:Bucket"] ?? "culinary-blog"}"));
 
         // ASP.NET Core Identity configuration
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>

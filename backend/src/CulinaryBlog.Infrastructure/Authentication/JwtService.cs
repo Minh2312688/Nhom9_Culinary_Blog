@@ -49,12 +49,6 @@ public class JwtService : IJwtTokenGenerator
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public string HashRefreshToken(string rawToken)
-    {
-        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawToken));
-        return Convert.ToHexString(hashBytes).ToLowerInvariant();
-    }
-
     public (string rawToken, string tokenHash) GenerateRefreshToken()
     {
         // CONFLICT-018: 512-bit (64 bytes) cryptographically secure random
@@ -65,8 +59,17 @@ public class JwtService : IJwtTokenGenerator
         }
 
         var rawToken = Convert.ToBase64String(randomBytes);
-        var tokenHash = HashRefreshToken(rawToken);
+
+        // Compute SHA-256 hash for database storage
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawToken));
+        var tokenHash = Convert.ToHexString(hashBytes).ToLowerInvariant();
 
         return (rawToken, tokenHash);
+    }
+
+    public string HashRefreshToken(string rawToken)
+    {
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(rawToken));
+        return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
 }

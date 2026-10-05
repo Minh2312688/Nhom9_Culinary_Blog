@@ -6,13 +6,13 @@ namespace CulinaryBlog.Application.Features.Recipes;
 internal static class RecipeMapping
 {
     public static RecipeSummaryDto ToSummary(this Recipe recipe) => new(
-        recipe.Id, recipe.Title, recipe.Slug, recipe.Description, recipe.Difficulty,
+        recipe.Id, recipe.Title, recipe.Slug, recipe.Description, recipe.Difficulty.ToString(),
         recipe.CookTimeMinutes, recipe.Servings, recipe.Status, recipe.CategoryId,
         recipe.AuthorId, recipe.RowVersion);
 
     public static RecipeDetailDto ToDetail(this Recipe recipe) => new(
         recipe.Id, recipe.Title, recipe.Slug, recipe.Description, recipe.PrepTimeMinutes,
-        recipe.CookTimeMinutes, recipe.Servings, recipe.Difficulty, recipe.Status,
+        recipe.CookTimeMinutes, recipe.Servings, recipe.Difficulty.ToString(), recipe.Status,
         recipe.CategoryId, recipe.AuthorId, recipe.RowVersion,
         recipe.Ingredients.OrderBy(x => x.OrderIndex).Select(x => new RecipeIngredientDto(
             x.Id, x.Name, x.Quantity, x.Unit, x.Notes, x.OrderIndex)).ToList(),

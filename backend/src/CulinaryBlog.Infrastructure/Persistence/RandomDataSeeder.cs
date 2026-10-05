@@ -117,7 +117,7 @@ public static class RandomDataSeeder
             PrepTimeMinutes = random.Next(5, 31),
             CookTimeMinutes = random.Next(10, 91),
             Servings = random.Next(2, 9),
-            Difficulty = new[] { "Easy", "Medium", "Hard" }[random.Next(3)],
+            Difficulty = new[] { RecipeDifficulty.Easy, RecipeDifficulty.Medium, RecipeDifficulty.Hard }[random.Next(3)],
             Status = RecipeStatus.Published,
             CategoryId = categoryId,
             AuthorId = authorId

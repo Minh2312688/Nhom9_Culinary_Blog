@@ -1,6 +1,7 @@
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using NpgsqlTypes;
 namespace CulinaryBlog.Infrastructure.Persistence;
 // ApplicationDbContext implement IApplicationDbContext (interface từ Application Layer)
 // → Application Layer không phụ thuộc EF Core, chỉ phụ thuộc interface
@@ -27,6 +28,20 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
         // Thay vì cấu hình từng entity ở đây, ta tách ra file riêng
         modelBuilder.ApplyConfigurationsFromAssembly(
             typeof(ApplicationDbContext).Assembly);
+
+        // PostgreSQL-specific search storage must not be added to test contexts
+        // using EF InMemory or other providers.
+        if (Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL")
+        {
+            var recipe = modelBuilder.Entity<Recipe>();
+            recipe.Property<NpgsqlTsVector>("SearchVector")
+                .HasColumnType("tsvector")
+                .IsRequired()
+                .ValueGeneratedOnAddOrUpdate();
+            recipe.HasIndex("SearchVector")
+                .HasDatabaseName("IDX_Recipe_Search")
+                .HasMethod("GIN");
+        }
 
         foreach (var entityType in modelBuilder.Model.GetEntityTypes()
                      .Where(x => typeof(BaseEntity).IsAssignableFrom(x.ClrType)))

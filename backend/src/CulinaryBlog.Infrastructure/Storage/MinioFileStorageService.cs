@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Files;
+using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Contracts.Storage;
 
 namespace CulinaryBlog.Infrastructure.Storage;
@@ -29,15 +30,22 @@ public sealed class MinioFileStorageService : IFileStorageService
         var validation = validator.Validate(request);
         var objectName = ObjectNameFactory.Create(request.Folder, validation.Format);
 
-        await client.EnsureBucketExistsAsync(bucketName, cancellationToken);
-        request.Content.Position = 0;
-        await client.UploadAsync(
-            bucketName,
-            objectName,
-            request.Content,
-            validation.SizeBytes,
-            validation.ContentType,
-            cancellationToken);
+        try
+        {
+            await client.EnsureBucketExistsAsync(bucketName, cancellationToken);
+            request.Content.Position = 0;
+            await client.UploadAsync(
+                bucketName,
+                objectName,
+                request.Content,
+                validation.SizeBytes,
+                validation.ContentType,
+                cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            throw new StorageUnavailableException("Object storage is unavailable.", exception);
+        }
 
         return new FileUploadResult(
             objectName,
@@ -52,8 +60,15 @@ public sealed class MinioFileStorageService : IFileStorageService
     {
         var objectName = ExtractObjectName(fileUrl);
 
-        await client.EnsureBucketExistsAsync(bucketName, cancellationToken);
-        await client.DeleteAsync(bucketName, objectName, cancellationToken);
+        try
+        {
+            await client.EnsureBucketExistsAsync(bucketName, cancellationToken);
+            await client.DeleteAsync(bucketName, objectName, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            throw new StorageUnavailableException("Object storage is unavailable.", exception);
+        }
     }
 
     private string BuildUrl(string objectName)

@@ -7,6 +7,7 @@ using CulinaryBlog.API.Contracts.Recipes;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 
 namespace CulinaryBlog.API.Endpoints;
@@ -20,6 +21,23 @@ public static class RecipeEndpoints
         group.MapGet("/", async ([AsParameters] GetRecipesQuery query, ISender sender, CancellationToken ct) =>
             Results.Ok(await sender.Send(query, ct)))
             .WithName("GetRecipes").Produces<PaginatedResult<RecipeSummaryDto>>(200);
+
+        group.MapGet("/search", async (
+            [FromQuery(Name = "q")] string? q,
+            [AsParameters] RecipeSearchRequest filters,
+            ISender sender,
+            CancellationToken ct) =>
+            Results.Ok(await sender.Send(new GetRecipesQuery(
+                Page: filters.Page,
+                PageSize: filters.PageSize,
+                CategoryId: filters.CategoryId,
+                Difficulty: filters.Difficulty,
+                MaxCookTime: filters.MaxCookTime,
+                MinServings: filters.MinServings,
+                SortBy: filters.SortBy,
+                SortOrder: filters.SortOrder,
+                Search: q), ct)))
+            .WithName("SearchRecipes").Produces<PaginatedResult<RecipeSummaryDto>>(200).ProducesProblem(400);
 
         group.MapGet("/{slug}", async (string slug, ISender sender, CancellationToken ct) =>
             Results.Ok(await sender.Send(new GetRecipeBySlugQuery(slug), ct)))
@@ -77,3 +95,13 @@ public static class RecipeEndpoints
         return endpoints;
     }
 }
+
+public sealed record RecipeSearchRequest(
+    int Page = 1,
+    int PageSize = 12,
+    Guid? CategoryId = null,
+    string? Difficulty = null,
+    int? MaxCookTime = null,
+    int? MinServings = null,
+    string SortBy = "createdAt",
+    string SortOrder = "desc");

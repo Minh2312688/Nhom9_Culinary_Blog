@@ -194,7 +194,7 @@ public static class Lab02DataSeeder
                 PrepTimeMinutes = rng.Next(10, 45),
                 CookTimeMinutes = rng.Next(15, 90),
                 Servings = rng.Next(2, 8),
-                Difficulty = new[] { "Easy", "Medium", "Hard" }[rng.Next(3)],
+                Difficulty = new[] { RecipeDifficulty.Easy, RecipeDifficulty.Medium, RecipeDifficulty.Hard }[rng.Next(3)],
                 Status = RecipeStatus.Published,
                 CreatedAt = DateTime.UtcNow
             };

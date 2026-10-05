@@ -163,7 +163,7 @@ public sealed class RecipeStepCommandHandlerTests
             var recipe = new Recipe
             {
                 Title = "Vegetable Soup", Slug = "vegetable-soup", CategoryId = category.Id,
-                AuthorId = user.Id, Difficulty = "Easy", Servings = 2
+                AuthorId = user.Id, Difficulty = RecipeDifficulty.Easy, Servings = 2
             };
             db.Set<IdentityApplicationUser>().Add(new IdentityApplicationUser
                 { Id = user.Id, UserName = user.Id, DisplayName = "Recipe Owner" });

@@ -68,11 +68,11 @@ Quy ước trạng thái:
 | **FR-RCP-005** | | **X** | X | | **TV2** | Backend publish implemented; Dashboard UI (TV3) | None | **IN_PROGRESS** |
 | **FR-RCP-006** | | **X** | X | | **TV2** | Backend archive implemented; Dashboard UI (TV3) | None | **IN_PROGRESS** |
 | **FR-RCP-007** | | **X** | X | X | **TV2** | Backend soft delete implemented; Hangfire image cleanup (TV4), UI (TV3) | None (conflict decided; see audit) | **IN_PROGRESS** |
-| **FR-RCP-008** | | **X** | X | X | **TV2** | MinIO upload service (TV4), Hangfire thumbnail (TV4) | CONFLICT-023, CONFLICT-024, TECH-RISK-011 | **BLOCKED** |
+| **FR-RCP-008** | | **X** | X | X | **TV2** | Recipe image API, MinIO/unavailable storage adapter và owner/Admin guard đã triển khai; Hangfire thumbnail (TV4) còn thiếu | FR-JOB-002, TECH-RISK-011 | **IN_PROGRESS** |
 | **FR-RCP-009** | | **X** | X | | **TV2** | Ingredient form UI (TV3) | CONFLICT-004, CONFLICT-005 | **BLOCKED** |
 | **FR-RCP-010** | | **X** | X | | **TV2** | Step form UI (TV3), PostgreSQL/Testcontainers concurrency verification | TECH-RISK-012 (concurrent renumbering) | **IN_PROGRESS** |
-| **FR-SRCH-001** | | **X** | X | | **TV2** | PostgreSQL tsvector/unaccent, Search UI (TV3) | CONFLICT-016, TECH-RISK-004 | **BLOCKED** |
-| **FR-SRCH-002** | | **X** | X | | **TV2** | Filter panel UI (TV3) | None | **NOT_STARTED** |
+| **FR-SRCH-001** | | **X** | X | | **TV2** | FTS/API/PostgreSQL, route §8.3, popularity cache và regression fallback đã kiểm tra; verifier Draft/Archived author/Admin seed/rollback thành công | TECH-RISK-004; smoke-test Redis thực chưa chạy do môi trường | **DONE** |
+| **FR-SRCH-002** | | **X** | X | | **TV2** | Bộ lọc API/UI; AND filter và visibility Draft/Archived guest/author/Admin đã xác minh trên PostgreSQL bằng transaction tạm | Rollback migration cần DB riêng | **DONE** |
 | **FR-SRCH-003** | | **X** | X | | **TV2** | Sort dropdown UI (TV3) | CONFLICT-003 | **BLOCKED** |
 | **FR-SRCH-004** | | **X** | X | | **TV2** | Pagination component (TV3) | CONFLICT-012 | **BLOCKED** |
 | **FR-FILE-001** | | X | X | **X** | **TV4** | MinIO S3 SDK, Image upload form (TV3) | TECH-RISK-006, TECH-RISK-015 | **NOT_STARTED** |

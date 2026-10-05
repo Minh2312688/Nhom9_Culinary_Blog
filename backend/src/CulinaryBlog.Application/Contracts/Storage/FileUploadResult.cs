@@ -2,8 +2,7 @@ namespace CulinaryBlog.Application.Contracts.Storage;
 
 /// <summary>
 /// Kết quả ở mức storage của một lần upload.
-/// Đây KHÔNG phải response contract của API upload ảnh: shape đang là CONFLICT-024 (OPEN),
-/// không do TV4 tự quyết định.
+/// API handlers map this storage result to their public upload response contract.
 /// </summary>
 public sealed record FileUploadResult(
     string ObjectName,

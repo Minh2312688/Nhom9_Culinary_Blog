@@ -25,3 +25,6 @@ docker-compose.override.yml
 **/TestResults/
 test-results/
 playwright-report/
+
+# Other
+docs/TV4/

@@ -1,5 +1,7 @@
 # Nhom9_Culinary_Blog
 
+Docker guide: [docs/docker-guide.md](docs/docker-guide.md).
+
 > **Đồ án môn:** Phát triển Ứng dụng Web Nâng cao  
 > **Chủ đề:** Culinary Blog – Blog Ẩm thực và Chia sẻ Công thức Nấu ăn
 

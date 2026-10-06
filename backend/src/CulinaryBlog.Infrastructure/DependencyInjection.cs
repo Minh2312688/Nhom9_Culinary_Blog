@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.IdentityModel.Tokens;
@@ -28,15 +29,12 @@ public static class DependencyInjection
         IConfiguration configuration,
         Microsoft.Extensions.Hosting.IHostEnvironment? environment = null)
     {
-        // Database Context configuration (PostgreSQL strictly required by SRS)
+        // One PostgreSQL context owns Identity, auth tokens, recipes, and categories.
         var postgresConnection = configuration.GetConnectionString("Postgres");
         if (string.IsNullOrWhiteSpace(postgresConnection))
         {
-            throw new InvalidOperationException("Connection string 'Postgres' is required for AuthDbContext.");
+            throw new InvalidOperationException("Connection string 'Postgres' is required for ApplicationDbContext.");
         }
-
-        services.AddDbContext<AuthDbContext>(options =>
-            options.UseNpgsql(postgresConnection));
 
         services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(postgresConnection));
         services.AddScoped<IApplicationDbContext>(serviceProvider =>
@@ -45,6 +43,21 @@ public static class DependencyInjection
         services.AddScoped<IRecipeRepository, RecipeRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<ICategoryCache, DistributedCategoryCache>();
+        services.AddScoped<IRecipeCache, DistributedRecipeCache>();
+
+        var redisConnection = configuration["Redis:ConnectionString"];
+        if (string.IsNullOrWhiteSpace(redisConnection))
+        {
+            services.AddDistributedMemoryCache();
+        }
+        else
+        {
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = redisConnection;
+                options.InstanceName = "CulinaryBlog:";
+            });
+        }
 
         var minioEndpoint = configuration["MinIO:Endpoint"];
         var minioAccessKey = configuration["MinIO:AccessKey"];
@@ -73,31 +86,16 @@ public static class DependencyInjection
                 return client.Build();
             });
             services.AddSingleton<IObjectStorageClient, MinioObjectStorageClient>();
+            services.AddSingleton<IHostedService>(serviceProvider => new StorageStartupInitializer(
+                serviceProvider.GetRequiredService<IObjectStorageClient>(),
+                serviceProvider.GetRequiredService<ILogger<StorageStartupInitializer>>(),
+                bucketName));
             services.AddScoped<IFileStorageService>(provider => new MinioFileStorageService(
                 provider.GetRequiredService<IObjectStorageClient>(),
                 provider.GetRequiredService<IFileValidationService>(),
                 bucketName,
                 publicBaseUrl));
         }
-
-            return client.Build();
-        });
-        services.AddSingleton<IObjectStorageClient, MinioObjectStorageClient>();
-
-        // TV4: bucket + public-read (s3:GetObject) policy are prepared automatically on startup.
-        var storageBucket = configuration["MinIO:Bucket"] ?? "culinary-blog";
-        services.AddHostedService(serviceProvider => new StorageStartupInitializer(
-            serviceProvider.GetRequiredService<IObjectStorageClient>(),
-            serviceProvider.GetRequiredService<ILogger<StorageStartupInitializer>>(),
-            storageBucket));
-        services.AddScoped<IFileValidationService, FileValidationService>();
-        services.AddScoped<IFileStorageService>(serviceProvider =>
-            new MinioFileStorageService(
-                serviceProvider.GetRequiredService<IObjectStorageClient>(),
-                serviceProvider.GetRequiredService<IFileValidationService>(),
-                configuration["MinIO:Bucket"] ?? "culinary-blog",
-                configuration["MinIO:PublicBaseUrl"] ??
-                    $"{(bool.TryParse(configuration["MinIO:UseSSL"], out var ssl) && ssl ? "https" : "http")}://{minioEndpoint}/{configuration["MinIO:Bucket"] ?? "culinary-blog"}"));
 
         // ASP.NET Core Identity configuration
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -117,7 +115,7 @@ public static class DependencyInjection
             // Email uniqueness
             options.User.RequireUniqueEmail = true;
         })
-        .AddEntityFrameworkStores<AuthDbContext>()
+        .AddEntityFrameworkStores<ApplicationDbContext>()
         .AddDefaultTokenProviders();
 
         // NFR-SEC-001 Safety Patch: PBKDF2-HMACSHA512 iteration count >= 100,000

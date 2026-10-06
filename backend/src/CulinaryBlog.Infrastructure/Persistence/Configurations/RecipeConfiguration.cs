@@ -22,6 +22,10 @@ public class RecipeConfiguration : IEntityTypeConfiguration<Recipe>
             .IsRequired()
             .HasMaxLength(220);
 
+        builder.Property(r => r.Difficulty)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
         builder.HasIndex(r => r.Slug)
             .IsUnique();
 
@@ -50,6 +54,16 @@ public class RecipeConfiguration : IEntityTypeConfiguration<Recipe>
         builder.HasMany(r => r.Steps)
             .WithOne(s => s.Recipe)
             .HasForeignKey(s => s.RecipeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(r => r.Images)
+            .WithOne(image => image.Recipe)
+            .HasForeignKey(image => image.RecipeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(r => r.Nutrition)
+            .WithOne(nutrition => nutrition.Recipe)
+            .HasForeignKey<RecipeNutrition>(nutrition => nutrition.RecipeId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Property(r => r.RowVersion)

@@ -1,15 +1,19 @@
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using NpgsqlTypes;
+using IdentityApplicationUser = CulinaryBlog.Infrastructure.Identity.ApplicationUser;
 namespace CulinaryBlog.Infrastructure.Persistence;
 // ApplicationDbContext implement IApplicationDbContext (interface từ Application Layer)
 // → Application Layer không phụ thuộc EF Core, chỉ phụ thuộc interface
-public class ApplicationDbContext : DbContext, IApplicationDbContext
+public class ApplicationDbContext : IdentityDbContext<IdentityApplicationUser, IdentityRole, string>, IApplicationDbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options) { }
     
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Recipe> Recipes => Set<Recipe>();
     public DbSet<RecipeStep> RecipeSteps => Set<RecipeStep>();
@@ -24,10 +28,21 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Áp dụng tất cả Entity Configuration trong assembly này
-        // Thay vì cấu hình từng entity ở đây, ta tách ra file riêng
+        base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(
-            typeof(ApplicationDbContext).Assembly);
+            typeof(ApplicationDbContext).Assembly,
+            type => type.Namespace ==
+                typeof(CulinaryBlog.Infrastructure.Persistence.Configurations.CategoryConfiguration).Namespace);
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(token => token.Id);
+            entity.HasIndex(token => token.TokenHash).IsUnique();
+            entity.Property(token => token.TokenHash).IsRequired().HasMaxLength(256);
+            entity.Property(token => token.UserId).IsRequired();
+            entity.Property(token => token.CreatedAt).IsRequired();
+            entity.Property(token => token.ExpiresAt).IsRequired();
+        });
 
         // PostgreSQL-specific search storage must not be added to test contexts
         // using EF InMemory or other providers.
@@ -49,7 +64,6 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             entityType.FindProperty(nameof(BaseEntity.RowVersion))
                 ?.SetDefaultValueSql("decode('00', 'hex')");
         }
-        base.OnModelCreating(modelBuilder);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

@@ -38,6 +38,8 @@ public class UpdateProfileCommandHandlerTests
             Bio: "Original bio",      // unchanged
             EmailConfirmed: true,
             CreatedAt: DateTimeOffset.UtcNow.AddMonths(-1),
+            IsActive: true,
+            IsLockedOut: false,
             Roles: new[] { "Author" });
 
         _identityServiceMock

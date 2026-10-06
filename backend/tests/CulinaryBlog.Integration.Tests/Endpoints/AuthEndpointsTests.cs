@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using CulinaryBlog.Application.DTOs.Auth;
 using CulinaryBlog.Infrastructure.Authentication;
@@ -40,14 +41,14 @@ public class CustomAuthWebApplicationFactory : WebApplicationFactory<Program>
         {
             // Move test database provider into integration test DI override (SRS Compliance)
             var dbContextOptionsDescriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(DbContextOptions<AuthDbContext>));
+                d => d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>));
             if (dbContextOptionsDescriptor != null)
             {
                 services.Remove(dbContextOptionsDescriptor);
             }
 
             var dbContextDescriptor = services.SingleOrDefault(
-                d => d.ServiceType == typeof(AuthDbContext));
+                d => d.ServiceType == typeof(ApplicationDbContext));
             if (dbContextDescriptor != null)
             {
                 services.Remove(dbContextDescriptor);
@@ -57,7 +58,7 @@ public class CustomAuthWebApplicationFactory : WebApplicationFactory<Program>
                 .AddEntityFrameworkInMemoryDatabase()
                 .BuildServiceProvider();
 
-            services.AddDbContext<AuthDbContext>(options =>
+            services.AddDbContext<ApplicationDbContext>(options =>
             {
                 options.UseInMemoryDatabase(_dbName);
                 options.UseInternalServiceProvider(inMemoryServiceProvider);
@@ -463,7 +464,7 @@ public class AuthEndpointsTests : IClassFixture<CustomAuthWebApplicationFactory>
 
         // Verify database: only ONE active child refresh token exists for this user, and old token is revoked
         using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
         user.Should().NotBeNull();
 
@@ -510,7 +511,7 @@ public class AuthEndpointsTests : IClassFixture<CustomAuthWebApplicationFactory>
 
         // Assert 2: Database actually contains updated values
         using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var dbUser = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
         dbUser.Should().NotBeNull();
         dbUser!.DisplayName.Should().Be(updatePayload.DisplayName);
@@ -554,7 +555,7 @@ public class AuthEndpointsTests : IClassFixture<CustomAuthWebApplicationFactory>
         profile.Bio.Should().Be("Original Bio Content");
 
         using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var dbUser = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
         dbUser!.DisplayName.Should().Be("Chef Stage 2");
         dbUser.AvatarUrl.Should().Be("https://example.com/stage1.jpg");
@@ -621,7 +622,7 @@ public class AuthEndpointsTests : IClassFixture<CustomAuthWebApplicationFactory>
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var userInDb = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
         userInDb.Should().NotBeNull();
         userInDb!.DisplayName.Should().Be("Safe New Name");

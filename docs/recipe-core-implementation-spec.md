@@ -19,9 +19,9 @@ Dataset báo cáo phải thỏa các bất biến sau:
 
 ## Migration
 
-Migration `InitialRecipeSchema` nằm trong Infrastructure và được API áp dụng qua `Database.MigrateAsync()` trước seed. Migration tạo ApplicationUsers, Categories, Recipes, RecipeIngredients, RecipeSteps, RecipeImages và RecipeNutritions, bao gồm foreign keys, unique recipe slug và các index cần cho truy vấn.
+`ApplicationDbContext` là context duy nhất cho Identity, refresh token, category, recipe và search. Toàn bộ migration được áp dụng từ `Program.cs` trong Development trước khi API nhận request. `UnifyIdentityAndBlogSchema` hợp nhất bảng user/role và recipe, đồng thời chuyển author/role legacy từ `ApplicationUser` sang `AspNetUsers`.
 
-`ApplicationDbContextFactory` cung cấp design-time options cho EF CLI, vì vậy migration có thể được scaffold mà không cần khởi chạy web server hoặc kết nối database.
+`ApplicationDbContextFactory` yêu cầu `ConnectionStrings__Postgres` từ môi trường design-time; không lưu mật khẩu trong source. Xem `docs/postgresql-setup.md` để tạo database, migrate và kiểm tra dữ liệu. Database từng migrate bằng `AuthDbContext` không tự tương thích; giữ nguyên và tạo database mới thay vì xóa volume.
 
 ## Async random seeding
 
@@ -38,11 +38,11 @@ Nếu dữ liệu đã tồn tại nhưng thiếu children, seeder bổ sung chi
 
 ## Kích hoạt
 
-Seed chỉ chạy khi `Seed:Enabled` là `true`. Docker Compose dùng biến môi trường `Seed__Enabled=true`; local không tự tạo dữ liệu nếu không bật cấu hình này.
+Khi `Seed:Enabled=true`, `Program.cs` gọi `Lab02DataSeeder` trên cùng `ApplicationDbContext`, tạo author kỹ thuật, tối thiểu 20 danh mục và 100 công thức có ít nhất 10 nguyên liệu/5 bước. Compose bật cờ này. `RandomDataSeeder` là tùy chọn riêng cho dataset báo cáo, không phải seeder mặc định.
 
 ## Robot Framework report
 
-`robot/recipe_report.robot` dùng RequestsLibrary để gọi API public. Suite không chèn dữ liệu; nó kiểm chứng dữ liệu do `RandomDataSeeder` tạo:
+`robot/recipe_report.robot` dùng RequestsLibrary để gọi API public. Suite không chèn dữ liệu; nó kiểm chứng dữ liệu do seeder trong Development tạo:
 
 1. Kiểm tra list categories có tối thiểu 20 items.
 2. Kiểm tra list recipes có tối thiểu 100 items.
@@ -57,25 +57,43 @@ robot -d robot/results robot/recipe_report.robot
 
 `BASE_URL` mặc định là `http://localhost:5000`; có thể override bằng biến Robot:
 
-```powershell
+```powershellcd D:\Nhom9_Culinary_Blog
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+docker compose up -d minio
+docker compose ps minio
 robot --variable BASE_URL:http://localhost:5000 -d robot/results robot/recipe_report.robot
 ```
+
+## MinIO integration tests
+
+Six tests under `MinioStorageIntegrationTests` require a live MinIO and explicit test-process environment variables. For Compose, first copy `.env.example` to `.env` and start MinIO. Set the test access key/secret to match `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD`; do not commit credentials:
+
+```powershell
+docker compose up -d minio
+$env:MINIO_TEST_ENDPOINT = "127.0.0.1:9000"
+$env:MINIO_TEST_ACCESS_KEY = "<MinIO root user>"
+$env:MINIO_TEST_SECRET_KEY = "<MinIO root password>"
+$env:MINIO_TEST_BUCKET = "culinary-blog-it"
+dotnet test backend\tests\CulinaryBlog.Integration.Tests\CulinaryBlog.Integration.Tests.csproj --filter "FullyQualifiedName~MinioStorageIntegrationTests"
+```
+
+Tests apply a public-read-only policy only to the isolated test bucket and create/delete temporary objects. Without a live service or any required variable they report `Skipped`, not `Passed`.
+
+Compose pins `bitnamilegacy/minio:2025.7.23-debian-12-r5` because the configured Quay image returned 401 and the upstream Docker Hub image is no longer published. This archived image is a local test workaround, not a recommended production image. On Docker Desktop, use IPv4 loopback (`127.0.0.1`) for the test endpoint; `localhost` caused intermittent connection resets during SDK uploads.
 
 ## Luồng triển khai báo cáo
 
 1. Khởi động PostgreSQL, Redis và API bằng Docker Compose.
-2. API đọc `Seed__Enabled=true`.
-3. API chạy `MigrateAsync`, tạo schema nếu migration chưa áp dụng.
-4. API chạy `RandomDataSeeder.SeedAsync`.
-5. Chờ log `Report random data ready`.
-6. Chạy Robot suite và lưu kết quả trong `robot/results`.
+2. Xác nhận migration `ApplicationDbContext` thành công trên database mới.
+3. Trong Development, `Seed__Enabled=true` gọi `Lab02DataSeeder` để tạo dữ liệu mẫu.
+4. Chạy Robot suite và lưu kết quả trong `robot/results`; hướng dẫn đầy đủ ở `docs/postgresql-setup.md`.
 
 ## Giới hạn
 
-- Migration hiện được lưu trong source; cần chạy PostgreSQL thật để xác nhận SQL theo phiên bản server triển khai.
+- Database cũ được khởi tạo bằng migration `AuthDbContext` cần quy trình chuyển dữ liệu riêng; không xóa volume để né lỗi.
 - Seeder dành cho báo cáo, không nên bật trong production nghiệp vụ.
 - Robot cần API và database đang chạy; nó không thay thế migration hoặc seeder.
-- Khi Redis không chạy, cache read/write/remove được bỏ qua có log cảnh báo và request detail tiếp tục đọc PostgreSQL.
+- Khi Redis không chạy, cache read/write/remove được bỏ qua có log cảnh báo và request detail tiếp tục đọc PostgreSQL. Nếu không cấu hình Redis, DI dùng distributed memory cache.
 # Đặc tả triển khai Recipe Core
 
 ## 1. Mục đích và phạm vi
@@ -252,7 +270,7 @@ dotnet build backend\CulinaryBlog.sln --no-restore
 dotnet test backend\tests\CulinaryBlog.Application.Tests\CulinaryBlog.Application.Tests.csproj --no-restore
 ```
 
-Kết quả xác minh ngày 2026-10-02: các test project chạy tuần tự với `--maxcpucount:1` đạt `494 passed, 0 failed` (Application 435, Integration 56, Architecture 3); solution build thành công. Frontend TypeScript và production build cũng đạt. Coverage hiện có recipe query/commands, Difficulty enum mapping, recipe image handlers, endpoint authentication, multipart validation và sanitized storage-unavailable 503. Chưa chạy các thao tác MinIO/PostgreSQL thật; FR-JOB-002 thumbnail queue chưa có trong backend.
+Kết quả xác minh ngày 2026-10-06: MinIO thật chạy từ Compose bằng image legacy đã pin; riêng MinIO tests đạt `6/6`, toàn bộ Integration project đạt `76/76` (không Skip). Test upload riêng cũng đạt 5 lần liên tục. Dùng `MINIO_TEST_ENDPOINT=127.0.0.1:9000`; `localhost:9000` gây lỗi reset kết nối không ổn định trên Docker Desktop. FR-JOB-002 thumbnail queue chưa có trong backend.
 
 ## 8. Việc còn lại và hướng phát triển
 
@@ -277,7 +295,7 @@ Kết quả xác minh ngày 2026-10-02: các test project chạy tuần tự v�
 | FR-RCP-005 | DONE | `PublishRecipeCommand`, child-data precondition |
 | FR-RCP-006 | DONE | `ArchiveRecipeCommand` |
 | FR-RCP-007 | DONE | `DeleteRecipeCommand`, DbContext soft delete |
-| FR-RCP-008 | PARTIAL | Image upload/primary/delete routes, MinIO adapter registration and handlers exist; FR-JOB-002 thumbnail queue and live MinIO/PostgreSQL verification remain pending |
+| FR-RCP-008 | PARTIAL | Image routes and handlers exist; MinIO integration tests require a live service and remain unverified; FR-JOB-002 thumbnail queue is pending |
 | FR-RCP-010 | DONE (backend) | Step commands, authenticated endpoints, validation, soft delete and renumbering; PostgreSQL migration and handler/HTTP tests |
 | Redis cache | PARTIAL | Redis registration có; prefix invalidation chưa có |
 | Hangfire cleanup | NOT STARTED | Chưa có Hangfire job trong repository |

@@ -73,6 +73,29 @@ Các thành phần được tích hợp theo tiến độ module tương ứng:
 - Zod.
 - Các thư viện khác được tích hợp theo từng module.
 
+Các màn hình chính hiện có: trang chủ, danh sách/chi tiết công thức, danh mục,
+tìm kiếm, đăng nhập/đăng ký, hồ sơ và dashboard quản lý công thức/danh mục.
+Các màn hình công thức và danh mục đọc/ghi qua API `/api/v1`; thao tác quản trị
+cần access token và quyền tương ứng.
+
+Chạy frontend từ thư mục `frontend`:
+
+```powershell
+npm install
+npm run dev -- --port 3001
+```
+
+Chạy kiểm tra route và luồng tạo công thức:
+
+```powershell
+npx playwright install chromium
+npx playwright test e2e/srs-routes.spec.ts
+```
+
+Nếu Playwright Chromium chưa được cài nhưng máy đã có Chrome/Edge, đặt biến
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` bằng đường dẫn `chrome.exe` hoặc
+`msedge.exe` trước khi chạy test.
+
 ### Clean Architecture
 
 ```text
@@ -130,7 +153,46 @@ Cấu trúc có thể được bổ sung khi các module mới được tích h�
 
 ---
 
-## 5. Phân công cụ thể theo thành viên
+## 5. Chạy dự án
+
+### Backend và dịch vụ nền
+
+1. Sao chép `.env.example` thành `.env`; thay các placeholder bằng secrets riêng cho local.
+2. Chạy `docker compose up --build -d` từ thư mục gốc.
+3. API lắng nghe tại `http://localhost:5000`; PostgreSQL, Redis và MinIO được khởi chạy cùng Compose.
+
+`JWT_SECRET` là bắt buộc. Nếu không có biến này, API dừng khi khởi tạo cấu hình JWT. Redis có thể bỏ cấu hình để dùng cache trong bộ nhớ; khi Redis đã cấu hình nhưng tạm thời không truy cập được, cache bỏ qua lỗi và tiếp tục đọc database.
+
+Identity, refresh token, category, recipe và search dùng chung `ApplicationDbContext` cùng một migration stream. Trong Development, API tự áp dụng migration; `Seed__Enabled=true` bật seed 20 danh mục và 100 công thức. Hướng dẫn chạy toàn dự án ở [docs/run-project.md](docs/run-project.md); chi tiết
+database và tài khoản ở [docs/postgresql-setup.md](docs/postgresql-setup.md).
+
+> Database cũ từng chạy migration `AuthDbContext` không tương thích tự động với migration đã hợp nhất. Sao lưu trước; dùng database mới theo hướng dẫn để giữ nguyên dữ liệu cũ.
+
+### Frontend
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+Frontend mặc định chạy tại `http://localhost:3000`.
+Hướng dẫn E2E và cấu hình browser nằm trong [docs/run-project.md](docs/run-project.md).
+
+### Kiểm thử
+
+```powershell
+dotnet test backend\CulinaryBlog.sln --maxcpucount:1
+cd frontend
+npm run build
+```
+
+Để chạy cả sáu integration test MinIO và E2E trình duyệt, xem
+[docs/run-project.md](docs/run-project.md).
+
+---
+
+## 6. Phân công cụ thể theo thành viên
 
 ### TV1 – Nguyễn Phạm Phú Nam – Auth, Security & Base Infrastructure
 
@@ -323,7 +385,7 @@ Cấu trúc có thể được bổ sung khi các module mới được tích h�
 
 ---
 
-## 6. Task Matrix
+## 7. Task Matrix
 
 | Thành viên | Vai trò | Nhiệm vụ cốt lõi phải bàn giao | Phạm vi chính |
 |---|---|---|---|
@@ -600,7 +662,7 @@ Xem danh sách migration:
 dotnet ef migrations list `
   --project backend/src/CulinaryBlog.Infrastructure `
   --startup-project backend/src/CulinaryBlog.API `
-  --context AuthDbContext
+  --context ApplicationDbContext
 ```
 
 Apply migration:
@@ -609,7 +671,7 @@ Apply migration:
 dotnet ef database update `
   --project backend/src/CulinaryBlog.Infrastructure `
   --startup-project backend/src/CulinaryBlog.API `
-  --context AuthDbContext
+  --context ApplicationDbContext
 ```
 
 ### Lưu ý khi làm việc nhóm
@@ -618,8 +680,8 @@ dotnet ef database update `
 - Migration mới phải được review trước khi merge.
 - Không tạo Entity trùng.
 - Không reset Docker volume nếu chưa kiểm tra dữ liệu.
-- DbContext là file có nguy cơ conflict cao, cần hạn chế chỉnh song song.
-- DbContext hiện tại có thể tiếp tục được hợp nhất khi nhóm tích hợp database chính thức.
+- `ApplicationDbContext` là context duy nhất; mọi migration mới phải dùng context này.
+- Trước khi chạy migration thủ công, đặt `ConnectionStrings__Postgres`; không lưu mật khẩu trong source.
 
 ---
 

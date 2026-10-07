@@ -59,8 +59,9 @@ public class RegisterCommandHandlerTests
             AppRoles.Author,
             It.IsAny<CancellationToken>()), Times.Once);
 
-        // Verify welcome email enqueued (TV4 dependency)
+        // Verify welcome email enqueued (TV4 dependency) with full payload
         _welcomeEmailEnqueuerMock.Verify(x => x.EnqueueWelcomeEmailAsync(
+            expectedUserId,
             command.Email,
             command.DisplayName,
             It.IsAny<CancellationToken>()), Times.Once);
@@ -94,6 +95,7 @@ public class RegisterCommandHandlerTests
         _welcomeEmailEnqueuerMock.Verify(x => x.EnqueueWelcomeEmailAsync(
             It.IsAny<string>(),
             It.IsAny<string>(),
+            It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -120,5 +122,11 @@ public class RegisterCommandHandlerTests
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _handler.Handle(command, CancellationToken.None));
+
+        _welcomeEmailEnqueuerMock.Verify(x => x.EnqueueWelcomeEmailAsync(
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 }

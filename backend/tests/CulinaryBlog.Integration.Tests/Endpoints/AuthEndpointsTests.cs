@@ -28,6 +28,11 @@ public class CustomAuthWebApplicationFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // "Testing": skip Development migrate/seed and Hangfire registration
+        // (FR-JOB-001). API boots without PostgreSQL/Hangfire/SMTP; the
+        // welcome-email seam resolves to a no-op unless a test overrides it.
+        builder.UseEnvironment("Testing");
+
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>

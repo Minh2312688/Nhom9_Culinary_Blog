@@ -40,6 +40,7 @@ public sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, Re
 
         // FR-JOB-001 dependency: Enqueue welcome email (TV4)
         await _welcomeEmailEnqueuer.EnqueueWelcomeEmailAsync(
+            result.UserId!,
             result.Email!,
             result.DisplayName!,
             cancellationToken);

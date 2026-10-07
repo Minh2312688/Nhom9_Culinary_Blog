@@ -1,6 +1,7 @@
 using System.Text;
 using CulinaryBlog.Application.Contracts.Authentication;
 using CulinaryBlog.Application.Contracts;
+using CulinaryBlog.Application.Contracts.Notifications;
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Infrastructure.Authentication;
 using CulinaryBlog.Infrastructure.Identity;
@@ -10,6 +11,8 @@ using CulinaryBlog.Infrastructure.Repositories;
 using CulinaryBlog.Infrastructure.Storage;
 using CulinaryBlog.Application.Common.Files;
 using CulinaryBlog.Application.Contracts.Storage;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -165,7 +168,66 @@ public static class DependencyInjection
         services.AddScoped<IIdentityService, IdentityService>();
         services.AddScoped<IJwtTokenGenerator, JwtService>();
         services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
-        services.AddScoped<IWelcomeEmailEnqueuer, WelcomeEmailEnqueuer>();
+
+        // FR-JOB-001 (Welcome Email via Hangfire + MailKit/SMTP).
+        // Skipped in the "Testing" environment so integration tests can run
+        // without a real Hangfire storage or SMTP server; tests override
+        // IWelcomeEmailEnqueuer with a spy instead.
+        var isTestingEnvironment = string.Equals(
+            environment?.EnvironmentName,
+            "Testing",
+            StringComparison.OrdinalIgnoreCase);
+
+        if (!isTestingEnvironment)
+        {
+            // SMTP options: bound from "Smtp" section (appsettings/environment).
+            // SmtpEmailSender validates at send time; empty section is allowed
+            // here so the app can boot before SMTP is configured, but sending
+            // will throw a clear error instead of fake success.
+            services.AddOptions<SmtpOptions>()
+                .Bind(configuration.GetSection(SmtpOptions.SectionName));
+
+            services.AddScoped<IEmailSender, SmtpEmailSender>();
+            services.AddScoped<WelcomeEmailJob>();
+
+            // Hangfire with PostgreSQL storage (persistent, per SRS traceability).
+            // Reuses the existing Postgres connection string. The storage package
+            // creates/upgrades the "hangfire" schema itself
+            // (PrepareSchemaIfNecessary), so no manual schema or migration.
+            services.AddHangfire((provider, config) =>
+            {
+                config.UsePostgreSqlStorage(
+                    bootstrapper => bootstrapper.UseNpgsqlConnection(postgresConnection),
+                    new PostgreSqlStorageOptions
+                    {
+                        SchemaName = "hangfire",
+                        PrepareSchemaIfNecessary = true,
+                        QueuePollInterval = TimeSpan.FromSeconds(15),
+                        // Fail fast if PostgreSQL is unreachable at startup:
+                        // no resilient retry loop, no degraded mode. A clear
+                        // exception beats a silently non-functional job server.
+                        StartupConnectionMaxRetries = 0,
+                        AllowDegradedModeWithoutStorage = false
+                    });
+
+                var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+                config.UseFilter(new WelcomeEmailFailureLogFilter(
+                    loggerFactory.CreateLogger<WelcomeEmailJob>()));
+            });
+
+            // Background job server (no Dashboard in this scope).
+            services.AddHangfireServer();
+
+            services.AddScoped<IWelcomeEmailEnqueuer, WelcomeEmailEnqueuer>();
+        }
+        else
+        {
+            // Testing: no Hangfire storage/server (and therefore no
+            // IBackgroundJobClient). Register a no-op enqueuer so the API can
+            // boot and resolve the graph; integration tests that assert
+            // enqueue behavior override IWelcomeEmailEnqueuer with a spy.
+            services.AddScoped<IWelcomeEmailEnqueuer, NoOpWelcomeEmailEnqueuer>();
+        }
 
         return services;
     }

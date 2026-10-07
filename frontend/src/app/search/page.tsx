@@ -12,6 +12,8 @@ interface SearchFilters {
   difficulty: string;
   maxCookTime: string;
   minServings: string;
+  sortBy: "relevance" | "createdAt" | "cookTime" | "prepTime" | "title";
+  sortOrder: "asc" | "desc";
   page: number;
 }
 
@@ -21,6 +23,8 @@ const emptyFilters: SearchFilters = {
   difficulty: "",
   maxCookTime: "",
   minServings: "",
+  sortBy: "relevance",
+  sortOrder: "desc",
   page: 1,
 };
 
@@ -33,6 +37,10 @@ function readFiltersFromUrl(): SearchFilters {
     difficulty: params.get("difficulty") ?? "",
     maxCookTime: params.get("maxCookTime") ?? "",
     minServings: params.get("minServings") ?? "",
+    sortBy: ["createdAt", "cookTime", "prepTime", "title"].includes(params.get("sortBy") ?? "")
+      ? params.get("sortBy") as SearchFilters["sortBy"]
+      : "relevance",
+    sortOrder: params.get("sortOrder")?.toLowerCase() === "asc" ? "asc" : "desc",
     page: Number.isInteger(page) && page > 0 ? page : 1,
   };
 }
@@ -44,6 +52,10 @@ function buildQuery(filters: SearchFilters): URLSearchParams {
   if (filters.difficulty) query.set("difficulty", filters.difficulty);
   if (filters.maxCookTime) query.set("maxCookTime", filters.maxCookTime);
   if (filters.minServings) query.set("minServings", filters.minServings);
+  if (filters.sortBy !== "relevance") {
+    query.set("sortBy", filters.sortBy);
+    query.set("sortOrder", filters.sortOrder);
+  }
   return query;
 }
 
@@ -181,6 +193,24 @@ export default function RecipeSearchPage() {
               <span>Khẩu phần từ</span>
               <input type="number" min={1} step={1} inputMode="numeric" placeholder="Ví dụ: 2" value={filters.minServings}
                 onChange={(event) => updateFilter("minServings", event.target.value)} />
+            </label>
+            <label className={styles.filterField}>
+              <span>Sắp xếp theo</span>
+              <select value={filters.sortBy} onChange={(event) => updateFilter("sortBy", event.target.value as SearchFilters["sortBy"])}>
+                <option value="relevance">Độ liên quan</option>
+                <option value="createdAt">Ngày tạo</option>
+                <option value="cookTime">Thời gian nấu</option>
+                <option value="prepTime">Thời gian chuẩn bị</option>
+                <option value="title">Tiêu đề</option>
+              </select>
+            </label>
+            <label className={styles.filterField}>
+              <span>Thứ tự</span>
+              <select value={filters.sortOrder} disabled={filters.sortBy === "relevance"}
+                onChange={(event) => updateFilter("sortOrder", event.target.value as SearchFilters["sortOrder"])}>
+                <option value="asc">Tăng dần</option>
+                <option value="desc">Giảm dần</option>
+              </select>
             </label>
           </div>
 

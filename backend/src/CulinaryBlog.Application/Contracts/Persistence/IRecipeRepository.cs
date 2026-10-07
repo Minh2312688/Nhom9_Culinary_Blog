@@ -11,7 +11,7 @@ public interface IRecipeRepository
     Task<PaginatedResult<RecipeSummaryDto>> SearchAsync(
         string query, string? userId, bool isAdmin, int page, int pageSize,
         Guid? categoryId = null, RecipeDifficulty? difficulty = null, int? maxCookTime = null, int? minServings = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default, string? sortBy = null, string? sortOrder = null);
     void Add(Recipe recipe);
     void Remove(Recipe recipe);
     void AddStep(RecipeStep step);

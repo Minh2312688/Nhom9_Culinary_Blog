@@ -15,6 +15,11 @@ public sealed class RecipeSearchEndpointsTests : IClassFixture<CustomAuthWebAppl
     [InlineData("minServings=0")]
     [InlineData("minServings=-1")]
     [InlineData("difficulty=Expert")]
+    [InlineData("page=0")]
+    [InlineData("pageSize=0")]
+    [InlineData("pageSize=51")]
+    [InlineData("sortBy=unsupported")]
+    [InlineData("sortOrder=asc")]
     public async Task GetRecipes_InvalidFilter_Returns400ProblemDetails(string filter)
     {
         var client = factory.CreateIsolatedClient();
@@ -23,6 +28,11 @@ public sealed class RecipeSearchEndpointsTests : IClassFixture<CustomAuthWebAppl
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.StartsWith("application/problem+json", response.Content.Headers.ContentType?.ToString());
+
+        var searchResponse = await client.GetAsync($"/api/v1/recipes/search?q=rice&{filter}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, searchResponse.StatusCode);
+        Assert.StartsWith("application/problem+json", searchResponse.Content.Headers.ContentType?.ToString());
     }
 
     [Fact]

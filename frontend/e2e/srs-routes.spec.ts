@@ -94,6 +94,28 @@ test("recipe detail renders ingredients and preparation steps", async ({ page })
   await expect(page.getByText("Nấu nước dùng.")).toBeVisible();
 });
 
+test("search sorting is sent to the API and resets pagination", async ({ page }) => {
+  const requests: URL[] = [];
+  await page.route("**/api/v1/recipes/search**", async route => {
+    requests.push(new URL(route.request().url()));
+    await route.fulfill({
+      json: { items: [recipe], totalCount: 25, page: 1, pageSize: 12, totalPages: 3, hasNextPage: true, hasPreviousPage: false },
+    });
+  });
+
+  await page.goto("/search?page=3&q=pho&sortBy=createdAt&sortOrder=asc");
+  await expect.poll(() => requests.at(-1)?.searchParams.get("page")).toBe("3");
+  await page.getByLabel("Sắp xếp theo").selectOption("cookTime");
+  await page.getByLabel("Thứ tự").selectOption("asc");
+
+  await expect.poll(() => {
+    const latest = requests.at(-1)?.searchParams;
+    return [latest?.get("sortBy"), latest?.get("sortOrder"), latest?.get("page"), latest?.get("q")];
+  }).toEqual(["cookTime", "asc", "1", "pho"]);
+  await expect(page).toHaveURL(/sortBy=cookTime/);
+  await expect(page).toHaveURL(/sortOrder=asc/);
+});
+
 test("new recipe is submitted to the API", async ({ page }) => {
   let submittedRecipe: Record<string, unknown> | undefined;
   await page.route("**/api/v1/recipes/", async route => {

@@ -103,5 +103,5 @@ public sealed record RecipeSearchRequest(
     string? Difficulty = null,
     int? MaxCookTime = null,
     int? MinServings = null,
-    string SortBy = "createdAt",
-    string SortOrder = "desc");
+    string? SortBy = null,
+    string? SortOrder = null);

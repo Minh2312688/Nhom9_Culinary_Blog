@@ -19,8 +19,8 @@ public sealed record GetRecipesQuery(
     string? Difficulty = null,
     int? MaxCookTime = null,
     int? MinServings = null,
-    string SortBy = "createdAt",
-    string SortOrder = "desc",
+    string? SortBy = null,
+    string? SortOrder = null,
     string? Search = null) : IRequest<PaginatedResult<RecipeSummaryDto>>;
 
 public sealed class GetRecipesQueryValidator : AbstractValidator<GetRecipesQuery>
@@ -39,10 +39,18 @@ public sealed class GetRecipesQueryValidator : AbstractValidator<GetRecipesQuery
             .When(x => !string.IsNullOrWhiteSpace(x.Difficulty))
             .WithMessage("difficulty must be Easy, Medium, or Hard.");
         RuleFor(x => x.Search).MaximumLength(100).When(x => x.Search is not null);
-        RuleFor(x => x.SortBy).Must(value => SortFields.Contains(value.ToLowerInvariant()))
+        RuleFor(x => x.SortBy)
+            .Must(value => value is not null && SortFields.Contains(value.ToLowerInvariant()))
+            .When(x => x.SortBy is not null)
             .WithMessage("sortBy must be title, createdAt, cookTime, or prepTime.");
-        RuleFor(x => x.SortOrder).Must(value => value.Equals("asc", StringComparison.OrdinalIgnoreCase) || value.Equals("desc", StringComparison.OrdinalIgnoreCase))
+        RuleFor(x => x.SortOrder)
+            .Must(value => value is not null && (value.Equals("asc", StringComparison.OrdinalIgnoreCase) || value.Equals("desc", StringComparison.OrdinalIgnoreCase)))
+            .When(x => x.SortOrder is not null)
             .WithMessage("sortOrder must be asc or desc.");
+        RuleFor(x => x.SortOrder)
+            .Null()
+            .When(x => x.SortBy is null)
+            .WithMessage("sortBy is required when sortOrder is specified.");
     }
 }
 
@@ -88,7 +96,7 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
                     {
                         var popularResult = await recipes.SearchAsync(normalized, currentUser.UserId, currentUser.IsAdmin,
                             request.Page, request.PageSize, request.CategoryId, NormalizeDifficulty(request.Difficulty),
-                            request.MaxCookTime, request.MinServings, cancellationToken);
+                            request.MaxCookTime, request.MinServings, cancellationToken, request.SortBy, request.SortOrder);
                         await cache.SetAsync(cacheKey, popularResult, SearchResultTtl, cancellationToken);
                         return popularResult;
                     }
@@ -96,7 +104,7 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
 
                 return await recipes.SearchAsync(normalized, currentUser.UserId, currentUser.IsAdmin,
                     request.Page, request.PageSize, request.CategoryId, NormalizeDifficulty(request.Difficulty),
-                    request.MaxCookTime, request.MinServings, cancellationToken);
+                    request.MaxCookTime, request.MinServings, cancellationToken, request.SortBy, request.SortOrder);
             }
         }
 
@@ -115,13 +123,14 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
         if (request.MaxCookTime.HasValue) query = query.Where(x => x.CookTimeMinutes <= request.MaxCookTime);
         if (request.MinServings.HasValue) query = query.Where(x => x.Servings >= request.MinServings);
 
-        var descending = request.SortOrder.Equals("desc", StringComparison.OrdinalIgnoreCase);
-        query = request.SortBy.ToLowerInvariant() switch
+        var descending = (request.SortOrder ?? "desc").Equals("desc", StringComparison.OrdinalIgnoreCase);
+        query = (request.SortBy ?? "createdAt").ToLowerInvariant() switch
         {
-            "title" => descending ? query.OrderByDescending(x => x.Title) : query.OrderBy(x => x.Title),
-            "cooktime" => descending ? query.OrderByDescending(x => x.CookTimeMinutes) : query.OrderBy(x => x.CookTimeMinutes),
-            "preptime" => descending ? query.OrderByDescending(x => x.PrepTimeMinutes) : query.OrderBy(x => x.PrepTimeMinutes),
-            _ => descending ? query.OrderByDescending(x => x.CreatedAt) : query.OrderBy(x => x.CreatedAt)
+            "title" => descending ? query.OrderByDescending(x => x.Title).ThenBy(x => x.Id) : query.OrderBy(x => x.Title).ThenBy(x => x.Id),
+            "cooktime" => descending ? query.OrderByDescending(x => x.CookTimeMinutes).ThenBy(x => x.Id) : query.OrderBy(x => x.CookTimeMinutes).ThenBy(x => x.Id),
+            "preptime" => descending ? query.OrderByDescending(x => x.PrepTimeMinutes).ThenBy(x => x.Id) : query.OrderBy(x => x.PrepTimeMinutes).ThenBy(x => x.Id),
+            "createdat" => descending ? query.OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id) : query.OrderBy(x => x.CreatedAt).ThenBy(x => x.Id),
+            _ => throw new ArgumentException("Unsupported recipe sort field.", nameof(request.SortBy))
         };
 
         var totalCount = await query.CountAsync(cancellationToken);
@@ -148,7 +157,7 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
     private string BuildSearchCacheKey(string normalized, GetRecipesQuery request)
     {
         var scope = currentUser.IsAdmin ? "admin" : currentUser.UserId is null ? "guest" : $"user:{currentUser.UserId}";
-        var material = $"{normalized}|{request.Page}|{request.PageSize}|{request.SortBy.ToLowerInvariant()}|{request.SortOrder.ToLowerInvariant()}|{scope}";
+        var material = $"{normalized}|{request.Page}|{request.PageSize}|{request.SortBy?.ToLowerInvariant() ?? "relevance"}|{request.SortOrder?.ToLowerInvariant() ?? "desc"}|{scope}";
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material))).ToLowerInvariant();
         return $"recipes:search:result:{hash}";
     }

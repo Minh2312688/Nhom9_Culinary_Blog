@@ -18,7 +18,7 @@ public sealed class GetRecipesQueryHandlerTests
         var expected = new PaginatedResult<RecipeSummaryDto>(Array.Empty<RecipeSummaryDto>(), 0, 1, 12);
         var recipes = new Mock<IRecipeRepository>();
         recipes.Setup(repository => repository.SearchAsync(
-                "phở tôm", null, false, 1, 12, null, null, null, null, It.IsAny<CancellationToken>()))
+                "phở tôm", null, false, 1, 12, null, null, null, null, It.IsAny<CancellationToken>(), null, null))
             .ReturnsAsync(expected);
         var handler = new GetRecipesQueryHandler(recipes.Object, new Mock<ICurrentUserService>().Object);
 
@@ -35,7 +35,7 @@ public sealed class GetRecipesQueryHandlerTests
         var expected = new PaginatedResult<RecipeSummaryDto>(Array.Empty<RecipeSummaryDto>(), 0, 1, 12);
         var recipes = new Mock<IRecipeRepository>();
         recipes.Setup(repository => repository.SearchAsync(
-                "ramen", null, false, 1, 12, null, null, null, null, It.IsAny<CancellationToken>()))
+                "ramen", null, false, 1, 12, null, null, null, null, It.IsAny<CancellationToken>(), null, null))
             .ReturnsAsync(expected);
         var handler = new GetRecipesQueryHandler(recipes.Object, new Mock<ICurrentUserService>().Object);
 
@@ -52,7 +52,7 @@ public sealed class GetRecipesQueryHandlerTests
         var expected = new PaginatedResult<RecipeSummaryDto>(Array.Empty<RecipeSummaryDto>(), 0, 2, 24);
         var recipes = new Mock<IRecipeRepository>();
         recipes.Setup(repository => repository.SearchAsync(
-                "phở", null, false, 2, 24, categoryId, RecipeDifficulty.Medium, 30, 4, It.IsAny<CancellationToken>()))
+                "phở", null, false, 2, 24, categoryId, RecipeDifficulty.Medium, 30, 4, It.IsAny<CancellationToken>(), null, null))
             .ReturnsAsync(expected);
         var currentUser = new Mock<ICurrentUserService>();
         var handler = new GetRecipesQueryHandler(recipes.Object, currentUser.Object);
@@ -72,12 +72,31 @@ public sealed class GetRecipesQueryHandlerTests
     }
 
     [Fact]
+    public async Task Search_ShouldPassExplicitSortToRepository()
+    {
+        var expected = new PaginatedResult<RecipeSummaryDto>(Array.Empty<RecipeSummaryDto>(), 0, 1, 12);
+        var recipes = new Mock<IRecipeRepository>();
+        recipes.Setup(repository => repository.SearchAsync(
+                "ramen", null, false, 1, 12, null, null, null, null,
+                It.IsAny<CancellationToken>(), "title", "asc"))
+            .ReturnsAsync(expected);
+        var handler = new GetRecipesQueryHandler(recipes.Object, new Mock<ICurrentUserService>().Object);
+
+        var result = await handler.Handle(
+            new GetRecipesQuery(Search: "ramen", SortBy: "title", SortOrder: "asc"),
+            CancellationToken.None);
+
+        Assert.Same(expected, result);
+        recipes.VerifyAll();
+    }
+
+    [Fact]
     public async Task PopularSearch_ShouldCacheOnlyAfterThirdObservation()
     {
         var expected = new PaginatedResult<RecipeSummaryDto>(Array.Empty<RecipeSummaryDto>(), 0, 1, 12);
         var recipes = new Mock<IRecipeRepository>();
         recipes.Setup(repository => repository.SearchAsync(
-                "ramen", null, false, 1, 12, null, null, null, null, It.IsAny<CancellationToken>()))
+                "ramen", null, false, 1, 12, null, null, null, null, It.IsAny<CancellationToken>(), null, null))
             .ReturnsAsync(expected);
         var cache = new RecordingRecipeCache();
         var handler = new GetRecipesQueryHandler(recipes.Object, new Mock<ICurrentUserService>().Object, cache);

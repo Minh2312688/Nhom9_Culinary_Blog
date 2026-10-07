@@ -103,8 +103,8 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 | **FR-RCP-010** | Quản lý Các bước nấu | RCP | Thêm, sửa, xóa các bước thực hiện. Kèm ảnh và thời gian thực hiện. | TV2 | Phase 3 | **CONFLICT** | §3.3 p. 35–36, §8.5 p. 65 (StepNumber, Duration, Title) |
 | **FR-SRCH-001** | Tìm kiếm Toàn văn bản | SRCH | Full-Text Search qua PostgreSQL tsvector/tsquery tiếng Việt (unaccent). | TV2 | Phase 4 | **CONFLICT** | §3.4 p. 36–37, §4.1 p. 40 (Cache TTL 5m vs 1m) |
 | **FR-SRCH-002** | Lọc Công thức | SRCH | Lọc đa tiêu chí: categoryId, difficulty, maxCookTime, minServings bằng AND logic. | TV2 | Phase 4 | **CLEAR** | §3.4 p. 37–38 |
-| **FR-SRCH-003** | Sắp xếp Kết quả | SRCH | Sắp xếp theo createdAt, cookTime, prepTime, title (hỗ trợ ASC/DESC). | TV2 | Phase 4 | **CONFLICT** | §3.4 p. 38, §8.3 p. 63 (Prefix vs Explicit params) |
-| **FR-SRCH-004** | Phân trang Kết quả | SRCH | Phân trang danh sách offset-based (`page`, `pageSize` mặc định 12, tối đa 50). | TV2 | Phase 4 | **CONFLICT** | §3.4 p. 38, §8.0 p. 60 (Flat vs Nested meta) |
+| **FR-SRCH-003** | Sắp xếp Kết quả | SRCH | Sắp xếp theo createdAt, cookTime, prepTime, title (hỗ trợ ASC/DESC). | TV2 | Phase 4 | **IMPLEMENTED** | CONFLICT-003 đã chốt explicit `sortBy`/`sortOrder`; API/UI và tests đã triển khai; người dùng xác nhận list/search truy xuất dữ liệu PostgreSQL thành công; xem checklist |
+| **FR-SRCH-004** | Phân trang Kết quả | SRCH | Phân trang offset-based; page mặc định 1, pageSize mặc định 12, tối đa 50; response flat theo quyết định CONFLICT-012. | TV2 | Phase 4 | **IMPLEMENTED** | CONFLICT-012 đã chốt flat response; backend/UI và regression tests đã triển khai; người dùng xác nhận list/search truy xuất dữ liệu PostgreSQL thành công; xem checklist |
 | **FR-FILE-001** | Upload File lên MinIO | FILE | Upload ảnh binary lên MinIO S3-compatible bucket `culinary-blog`. Max 5MB. | TV4 | Phase 3 | **CLEAR** | §3.5 p. 38 |
 | **FR-FILE-002** | Xóa File khỏi MinIO | FILE | Xóa file object trên MinIO theo public URL (idempotent, không throw nếu thiếu). | TV4 | Phase 3 | **CLEAR** | §3.5 p. 38 |
 | **FR-JOB-001** | Welcome Email Job | JOB | Hangfire background job gửi email HTML chào mừng sau khi đăng ký thành công. | TV4 | Phase 3 | **CLEAR** | §3.6 p. 38–39 |
@@ -882,10 +882,10 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **Priority:** Must Have (M)
 - **Purpose:** Sắp xếp công thức theo ngày tạo, thời gian nấu, thời gian chuẩn bị hoặc tiêu đề.
 - **Preconditions:** None.
-- **Inputs:** Query param `sort` (prefix `-`) hoặc `sortBy` & `sortOrder`.
+- **Inputs:** Query params `sortBy` & `sortOrder` theo CONFLICT-003 đã quyết định.
 - **Outputs:** `PagedResult<RecipeSummaryDto>`.
 - **Happy path:** 1. Parse sort param $\rightarrow$ 2. Áp dụng OrderBy/OrderByDescending $\rightarrow$ 3. Trả 200 OK.
-- **Alternate/error paths:** Cột sort không tồn tại $\rightarrow$ Mặc định sort theo `-createdAt` (mới nhất trước).
+- **Alternate/error paths:** Thiếu sort trên list $\rightarrow$ mặc định `createdAt desc`; thiếu sort trên search $\rightarrow$ giữ relevance; giá trị ngoài whitelist $\rightarrow$ HTTP 400 Problem Details.
 - **Validation:** Chỉ cho phép sort trên whitelist columns: createdAt, cookTime, prepTime, title.
 - **Authorization:** Anonymous.
 - **HTTP method:** GET
@@ -901,9 +901,9 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **Related CONS:** `CONS-005`.
 - **Related API Chapter 8:** §8.3 trang 63.
 - **Related Data Model:** §7.2.
-- **Conflict IDs:** `CONFLICT-003`.
+- **Conflict IDs:** `CONFLICT-003` (đã quyết định: explicit params).
 - **Technical Risk IDs:** Không.
-- **Status:** **CONFLICT**
+- **Status:** **IMPLEMENTED**
 
 ### FR-SRCH-004: Phân trang Kết quả (Offset-based Pagination)
 - **ID:** FR-SRCH-004
@@ -913,9 +913,9 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **Purpose:** Chia nhỏ danh sách kết quả thành các trang với kích thước cố định bằng cơ chế Offset-based (Skip/Take).
 - **Preconditions:** None.
 - **Inputs:** Query params `page` (default: 1), `pageSize` (default: 12, max: 50).
-- **Outputs:** PagedResult chứa danh sách item và metadata phân trang (totalCount, totalPages, hasNextPage, hasPreviousPage).
+- **Outputs:** PaginatedResult dạng phẳng: `items`, `totalCount`, `page`, `pageSize`, `totalPages`, `hasNextPage`, `hasPreviousPage`.
 - **Happy path:** 1. CountAsync tổng số bản ghi $\rightarrow$ 2. Skip((page-1)*pageSize).Take(pageSize) $\rightarrow$ 3. Trả 200 OK.
-- **Alternate/error paths:** page < 1 hoặc pageSize > 50 $\rightarrow$ HTTP 400 Bad Request.
+- **Alternate/error paths:** page < 1 hoặc pageSize ngoài 1–50 $\rightarrow$ HTTP 400 Problem Details; page vượt tổng số trang trả danh sách rỗng.
 - **Validation:** page >= 1, 1 <= pageSize <= 50.
 - **Authorization:** Anonymous.
 - **HTTP method:** GET
@@ -931,9 +931,9 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **Related CONS:** `CONS-005`.
 - **Related API Chapter 8:** §8.0 trang 60.
 - **Related Data Model:** §7.2.
-- **Conflict IDs:** `CONFLICT-012`.
+- **Conflict IDs:** `CONFLICT-012` (đã quyết định: flat response).
 - **Technical Risk IDs:** Không.
-- **Status:** **CONFLICT**
+- **Status:** **IMPLEMENTED**
 
 ### FR-FILE-001: Upload File lên MinIO (File Upload)
 - **ID:** FR-FILE-001

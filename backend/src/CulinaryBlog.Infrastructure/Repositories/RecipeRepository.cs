@@ -16,7 +16,7 @@ public sealed class RecipeRepository(IApplicationDbContext context) : IRecipeRep
     public async Task<PaginatedResult<RecipeSummaryDto>> SearchAsync(
         string query, string? userId, bool isAdmin, int page, int pageSize,
         Guid? categoryId = null, RecipeDifficulty? difficulty = null, int? maxCookTime = null, int? minServings = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, string? sortBy = null, string? sortOrder = null)
     {
         var terms = Regex.Matches(query, @"[\p{L}\p{N}]+")
             .Select(match => $"{match.Value}:*")
@@ -38,10 +38,22 @@ public sealed class RecipeRepository(IApplicationDbContext context) : IRecipeRep
         recipes = recipes.Where(x => EF.Property<NpgsqlTsVector>(x, "SearchVector")
             .Matches(EF.Functions.ToTsQuery("simple", EF.Functions.Unaccent(tsQueryText))));
         var totalCount = await recipes.CountAsync(cancellationToken);
-        var rows = await recipes
-            .OrderByDescending(x => EF.Property<NpgsqlTsVector>(x, "SearchVector")
-                .RankCoverDensity(EF.Functions.ToTsQuery("simple", EF.Functions.Unaccent(tsQueryText))))
-            .ThenByDescending(x => x.CreatedAt)
+        var descending = !(sortOrder?.Equals("asc", StringComparison.OrdinalIgnoreCase) ?? false);
+        var ordered = string.IsNullOrWhiteSpace(sortBy)
+            ? recipes
+                .OrderByDescending(x => EF.Property<NpgsqlTsVector>(x, "SearchVector")
+                    .RankCoverDensity(EF.Functions.ToTsQuery("simple", EF.Functions.Unaccent(tsQueryText))))
+                .ThenByDescending(x => x.CreatedAt)
+                .ThenBy(x => x.Id)
+            : sortBy.ToLowerInvariant() switch
+            {
+                "title" => descending ? recipes.OrderByDescending(x => x.Title).ThenBy(x => x.Id) : recipes.OrderBy(x => x.Title).ThenBy(x => x.Id),
+                "cooktime" => descending ? recipes.OrderByDescending(x => x.CookTimeMinutes).ThenBy(x => x.Id) : recipes.OrderBy(x => x.CookTimeMinutes).ThenBy(x => x.Id),
+                "preptime" => descending ? recipes.OrderByDescending(x => x.PrepTimeMinutes).ThenBy(x => x.Id) : recipes.OrderBy(x => x.PrepTimeMinutes).ThenBy(x => x.Id),
+                "createdat" => descending ? recipes.OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id) : recipes.OrderBy(x => x.CreatedAt).ThenBy(x => x.Id),
+                _ => throw new ArgumentException("Unsupported recipe sort field.", nameof(sortBy))
+            };
+        var rows = await ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(x => new

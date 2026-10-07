@@ -69,6 +69,22 @@ public sealed class GetRecipesVisibilityTests
         Assert.Equal("All filters match", Assert.Single(result.Items).Title);
     }
 
+    [Fact]
+    public async Task List_SortsBeforePagingAndReturnsFlatPaginationMetadata()
+    {
+        await using var fixture = await RecipeListFixture.CreateAsync();
+        var result = await fixture.GetRecipesAsync(null, false, new GetRecipesQuery(
+            Page: 2, PageSize: 2, SortBy: "title", SortOrder: "asc"));
+
+        Assert.Equal(7, result.TotalCount);
+        Assert.Equal(2, result.Page);
+        Assert.Equal(2, result.PageSize);
+        Assert.Equal(4, result.TotalPages);
+        Assert.True(result.HasNextPage);
+        Assert.True(result.HasPreviousPage);
+        Assert.Equal(["Published two", "Too few servings"], result.Items.Select(item => item.Title));
+    }
+
     private sealed class RecipeListFixture : IAsyncDisposable
     {
         private readonly ApplicationDbContext db;
@@ -99,7 +115,7 @@ public sealed class GetRecipesVisibilityTests
         public void VerifySearchWasNotCalled() => repository.Verify(value => value.SearchAsync(
             It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<int>(), It.IsAny<int>(),
             It.IsAny<Guid?>(), It.IsAny<RecipeDifficulty?>(), It.IsAny<int?>(), It.IsAny<int?>(),
-            It.IsAny<CancellationToken>()), Times.Never);
+            It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<string?>()), Times.Never);
 
         public static async Task<RecipeListFixture> CreateAsync()
         {

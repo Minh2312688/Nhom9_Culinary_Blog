@@ -13,7 +13,8 @@ public static class RecipeImageEndpoints
     {
         var group = endpoints.MapGroup("/api/v1/recipes/{id:guid}/images")
             .WithTags("Recipe Images")
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .RequireRateLimiting("UploadRateLimitPolicy");
 
         group.MapPost("/", async (Guid id, HttpRequest request, ISender sender, CancellationToken ct) =>
         {

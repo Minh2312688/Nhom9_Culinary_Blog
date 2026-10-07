@@ -36,7 +36,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// NFR-SEC-003: Rate Limiting for /auth/* (10 requests / minute / IP with Sliding Window)
+// NFR-SEC-003: Rate Limiting
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -45,7 +45,8 @@ builder.Services.AddRateLimiter(options =>
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
         if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
         {
-            context.HttpContext.Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+            var seconds = (int)Math.Ceiling(retryAfter.TotalSeconds);
+            context.HttpContext.Response.Headers.RetryAfter = Math.Max(1, seconds).ToString();
         }
         else
         {
@@ -57,30 +58,44 @@ builder.Services.AddRateLimiter(options =>
         {
             type = "https://tools.ietf.org/html/rfc6585#section-4",
             title = "Too Many Requests",
-            status = 429,
+            status = StatusCodes.Status429TooManyRequests,
             detail = "Rate limit exceeded. Please try again later."
-        }, cancellationToken: token);
+        }, options: (System.Text.Json.JsonSerializerOptions?)null, contentType: "application/problem+json", cancellationToken: token);
     };
 
-    // Security (NFR-SEC-003): Do not trust raw X-Forwarded-For from untrusted clients.
-    // Use connection's resolved RemoteIpAddress.
-    // TEST-ONLY TECHNICAL DEBT: In Development/Testing only, allow isolated test runs via X-Test-Client-IP.
-    // This cannot execute in Staging/Production.
+    // 1. General API: 100 requests / minute / IP (Fixed Window)
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    {
+        var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+        return RateLimitPartition.GetFixedWindowLimiter(ipAddress, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 100,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        });
+    });
+
+    // 2. Auth Endpoints: 10 requests / minute / IP (Sliding Window, 6 segments)
     options.AddPolicy("AuthRateLimitPolicy", httpContext =>
     {
         var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
-
-        if (builder.Environment.IsDevelopment() &&
-            httpContext.Request.Headers.TryGetValue("X-Test-Client-IP", out var testIp))
-        {
-            ipAddress = testIp.ToString();
-        }
-
         return RateLimitPartition.GetSlidingWindowLimiter(ipAddress, _ => new SlidingWindowRateLimiterOptions
         {
             PermitLimit = 10,
             Window = TimeSpan.FromMinutes(1),
             SegmentsPerWindow = 6,
+            QueueLimit = 0
+        });
+    });
+
+    // 3. Upload Endpoints: 5 requests / minute / IP (Fixed Window)
+    options.AddPolicy("UploadRateLimitPolicy", httpContext =>
+    {
+        var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+        return RateLimitPartition.GetFixedWindowLimiter(ipAddress, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0
         });
     });

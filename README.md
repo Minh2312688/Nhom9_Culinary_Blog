@@ -475,6 +475,15 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 | 3 | Mai Quý Phước | Hoàn thiện FR-File-001 và FR_File-002 | 
 | 4 | Trần Hữu Phan Lâm | Hoàn thành tất cả các màn hình giao diện đã phân công từ tuần 2 và tuần 3 |
 
+### Tuần 4
+
+| STT | Thành viên | Công việc được giao |
+|---:|---|---|
+| 1 | Dương Văn Minh | FR-SRCH-003,004 |
+| 2 | Nguyễn Phạm Phú Nam | NFR-SEC-001-->004|
+| 3 | Mai Quý Phước | FR-JOB | 
+| 4 | Trần Hữu Phan Lâm | Hoàn thành tất cả giao diện, NFR-USE, NFR-FR-USE-001 |
+
 ---
 
 ## 10. Theo dõi tiến độ thực tế theo từng thành viên
@@ -550,8 +559,8 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 
 | Màn hình | Trạng thái | Nội dung đã hoàn thành |
 |---|---|---|
-| `/auth/register` | `DONE` | Form đăng ký, React Hook Form + Zod validation, loading/error state, responsive, accessibility và kết nối API |
-| `/auth/login` | `DONE` | Email/Password login, xử lý 401/423, Google Identity Services, loading/error state, responsive và accessibility |
+| `/auth/register` | `Xong` | Form đăng ký, React Hook Form + Zod validation, loading/error state, responsive, accessibility và kết nối API |
+| `/auth/login` | `Xong` | Email/Password login, xử lý 401/423, Google Identity Services, loading/error state, responsive và accessibility |
 
 #### Base Infrastructure
 
@@ -572,9 +581,9 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 
 | Hạng mục | Trạng thái | Đã hoàn thành | Còn lại / Phụ thuộc |
 |---|---|---|---|
-| FR-RCP-001 → FR-RCP-007 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
-| Database chung & Migration | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
-| FR-SRCH-001 → FR-SRCH-004 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
+| FR-RCP-001 → FR-RCP-007 | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
+| Database chung & Migration | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
+| FR-SRCH-001 → FR-SRCH-004 | `Chưa hoàn thiện` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
 | Redis Caching | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
 
 ---
@@ -584,11 +593,11 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 | Hạng mục | Trạng thái | Đã hoàn thành | Còn lại / Phụ thuộc |
 |---|---|---|---|
 | Next.js Core / Shared Layout | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
-| `/` | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| `/recipes` | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| `/recipes/[slug]` | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| `/categories` | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| `/categories/[slug]` | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| `/` | `Không làm` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| `/recipes` | `Không làm` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| `/recipes/[slug]` | `Không làm` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| `/categories` | `Không làm` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| `/categories/[slug]` | `Không làm` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
 
 ---
 
@@ -596,8 +605,8 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 
 | Hạng mục | Trạng thái | Đã hoàn thành | Còn lại / Phụ thuộc |
 |---|---|---|---|
-| FR-CAT-001 → FR-CAT-005 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
-| FR-FILE-001 / 002 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| FR-CAT-001 → FR-CAT-005 | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
+| FR-FILE-001 / 002 | `Xong` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
 | FR-JOB-001 → 003 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
 | FR-OBS-001 → 003 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
 

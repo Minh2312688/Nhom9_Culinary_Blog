@@ -10,7 +10,7 @@ namespace CulinaryBlog.Infrastructure.Persistence.Seed;
 public static class Lab02DataSeeder
 {
     public static async Task SeedAsync(
-        AuthDbContext context,
+        ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         ILogger logger)
     {

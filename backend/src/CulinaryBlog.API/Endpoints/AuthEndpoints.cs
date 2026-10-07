@@ -1,8 +1,12 @@
+using System.Security.Claims;
 using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.DTOs.Auth;
 using CulinaryBlog.Application.Features.Auth.GoogleLogin;
 using CulinaryBlog.Application.Features.Auth.Login;
+using CulinaryBlog.Application.Features.Auth.Logout;
+using CulinaryBlog.Application.Features.Auth.Profile;
 using CulinaryBlog.Application.Features.Auth.Register;
+using CulinaryBlog.Application.Features.Auth.TokenRefresh;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Builder;

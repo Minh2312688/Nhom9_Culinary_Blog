@@ -5,23 +5,23 @@
 Quy ước: `[x]` đã triển khai và kiểm tra build; `[~]` triển khai một phần; `[ ]` còn thiếu.
 
 - [x] Domain entities: Recipe, Category, RecipeIngredient, RecipeStep, RecipeNutrition, RecipeImage.
-- [x] EF Core DbContext, Fluent configurations, soft delete và RowVersion.
+- [x] Một `ApplicationDbContext` quản lý Identity, refresh token, category, recipe, search và các bảng liên quan; không còn `AuthDbContext`.
 - [x] CQRS/API cho FR-RCP-001 đến FR-RCP-007.
-- [x] Redis distributed cache cho chi tiết recipe, TTL 5 phút.
-- [x] Tạo migration `InitialRecipeSchema` trong Infrastructure.
-- [x] Tạo `ApplicationDbContextFactory` để scaffold migration không cần chạy API.
+- [x] Đăng ký Redis distributed cache cho recipe/category; dùng memory cache khi không cấu hình Redis.
+- [x] Hợp nhất migration Identity và Recipe/Search vào một migration stream của `ApplicationDbContext`.
+- [x] Design-time factory đọc connection string từ `ConnectionStrings__Postgres`, không chứa mật khẩu mặc định.
 - [x] Tạo `RandomDataSeeder.SeedAsync` bất đồng bộ, idempotent và chỉ chạy khi `Seed:Enabled=true`.
 - [x] Seed tối thiểu 20 categories và 100 recipes.
 - [x] Mỗi recipe báo cáo có ít nhất 10 nguyên liệu và 5 bước chế biến.
-- [x] Docker Compose chạy migration trước rồi chạy seeder cho môi trường báo cáo.
+- [x] Trong Development, startup tự migrate `ApplicationDbContext`; Compose bật `Seed__Enabled` để thêm dữ liệu mẫu.
 - [x] Robot Framework kiểm tra số lượng category/recipe và children của recipe.
-- [x] Redis unavailable fallback: API tiếp tục phục vụ bằng database/memory cache.
+- [x] Redis lỗi: cache bỏ qua lỗi và luồng tiếp tục truy vấn database; khi không cấu hình Redis, dùng distributed memory cache.
 - [ ] Integration test bằng Testcontainers PostgreSQL/Redis.
 - [ ] Hoàn thiện JWT/Identity production và các endpoint quản lý nested data riêng lẻ.
 
 ## Quyết định dữ liệu báo cáo
 
-- Seeder không dùng `EnsureCreated`; startup gọi `Database.MigrateAsync()` trước.
+- Seeder không dùng `EnsureCreated`. `Lab02DataSeeder` tạo author kỹ thuật, 20 danh mục và 100 công thức khi `Seed:Enabled=true`.
 - Dataset dùng prefix `report-category-` và `report-recipe-` để không đụng dữ liệu nghiệp vụ thật.
 - Random generator dùng seed cố định `20260921`, vì vậy dữ liệu có tính tái lập cho báo cáo.
 - Seeder truy vấn dữ liệu đã có trước khi thêm, có thể chạy lại mà không nhân bản.
@@ -30,21 +30,9 @@ Quy ước: `[x]` đã triển khai và kiểm tra build; `[~]` triển khai m�
 
 ## Migration và startup
 
-Migration nằm tại:
+Migration duy nhất được quản lý bởi `ApplicationDbContext` tại `backend/src/CulinaryBlog.Infrastructure/Persistence/Migrations`. Migration `UnifyIdentityAndBlogSchema` tạo Identity tables, liên kết Recipe với `AspNetUsers` và chuẩn hóa model cũ. Trong Development, API gọi `Database.MigrateAsync()` trước khi seed; Compose đặt `Seed__Enabled=true`. Local Development mặc định bật seed nếu không đặt cờ.
 
-`backend/src/CulinaryBlog.Infrastructure/Persistence/Migrations/20260921083055_InitialRecipeSchema.cs`
-
-Migration tạo các bảng ApplicationUsers, Categories, Recipes, RecipeIngredients, RecipeSteps, RecipeImages và RecipeNutritions cùng khóa ngoại, index slug và index quan hệ.
-
-`Program.cs` chỉ gọi migration/seeder khi cấu hình:
-
-```json
-{
-  "Seed": { "Enabled": true }
-}
-```
-
-Docker Compose đặt `Seed__Enabled=true` cho API báo cáo. Local Development mặc định không seed nếu không bật cờ.
+Migration hợp nhất không tự chuyển database từng được tạo bằng `AuthDbContext`; tạo database mới để giữ database cũ nguyên trạng. Hướng dẫn chạy ứng dụng: `docs/run-project.md`; hướng dẫn DB, tài khoản và seed: `docs/postgresql-setup.md`.
 
 ## RandomDataSeeder
 

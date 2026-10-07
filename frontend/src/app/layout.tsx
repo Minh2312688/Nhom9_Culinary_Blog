@@ -6,12 +6,6 @@ export const metadata: Metadata = {
   description: "Nền tảng chia sẻ công thức nấu ăn và trải nghiệm ẩm thực đỉnh cao",
 };
 
-/**
- * Minimal RootLayout for Week 2 Auth screens.
- * NOTE: Minimal frontend foundation created because Week-2 auth routes
- * cannot run without a frontend project.
- * TV3 MUST REVIEW SHARED FRONTEND FOUNDATION.
- */
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -19,9 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <body className="antialiased min-h-screen flex flex-col justify-between">
-        <main className="flex-1">{children}</main>
-      </body>
+      <body className="antialiased min-h-screen">{children}</body>
     </html>
   );
 }

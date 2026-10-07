@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ArrowLeft, ArrowRight, ChefHat, Clock3, Search, SlidersHorizontal, Users, X } from "lucide-react";
 import { getRecipeCategories, searchRecipes, type PaginatedResult, type RecipeCategory, type RecipeSummary } from "@/lib/recipes-api";
 import styles from "./search.module.css";
@@ -111,10 +112,10 @@ export default function RecipeSearchPage() {
   return (
     <div className={styles.page}>
       <header className={styles.topbar}>
-        <a className={styles.brand} href="/" aria-label="Culinary Blog, trang chủ">
+        <Link className={styles.brand} href="/" aria-label="Culinary Blog, trang chủ">
           <span className={styles.brandMark}><ChefHat size={19} /></span>
           <span>Culinary <strong>Table</strong></span>
-        </a>
+        </Link>
         <span className={styles.topbarNote}>CÔNG THỨC ĐƯỢC CHIA SẺ BỞI CỘNG ĐỒNG</span>
       </header>
 

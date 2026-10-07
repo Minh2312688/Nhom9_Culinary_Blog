@@ -1,5 +1,7 @@
 # Nhom9_Culinary_Blog
 
+Docker guide: [docs/docker-guide.md](docs/docker-guide.md).
+
 > **Đồ án môn:** Phát triển Ứng dụng Web Nâng cao  
 > **Chủ đề:** Culinary Blog – Blog Ẩm thực và Chia sẻ Công thức Nấu ăn
 
@@ -71,6 +73,29 @@ Các thành phần được tích hợp theo tiến độ module tương ứng:
 - Zod.
 - Các thư viện khác được tích hợp theo từng module.
 
+Các màn hình chính hiện có: trang chủ, danh sách/chi tiết công thức, danh mục,
+tìm kiếm, đăng nhập/đăng ký, hồ sơ và dashboard quản lý công thức/danh mục.
+Các màn hình công thức và danh mục đọc/ghi qua API `/api/v1`; thao tác quản trị
+cần access token và quyền tương ứng.
+
+Chạy frontend từ thư mục `frontend`:
+
+```powershell
+npm install
+npm run dev -- --port 3001
+```
+
+Chạy kiểm tra route và luồng tạo công thức:
+
+```powershell
+npx playwright install chromium
+npx playwright test e2e/srs-routes.spec.ts
+```
+
+Nếu Playwright Chromium chưa được cài nhưng máy đã có Chrome/Edge, đặt biến
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` bằng đường dẫn `chrome.exe` hoặc
+`msedge.exe` trước khi chạy test.
+
 ### Clean Architecture
 
 ```text
@@ -128,7 +153,46 @@ Cấu trúc có thể được bổ sung khi các module mới được tích h�
 
 ---
 
-## 5. Phân công cụ thể theo thành viên
+## 5. Chạy dự án
+
+### Backend và dịch vụ nền
+
+1. Sao chép `.env.example` thành `.env`; thay các placeholder bằng secrets riêng cho local.
+2. Chạy `docker compose up --build -d` từ thư mục gốc.
+3. API lắng nghe tại `http://localhost:5000`; PostgreSQL, Redis và MinIO được khởi chạy cùng Compose.
+
+`JWT_SECRET` là bắt buộc. Nếu không có biến này, API dừng khi khởi tạo cấu hình JWT. Redis có thể bỏ cấu hình để dùng cache trong bộ nhớ; khi Redis đã cấu hình nhưng tạm thời không truy cập được, cache bỏ qua lỗi và tiếp tục đọc database.
+
+Identity, refresh token, category, recipe và search dùng chung `ApplicationDbContext` cùng một migration stream. Trong Development, API tự áp dụng migration; `Seed__Enabled=true` bật seed 20 danh mục và 100 công thức. Hướng dẫn chạy toàn dự án ở [docs/run-project.md](docs/run-project.md); chi tiết
+database và tài khoản ở [docs/postgresql-setup.md](docs/postgresql-setup.md).
+
+> Database cũ từng chạy migration `AuthDbContext` không tương thích tự động với migration đã hợp nhất. Sao lưu trước; dùng database mới theo hướng dẫn để giữ nguyên dữ liệu cũ.
+
+### Frontend
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+Frontend mặc định chạy tại `http://localhost:3000`.
+Hướng dẫn E2E và cấu hình browser nằm trong [docs/run-project.md](docs/run-project.md).
+
+### Kiểm thử
+
+```powershell
+dotnet test backend\CulinaryBlog.sln --maxcpucount:1
+cd frontend
+npm run build
+```
+
+Để chạy cả sáu integration test MinIO và E2E trình duyệt, xem
+[docs/run-project.md](docs/run-project.md).
+
+---
+
+## 6. Phân công cụ thể theo thành viên
 
 ### TV1 – Nguyễn Phạm Phú Nam – Auth, Security & Base Infrastructure
 
@@ -321,7 +385,7 @@ Cấu trúc có thể được bổ sung khi các module mới được tích h�
 
 ---
 
-## 6. Task Matrix
+## 7. Task Matrix
 
 | Thành viên | Vai trò | Nhiệm vụ cốt lõi phải bàn giao | Phạm vi chính |
 |---|---|---|---|
@@ -411,6 +475,15 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 | 3 | Mai Quý Phước | Hoàn thiện FR-File-001 và FR_File-002 | 
 | 4 | Trần Hữu Phan Lâm | Hoàn thành tất cả các màn hình giao diện đã phân công từ tuần 2 và tuần 3 |
 
+### Tuần 5
+
+| STT | Thành viên | Công việc được giao |
+|---:|---|---|
+| 1 | Dương Văn Minh | FR-SRCH-003,004 |
+| 2 | Nguyễn Phạm Phú Nam | NFR-SEC-001-->004|
+| 3 | Mai Quý Phước | FR-JOB | 
+| 4 | Trần Hữu Phan Lâm | Hoàn thành tất cả giao diện, NFR-USE, NFR-FR-USE-001 |
+
 ---
 
 ## 10. Theo dõi tiến độ thực tế theo từng thành viên
@@ -486,8 +559,8 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 
 | Màn hình | Trạng thái | Nội dung đã hoàn thành |
 |---|---|---|
-| `/auth/register` | `DONE` | Form đăng ký, React Hook Form + Zod validation, loading/error state, responsive, accessibility và kết nối API |
-| `/auth/login` | `DONE` | Email/Password login, xử lý 401/423, Google Identity Services, loading/error state, responsive và accessibility |
+| `/auth/register` | `Xong` | Form đăng ký, React Hook Form + Zod validation, loading/error state, responsive, accessibility và kết nối API |
+| `/auth/login` | `Xong` | Email/Password login, xử lý 401/423, Google Identity Services, loading/error state, responsive và accessibility |
 
 #### Base Infrastructure
 
@@ -508,9 +581,9 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 
 | Hạng mục | Trạng thái | Đã hoàn thành | Còn lại / Phụ thuộc |
 |---|---|---|---|
-| FR-RCP-001 → FR-RCP-007 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
-| Database chung & Migration | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
-| FR-SRCH-001 → FR-SRCH-004 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
+| FR-RCP-001 → FR-RCP-007 | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
+| Database chung & Migration | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
+| FR-SRCH-001 → FR-SRCH-004 | `Chưa hoàn thiện` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
 | Redis Caching | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
 
 ---
@@ -520,11 +593,11 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 | Hạng mục | Trạng thái | Đã hoàn thành | Còn lại / Phụ thuộc |
 |---|---|---|---|
 | Next.js Core / Shared Layout | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
-| `/` | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| `/recipes` | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| `/recipes/[slug]` | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| `/categories` | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| `/categories/[slug]` | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| `/` | `Không làm` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| `/recipes` | `Không làm` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| `/recipes/[slug]` | `Không làm` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| `/categories` | `Không làm` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| `/categories/[slug]` | `Không làm` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
 
 ---
 
@@ -532,8 +605,8 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 
 | Hạng mục | Trạng thái | Đã hoàn thành | Còn lại / Phụ thuộc |
 |---|---|---|---|
-| FR-CAT-001 → FR-CAT-005 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
-| FR-FILE-001 / 002 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| FR-CAT-001 → FR-CAT-005 | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
+| FR-FILE-001 / 002 | `Xong` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
 | FR-JOB-001 → 003 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
 | FR-OBS-001 → 003 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
 
@@ -598,7 +671,7 @@ Xem danh sách migration:
 dotnet ef migrations list `
   --project backend/src/CulinaryBlog.Infrastructure `
   --startup-project backend/src/CulinaryBlog.API `
-  --context AuthDbContext
+  --context ApplicationDbContext
 ```
 
 Apply migration:
@@ -607,7 +680,7 @@ Apply migration:
 dotnet ef database update `
   --project backend/src/CulinaryBlog.Infrastructure `
   --startup-project backend/src/CulinaryBlog.API `
-  --context AuthDbContext
+  --context ApplicationDbContext
 ```
 
 ### Lưu ý khi làm việc nhóm
@@ -616,8 +689,8 @@ dotnet ef database update `
 - Migration mới phải được review trước khi merge.
 - Không tạo Entity trùng.
 - Không reset Docker volume nếu chưa kiểm tra dữ liệu.
-- DbContext là file có nguy cơ conflict cao, cần hạn chế chỉnh song song.
-- DbContext hiện tại có thể tiếp tục được hợp nhất khi nhóm tích hợp database chính thức.
+- `ApplicationDbContext` là context duy nhất; mọi migration mới phải dùng context này.
+- Trước khi chạy migration thủ công, đặt `ConnectionStrings__Postgres`; không lưu mật khẩu trong source.
 
 ---
 

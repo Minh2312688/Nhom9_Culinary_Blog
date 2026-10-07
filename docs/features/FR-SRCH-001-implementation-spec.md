@@ -56,14 +56,14 @@ Chính sách đã chọn cho CONFLICT-016: chỉ đếm truy vấn search không
 - [x] Áp dụng quy tắc hiển thị trước khi đếm và phân trang.
 - [x] Triển khai popularity gate 3 lần/5 phút và TTL 60 giây cho search không filter; filter động không dùng cache.
 - [x] Thêm EF shadow property và ánh xạ chỉ mục GIN.
-- [x] Migration FTS đã có trong `__EFMigrationsHistory` của DB cục bộ `culinary_blog`; extension, cột vector, trigger và GIN index có mặt, mọi vector đã được điền.
+- [x] FTS migration từng được kiểm tra trong database cục bộ `culinary_blog`; sau khi hợp nhất DbContext, database mới phải chạy lại toàn bộ migration stream qua `ApplicationDbContext` (xem `docs/postgresql-setup.md`).
 - [x] Đồng bộ EF model snapshot.
 - [x] Validator FR-SRCH-002 yêu cầu `maxCookTime`/`minServings` > 0 và difficulty là Easy/Medium/Hard, không phân biệt hoa thường.
 - [x] Kết hợp các filter với nhau và với full-text search bằng AND.
 - [x] Bổ sung kiểm thử token Unicode/dấu câu, truy vấn punctuation-only, biên 100/101 ký tự, visibility và AND filter.
 - [x] Kiểm thử API cho filter sai và truy vấn quá dài trả 400 Problem Details.
 - [x] Kiểm thử Application: 435/435 đạt; Search API validation: 6/6 đạt; integration Search API: 6/6 đạt.
-- [x] Backend test projects chạy tuần tự với `--maxcpucount:1`: 494/494 (Application 435, Integration 56, Architecture 3); không có test Auth 429 trong lần kiểm tra này.
+- [x] Lần kiểm tra ngày 2026-10-02: backend 494/494 (Application 435, Integration 56, Architecture 3); chưa gồm các test Auth bổ sung sau đó.
 - [x] PostgreSQL/API chỉ đọc: list/search/filter/empty/punctuation trả 200; search có 100 kết quả, phân trang 12; filter AND trả recipe mẫu; truy vấn không khớp trả 0.
 - [x] PostgreSQL xác nhận `unaccent`, vector không NULL, trigger, GIN, FTS prefix/AND và `EXPLAIN` có thể dùng `IDX_Recipe_Search` khi tắt sequential scan.
 - [x] Recipe tiếng Việt tạm: API tìm được title có dấu và không dấu trên `SearchVector` đã lưu.
@@ -75,7 +75,9 @@ Chính sách đã chọn cho CONFLICT-016: chỉ đếm truy vấn search không
 
 ## 8. Bằng chứng và việc cần xác nhận
 
-Kiểm thử hiện tại: Application tests 435/435; Integration tests 56/56; Architecture tests 3/3; tổng cộng 494/494 khi chạy tuần tự với `--maxcpucount:1`. Search API validation 6/6 và cache regression 3/3 đều nằm trong các bộ test tương ứng. Frontend TypeScript check và production build đạt; build cần chạy ngoài giới hạn sandbox vì Next.js tạo worker.
+Kiểm tra lại ngày 2026-10-06: backend 533 passed, 0 failed, 6 skipped (MinIO integration tests); frontend `npm run build` đạt. Đã sửa lỗi DI khiến host không dựng được do thiếu `IRecipeCache`/`IDistributedCache`.
+
+Lần kiểm thử ngày 2026-10-02: Application 435/435, Integration 56/56, Architecture 3/3 (494/494 tổng). Số liệu hiện tại sau khi bổ sung test được ghi ngay phía trên.
 
 Verifier PostgreSQL chạy ngày 2026-10-02 trên database `culinary_blog`: build verifier và API đều exit 0 khi dùng output riêng; verifier exit 0. Verifier tự seed một recipe Draft và một recipe Archived trong transaction, kiểm tra 12 trường hợp visibility (search/list × guest/author/Admin), tất cả đạt, sau đó rollback. Database sau kiểm tra không còn recipe tạm. Rollback migration chạy trên cluster tạm port 55432: trước rollback FTS column/GIN/trigger/function/history đều có; sau rollback đều không còn, migration `20260921101739_AddRowVersionDefaults` vẫn còn; rollback verifier exit 0. Cluster tạm đã dừng và xóa.
 

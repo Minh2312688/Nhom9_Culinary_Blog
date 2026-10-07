@@ -69,7 +69,7 @@ internal static class MinioTestEnvironment
             { "MinIO:AccessKey", AccessKeyValue },
             { "MinIO:SecretKey", SecretKeyValue },
             { "MinIO:UseSSL", UseSsl ? "true" : "false" },
-            { "MinIO:Bucket", Bucket },
+            { "MinIO:BucketName", Bucket },
             { "MinIO:PublicBaseUrl", PublicBaseUrl }
         })
         .Build();

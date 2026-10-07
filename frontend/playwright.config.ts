@@ -11,6 +11,9 @@ export default defineConfig({
     baseURL: "http://localhost:3001",
     trace: "on-first-retry",
     headless: false, // Per prompt: run visibly so user sees browser execution
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+      ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
+      : undefined,
   },
   projects: [
     {

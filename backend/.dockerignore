@@ -2,6 +2,9 @@
 **/obj/
 **/.vs/
 **/.idea/
+**/TestResults/
 .git/
+.env
+.env.*
 .gitignore
 README.md

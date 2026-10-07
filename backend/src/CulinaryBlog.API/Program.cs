@@ -109,18 +109,21 @@ app.MapRecipeImageEndpoints();
 app.MapSystemEndpoints();
 app.MapAuthEndpoints();
 
-// LAB-02 DATABASE MIGRATION & SEEDING (DEVELOPMENT ONLY)
+// Apply the unified PostgreSQL schema and optionally seed local sample data.
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
-    var authDb = scope.ServiceProvider.GetRequiredService<CulinaryBlog.Infrastructure.Persistence.AuthDbContext>();
+    var db = scope.ServiceProvider.GetRequiredService<CulinaryBlog.Infrastructure.Persistence.ApplicationDbContext>();
     var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<CulinaryBlog.Infrastructure.Identity.ApplicationUser>>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-    if (authDb.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory")
+    if (db.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory")
     {
-        authDb.Database.Migrate();
-        await CulinaryBlog.Infrastructure.Persistence.Seed.Lab02DataSeeder.SeedAsync(authDb, userManager, logger);
+        await db.Database.MigrateAsync();
+        if (app.Configuration.GetValue("Seed:Enabled", true))
+        {
+            await CulinaryBlog.Infrastructure.Persistence.Seed.Lab02DataSeeder.SeedAsync(db, userManager, logger);
+        }
     }
 }
 

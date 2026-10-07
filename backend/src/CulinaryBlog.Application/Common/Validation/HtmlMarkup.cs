@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using FluentValidation;
 
 namespace CulinaryBlog.Application.Common.Validation;
 
@@ -31,4 +32,15 @@ public static class HtmlMarkup
     /// </summary>
     public static bool Contains(string? value)
         => !string.IsNullOrWhiteSpace(value) && MarkupPattern.IsMatch(value);
+
+    /// <summary>
+    /// FluentValidation rule extension đảm bảo chuỗi không chứa HTML/active markup.
+    /// </summary>
+    public static IRuleBuilderOptions<T, string?> MustNotContainHtmlMarkup<T>(
+        this IRuleBuilder<T, string?> ruleBuilder)
+    {
+        return ruleBuilder
+            .Must(value => !Contains(value))
+            .WithMessage("{PropertyName} must not contain HTML markup.");
+    }
 }

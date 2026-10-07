@@ -1,3 +1,4 @@
+using CulinaryBlog.Application.Common.Validation;
 using FluentValidation;
 
 namespace CulinaryBlog.Application.Features.Auth.Register;
@@ -13,7 +14,8 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
 
         RuleFor(x => x.DisplayName)
             .NotEmpty().WithMessage("DisplayName is required.")
-            .MaximumLength(100).WithMessage("DisplayName must not exceed 100 characters.");
+            .MaximumLength(100).WithMessage("DisplayName must not exceed 100 characters.")
+            .MustNotContainHtmlMarkup();
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Password is required.")

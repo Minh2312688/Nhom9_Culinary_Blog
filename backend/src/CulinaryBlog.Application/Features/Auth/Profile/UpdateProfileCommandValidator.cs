@@ -1,3 +1,4 @@
+using CulinaryBlog.Application.Common.Validation;
 using FluentValidation;
 
 namespace CulinaryBlog.Application.Features.Auth.Profile;
@@ -24,7 +25,8 @@ public sealed class UpdateProfileCommandValidator : AbstractValidator<UpdateProf
                 .Must(name => !string.IsNullOrWhiteSpace(name))
                 .WithMessage("DisplayName cannot be empty or whitespace.")
                 .Length(2, 100)
-                .WithMessage("DisplayName must be between 2 and 100 characters.");
+                .WithMessage("DisplayName must be between 2 and 100 characters.")
+                .MustNotContainHtmlMarkup();
         });
 
         When(x => !string.IsNullOrWhiteSpace(x.AvatarUrl), () =>
@@ -41,7 +43,8 @@ public sealed class UpdateProfileCommandValidator : AbstractValidator<UpdateProf
         {
             RuleFor(x => x.Bio)
                 .MaximumLength(500)
-                .WithMessage("Bio must not exceed 500 characters.");
+                .WithMessage("Bio must not exceed 500 characters.")
+                .MustNotContainHtmlMarkup();
         });
     }
 }

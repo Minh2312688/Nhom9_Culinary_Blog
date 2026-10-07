@@ -34,7 +34,8 @@ public sealed class CreateCategoryCommandValidator : AbstractValidator<CreateCat
 
         RuleFor(command => command.Description)
             .Must(description => HasValidLength(description))
-                .WithMessage($"Description must not exceed {Category.MaxDescriptionLength} characters.");
+                .WithMessage($"Description must not exceed {Category.MaxDescriptionLength} characters.")
+            .MustNotContainHtmlMarkup();
     }
 
     // Độ dài được kiểm tra sau khi Trim để khớp với xử lý trong Category domain

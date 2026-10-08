@@ -21,16 +21,18 @@ Quy ước: `[x]` hoàn tất và có bằng chứng; `[~]` một phần/giới 
 - [x] List/search đếm tổng sau khi áp visibility/filter trước khi `Skip/Take`.
 - [x] Giữ flat response: `items`, `totalCount`, `page`, `pageSize`, `totalPages`, `hasNextPage`, `hasPreviousPage`.
 - [x] UI điều hướng trang trước/sau và giữ nguyên tiêu chí tìm kiếm.
+- [x] Trang danh sách công thức, chi tiết danh mục và dashboard chia kết quả thành trang 12 items; đồng bộ `page` vào URL.
+- [x] Pagination dùng metadata API (`totalPages`, `hasNextPage`, `hasPreviousPage`) để khóa/mở nút đúng.
 - [x] Application tests kiểm tra metadata/sort trước khi phân trang; Integration tests kiểm tra `page`/`pageSize` không hợp lệ trên list và search.
-- [x] Kết quả rỗng không gây lỗi; response có danh sách rỗng và total bằng 0.
+- [x] Page vượt quá số trang trả rỗng, giữ `totalCount`/page metadata, không tính offset gây overflow.
 
 ## Kết quả kiểm thử
 
-- [x] Backend Application tests: **471/471 passed**.
-- [x] Backend Integration suite với `MINIO_TEST_*` đọc từ `.env`: **81/81 passed, 0 skipped**; gồm toàn bộ 6 test MinIO live.
+- [x] Backend Application tests: **472/472 passed**.
+- [x] Backend Integration (lần chạy mới nhất không truyền `MINIO_TEST_*`): **75 passed, 6 skipped**; lần chạy có credentials MinIO trước đó đạt **81/81**, gồm MinIO live 6/6.
 - [x] Backend Architecture tests: **3/3 passed**.
 - [x] Frontend production build: `npm run build` thành công.
-- [x] E2E Playwright `e2e/srs-routes.spec.ts`: **7/7 passed** trên Microsoft Edge, gồm sort/reset trang; request API được mock.
+- [x] E2E Playwright `e2e/srs-routes.spec.ts`: **8/8 passed** trên Microsoft Edge; xác minh phân trang list, category, dashboard và search; request API được mock.
 - [x] Trong phiên xác minh, frontend Next.js tại `http://localhost:3001/search` trả HTTP 200 và hiển thị sort controls; dev server sau đó đã dừng.
 - [x] Người dùng xác nhận API list/search trả HTTP 200 và đọc được dữ liệu PostgreSQL.
 - [~] Probe độc lập sau đó: API đang offline (HTTP 000). Probe trước đó trên API Testing trả list 500/search timeout; kết quả lúc đó không đại diện cho phiên chạy thành công người dùng vừa xác nhận.

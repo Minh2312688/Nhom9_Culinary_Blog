@@ -38,6 +38,10 @@ public sealed class RecipeRepository(IApplicationDbContext context) : IRecipeRep
         recipes = recipes.Where(x => EF.Property<NpgsqlTsVector>(x, "SearchVector")
             .Matches(EF.Functions.ToTsQuery("simple", EF.Functions.Unaccent(tsQueryText))));
         var totalCount = await recipes.CountAsync(cancellationToken);
+        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+        if (page > totalPages)
+            return new PaginatedResult<RecipeSummaryDto>(Array.Empty<RecipeSummaryDto>(), totalCount, page, pageSize);
+
         var descending = !(sortOrder?.Equals("asc", StringComparison.OrdinalIgnoreCase) ?? false);
         var ordered = string.IsNullOrWhiteSpace(sortBy)
             ? recipes

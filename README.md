@@ -583,7 +583,7 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 |---|---|---|---|
 | FR-RCP-001 → FR-RCP-007 | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
 | Database chung & Migration | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
-| FR-SRCH-001 → FR-SRCH-004 | `Đã triển khai; kiểm thử đạt` | Search/filter/sort/pagination có backend và UI; backend 471 Application + 81 Integration (bao gồm MinIO live 6/6) + 3 Architecture, Playwright 7/7, frontend build đạt; người dùng xác nhận list/search đọc được dữ liệu PostgreSQL | Probe độc lập sau đó API offline; lần kiểm tra trước đó trên môi trường Testing gặp list 500/search timeout |
+| FR-SRCH-001 → FR-SRCH-004 | `Đã triển khai; kiểm thử đạt` | Search/filter/sort/pagination có backend và UI; Application 472, Integration 81/81 khi bật MinIO live (6/6), Architecture 3, Playwright 8/8, frontend build đạt; người dùng xác nhận list/search đọc được dữ liệu PostgreSQL | Probe độc lập sau đó API offline; lần kiểm tra trước đó trên môi trường Testing gặp list 500/search timeout |
 | Redis Caching | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
 
 ---

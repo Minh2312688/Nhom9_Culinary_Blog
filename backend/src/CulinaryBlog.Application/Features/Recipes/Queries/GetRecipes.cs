@@ -134,6 +134,10 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
         };
 
         var totalCount = await query.CountAsync(cancellationToken);
+        var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
+        if (request.Page > totalPages)
+            return new PaginatedResult<RecipeSummaryDto>(Array.Empty<RecipeSummaryDto>(), totalCount, request.Page, request.PageSize);
+
         var rows = await query.Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .Select(x => new

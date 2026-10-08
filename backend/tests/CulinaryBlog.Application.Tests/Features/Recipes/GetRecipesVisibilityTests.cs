@@ -85,6 +85,23 @@ public sealed class GetRecipesVisibilityTests
         Assert.Equal(["Published two", "Too few servings"], result.Items.Select(item => item.Title));
     }
 
+    [Fact]
+    public async Task List_PageBeyondResults_ReturnsEmptyPageWithoutOffsetOverflow()
+    {
+        await using var fixture = await RecipeListFixture.CreateAsync();
+
+        var result = await fixture.GetRecipesAsync(null, false,
+            new GetRecipesQuery(Page: int.MaxValue, PageSize: 12));
+
+        Assert.Empty(result.Items);
+        Assert.Equal(7, result.TotalCount);
+        Assert.Equal(int.MaxValue, result.Page);
+        Assert.Equal(12, result.PageSize);
+        Assert.Equal(1, result.TotalPages);
+        Assert.False(result.HasNextPage);
+        Assert.True(result.HasPreviousPage);
+    }
+
     private sealed class RecipeListFixture : IAsyncDisposable
     {
         private readonly ApplicationDbContext db;

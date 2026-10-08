@@ -38,12 +38,12 @@ Chia danh sách và kết quả tìm kiếm thành các trang offset-based, gi�
 
 ### Tiêu chí chấp nhận
 
-1. `page` mặc định 1; `pageSize` mặc định 12 và tối đa 50.
+1. `page` mặc định 1; `pageSize` mặc định 12 trên trang tìm kiếm, danh sách công thức, chi tiết danh mục và dashboard; API tối đa 50.
 2. Tổng số kết quả được đếm sau filter/visibility nhưng trước phân trang.
 3. Chỉ trả item của trang đã yêu cầu; metadata flat phản ánh đúng trang, kích thước, tổng số và khả năng điều hướng.
 4. `page < 1`, `pageSize < 1` hoặc `pageSize > 50` trả `400` Problem Details.
 5. Không có kết quả trả `200`, `items` rỗng, `totalCount = 0`; trang vượt quá tổng số trang cũng trả danh sách rỗng, không tự đổi trang.
-6. Điều hướng trang trước/sau giữ nguyên từ khóa, filter và sort.
+6. Điều hướng trang trước/sau giữ nguyên từ khóa/filter/sort hoặc danh mục hiện tại; trang public list/dashboard phản ánh `page` trên URL.
 
 ## Giới hạn và ngoài phạm vi
 
@@ -54,7 +54,7 @@ Chia danh sách và kết quả tìm kiếm thành các trang offset-based, gi�
 ## Trạng thái triển khai và xác minh
 
 - FR-SRCH-003/004 đã triển khai trong backend và trang tìm kiếm; chi tiết task/kết quả nằm trong [kế hoạch](../superpowers/plans/2026-10-07-fr-srch-003-004-plan.md) và [checklist](FR-SRCH-003-004-implementation-checklist.md).
-- Backend: Application 471/471, Integration suite 81/81 passed với `MINIO_TEST_*` lấy từ `.env` (MinIO 6/6, không skip), Architecture 3/3.
-- Frontend build thành công; Playwright route suite 7/7 đạt trên Edge với API mock.
+- Backend: Application 472/472; Integration lần chạy mới nhất 75 passed/6 MinIO skipped nếu không truyền env; lần chạy với `MINIO_TEST_*` đạt 81/81, MinIO 6/6; Architecture 3/3.
+- Frontend build thành công; Playwright route suite 8/8 đạt trên Edge với API mock, gồm list/category/dashboard pagination.
 - Người dùng xác nhận API list/search trả HTTP 200 và dữ liệu truy xuất từ PostgreSQL. Probe độc lập sau đó không tái lập được vì API offline; lần probe Testing trước đó gặp list 500/search timeout.
 - E2E dùng API mock, không tính là xác minh PostgreSQL trực tiếp.

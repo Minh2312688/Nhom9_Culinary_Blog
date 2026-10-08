@@ -74,7 +74,7 @@ Quy ước trạng thái:
 | **FR-SRCH-001** | | **X** | X | | **TV2** | FTS/API/PostgreSQL, route §8.3, popularity cache và regression fallback đã kiểm tra; verifier Draft/Archived author/Admin seed/rollback thành công | TECH-RISK-004; smoke-test Redis thực chưa chạy do môi trường | **DONE** |
 | **FR-SRCH-002** | | **X** | X | | **TV2** | Bộ lọc API/UI; AND filter và visibility Draft/Archived guest/author/Admin đã xác minh trên PostgreSQL bằng transaction tạm | Rollback migration cần DB riêng | **DONE** |
 | **FR-SRCH-003** | | **X** | X | | **TV2** | Backend list/search sorting, UI và test đã triển khai; người dùng xác nhận list/search truy xuất dữ liệu PostgreSQL thành công; probe độc lập sau đó khi API offline | CONFLICT-003 đã quyết định explicit params | **DONE** |
-| **FR-SRCH-004** | | **X** | X | | **TV2** | Offset pagination/backend metadata, UI và validation tests đã triển khai; người dùng xác nhận API list/search đọc được dữ liệu PostgreSQL | CONFLICT-012 đã quyết định flat response | **DONE** |
+| **FR-SRCH-004** | | **X** | X | | **TV2** | Offset pagination/backend metadata và UI trên search, list, category, dashboard; page overflow/validation và E2E đã kiểm tra | CONFLICT-012 đã quyết định flat response | **DONE** |
 | **FR-FILE-001** | | X | X | **X** | **TV4** | MinIO S3 SDK, Image upload form (TV3) | TECH-RISK-006, TECH-RISK-015 | **NOT_STARTED** |
 | **FR-FILE-002** | | X | | **X** | **TV4** | MinIO S3 SDK, Hangfire Delete Job (TV4) | None | **NOT_STARTED** |
 | **FR-JOB-001** | X | | | **X** | **TV4** | Hangfire Queue, MailKit SMTP, Auth Trigger (TV1) | TECH-RISK-009 | **NOT_STARTED** |

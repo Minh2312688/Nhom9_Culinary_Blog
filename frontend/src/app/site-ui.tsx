@@ -63,3 +63,31 @@ export function ErrorNotice({ children }: Readonly<{ children: React.ReactNode }
 export function LoadingNotice() {
   return <p className={styles.notice} role="status">Đang tải dữ liệu...</p>;
 }
+
+export function Pagination({
+  page,
+  totalPages,
+  hasNextPage,
+  hasPreviousPage,
+  onPageChange,
+  label,
+}: {
+  page: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  onPageChange: (page: number) => void;
+  label: string;
+}) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <nav className={styles.pagination} aria-label={label}>
+      <button type="button" className={styles.buttonSecondary} disabled={!hasPreviousPage}
+        onClick={() => onPageChange(page - 1)}>Trang trước</button>
+      <span aria-live="polite">Trang {page} / {totalPages}</span>
+      <button type="button" className={styles.buttonSecondary} disabled={!hasNextPage}
+        onClick={() => onPageChange(page + 1)}>Trang sau</button>
+    </nav>
+  );
+}

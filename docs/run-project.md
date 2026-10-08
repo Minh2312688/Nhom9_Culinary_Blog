@@ -41,7 +41,45 @@ npm run dev
 Mở `http://localhost:3000`. Frontend dùng API tại `http://localhost:5000` theo
 mặc định. Để tạo tài khoản thử nghiệm, dùng chức năng đăng ký trên trang web.
 
-## 3. Kiểm thử
+## 3. Chạy thử Welcome Email
+
+Đảm bảo Docker Desktop đang chạy và đã có `.env` (nếu chưa, làm theo bước 1).
+Từ thư mục gốc repository, chạy một lệnh:
+
+```powershell
+.\tools\run-welcome-email-demo.ps1
+```
+
+Script khởi động/tái sử dụng PostgreSQL và MailHog, tạo/tái sử dụng database
+demo riêng `frjob001_welcome_demo`, rồi chạy API local ở `http://localhost:5051`.
+Giữ terminal này mở trong lúc thử nghiệm. Chỉ khởi động API chưa gửi email; phải
+đăng ký một tài khoản mới để kích hoạt Welcome Email.
+
+Mở terminal PowerShell khác và gửi yêu cầu đăng ký thử (email tự có thời gian
+để có thể chạy lại):
+
+```powershell
+$email = "demo-$(Get-Date -Format yyyyMMddHHmmss)@example.com"; Invoke-RestMethod -Uri "http://localhost:5051/api/v1/auth/register" -Method Post -ContentType "application/json" -Body (@{ email = $email; password = "DemoPass123!"; displayName = "TV4 Demo" } | ConvertTo-Json)
+```
+
+Mở `http://127.0.0.1:8025` để xem email trong MailHog. Mỗi lần thử gửi một email
+mới, đăng ký bằng địa chỉ email mới; không cần khởi động lại API khi nó vẫn đang
+chạy.
+
+Dừng API bằng `Ctrl+C` ở terminal chạy script. PostgreSQL, MailHog và dữ liệu
+demo được giữ lại để lần sau chạy cùng lệnh. Nếu muốn xóa riêng demo, sau khi
+dừng API chạy từ thư mục gốc:
+
+```powershell
+docker rm -f frjob001-mailhog-demo
+$u = docker exec culinaryblog-postgres printenv POSTGRES_USER; docker exec culinaryblog-postgres psql -U $u -d postgres -v ON_ERROR_STOP=1 -c 'DROP DATABASE IF EXISTS frjob001_welcome_demo WITH (FORCE);'
+```
+
+Lệnh dọn trên chỉ xóa MailHog và database demo `frjob001_welcome_demo`; không
+dừng PostgreSQL, không xóa database chính, và không xóa Docker volumes. Chạy lại
+script sẽ tạo lại chúng.
+
+## 4. Kiểm thử
 
 Từ thư mục gốc, chạy backend tests:
 
@@ -96,7 +134,7 @@ npx playwright test e2e/srs-routes.spec.ts
 E2E hiện giả lập phản hồi API để chạy độc lập; chúng xác minh route, render và
 request payload, không thay thế integration test với PostgreSQL/MinIO.
 
-## 4. Dừng dịch vụ
+## 5. Dừng dịch vụ
 
 ```powershell
 docker compose down

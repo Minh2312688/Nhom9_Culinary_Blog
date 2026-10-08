@@ -70,7 +70,7 @@ builder.Services.AddRateLimiter(options =>
     {
         var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
 
-        if (builder.Environment.IsDevelopment() &&
+        if ((builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing")) &&
             httpContext.Request.Headers.TryGetValue("X-Test-Client-IP", out var testIp))
         {
             ipAddress = testIp.ToString();

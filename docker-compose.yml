@@ -16,6 +16,15 @@ services:
       MinIO__SecretKey: ${MINIO_ROOT_PASSWORD}
       MinIO__UseSSL: "false"
       Jwt__Key: ${JWT_SECRET}
+      # FR-JOB-001 (SRS-AUDIT sec-12-4): SMTP -> MailHog inside Compose.
+      # Env overrides appsettings.Development.json (localhost:1025), which
+      # still applies when the API runs directly outside Docker. MailHog
+      # needs no credentials and no SSL. Never a production SMTP provider.
+      Smtp__Host: mailhog
+      Smtp__Port: "1025"
+      Smtp__UseSsl: "false"
+      Smtp__Username: ""
+      Smtp__Password: ""
     ports:
       - "5000:8080"
     depends_on:
@@ -24,6 +33,10 @@ services:
       redis:
         condition: service_healthy
       minio:
+        condition: service_started
+      # MailHog has no healthcheck (not built into the image); service_started
+      # is the honest condition - no fabricated healthcheck.
+      mailhog:
         condition: service_started
     networks:
       - culinaryblog-network
@@ -96,6 +109,21 @@ services:
       - "9001:9001"
     volumes:
       - miniodata:/bitnami/minio/data
+    networks:
+      - culinaryblog-network
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: culinaryblog-mailhog
+    restart: unless-stopped
+    # FR-JOB-001: SMTP for Development/demo only. API reaches this service via
+    # the Compose network DNS name "mailhog:1025". UI is published on
+    # 127.0.0.1:8025 (local-only); SMTP port 1025 is also published on
+    # 127.0.0.1 only, for local API runs outside Docker (appsettings
+    # Development localhost:1025). Never point this at Gmail/Internet.
+    ports:
+      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:1025:1025"
     networks:
       - culinaryblog-network
 

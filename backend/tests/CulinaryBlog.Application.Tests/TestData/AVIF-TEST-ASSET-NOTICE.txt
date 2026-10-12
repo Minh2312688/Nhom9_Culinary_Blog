@@ -1,0 +1,14 @@
+The AVIF fixture fruits_2layer_thumbsize.avif is from the Xiph AVIF test-file
+collection in AOMediaCodec/av1-avif:
+https://github.com/AOMediaCodec/av1-avif/tree/main/testFiles/Xiph
+
+The source photograph, "Fruits oranges, jardin japonais 2", is by Lena and
+is licensed under Creative Commons Attribution 3.0:
+https://commons.wikimedia.org/wiki/File:Fruits_oranges,_jardin_japonais_2.JPG
+https://creativecommons.org/licenses/by/3.0/
+
+This fixture is used to verify the documented unsupported-variant behavior.
+SkiaSharp's selected native assets do not decode AVIF, and this project
+intentionally does not add a native codec dependency. The original AVIF is
+preserved; its variant status is Unsupported and the frontend falls back to
+OriginalUrl. This fixture is not an AVIF decode-success test.

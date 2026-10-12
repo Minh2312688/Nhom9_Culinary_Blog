@@ -57,6 +57,12 @@ internal sealed class RecordingObjectStorageClient : IObjectStorageClient
         string objectName,
         CancellationToken cancellationToken)
         => throw new NotSupportedException("Startup tests must not delete objects.");
+
+    public Task<Stream> DownloadAsync(
+        string bucketName,
+        string objectName,
+        CancellationToken cancellationToken)
+        => throw new NotSupportedException("Startup tests must not download objects.");
 }
 
 /// <summary>Test double ghi lại mọi log entry để kiểm chứng hành vi non-fatal và cancellation.</summary>

@@ -1,6 +1,7 @@
 using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Persistence;
+using CulinaryBlog.Application.Contracts.Recipes;
 using CulinaryBlog.Application.Contracts.Storage;
 using CulinaryBlog.Application.DTOs.Recipes;
 using CulinaryBlog.Domain.Entities;
@@ -39,6 +40,7 @@ public sealed class UploadRecipeImageCommandHandler(
     ICurrentUserService currentUser,
     IFileStorageService storage,
     IRecipeCache cache,
+    IRecipeImageJobEnqueuer imageJobEnqueuer,
     ILogger<UploadRecipeImageCommandHandler> logger)
     : IRequestHandler<UploadRecipeImageCommand, RecipeImageUploadDto>
 {
@@ -103,6 +105,17 @@ public sealed class UploadRecipeImageCommandHandler(
         }
 
         await RecipeImageAccess.InvalidateRecipeCacheAsync(cache, recipe, cancellationToken);
+        try
+        {
+            await imageJobEnqueuer.EnqueueAsync(image.Id, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogError(exception,
+                "Recipe image {ImageId} was saved, but variant processing could not be enqueued.",
+                image.Id);
+        }
+
         return new RecipeImageUploadDto(image.Id, image.OriginalUrl, image.AltText, image.IsPrimary);
     }
 }
@@ -162,10 +175,37 @@ public sealed class DeleteRecipeImageCommandHandler(
             images.First(image => image.Id != selected.Id).IsPrimary = true;
         }
 
-        await storage.DeleteAsync(selected.OriginalUrl, cancellationToken);
+        await DeleteStoredObjectsAsync(selected, cancellationToken);
         context.RecipeImages.Remove(selected);
         await context.SaveChangesAsync(cancellationToken);
         await RecipeImageAccess.InvalidateRecipeCacheAsync(cache, recipe, cancellationToken);
+    }
+
+    private async Task DeleteStoredObjectsAsync(RecipeImage selected, CancellationToken cancellationToken)
+    {
+        Exception? firstFailure = null;
+        var attempted = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var url in new[] { selected.OriginalUrl, selected.MediumUrl, selected.ThumbnailUrl })
+        {
+            if (string.IsNullOrWhiteSpace(url) || !attempted.Add(url))
+            {
+                continue;
+            }
+
+            try
+            {
+                await storage.DeleteAsync(url, cancellationToken);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                firstFailure ??= exception;
+            }
+        }
+
+        if (firstFailure is not null)
+        {
+            throw firstFailure;
+        }
     }
 }
 

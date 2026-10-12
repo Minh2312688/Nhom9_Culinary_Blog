@@ -1,4 +1,4 @@
-# Chạy Culinary Blog trên Windows
+﻿# Chạy Culinary Blog trên Windows
 
 ## Yêu cầu
 
@@ -42,6 +42,38 @@ Mở `http://localhost:3000`. Frontend dùng API tại `http://localhost:5000` t
 mặc định. Để tạo tài khoản thử nghiệm, dùng chức năng đăng ký trên trang web.
 
 ## 3. Chạy thử Welcome Email
+
+### Cách A: Docker Compose (MailHog đi kèm, khuyến nghị cho demo nhóm)
+
+`docker-compose.yml` đã bao gồm MailHog (`mailhog/mailhog:v1.0.1`): Web UI tại
+`127.0.0.1:8025`, SMTP nội bộ `mailhog:1025` (API container nhận qua biến môi
+trường `Smtp__Host=mailhog`, `Smtp__Port=1025`, `Smtp__UseSsl=false`, không
+credential — override riêng cho container, không sửa `appsettings.Development.json`;
+API chạy trực tiếp ngoài Docker vẫn dùng `localhost:1025`).
+
+Đăng ký tài khoản mới để kích hoạt Welcome Email (qua frontend
+`http://localhost:3000` hoặc curl tới API Compose):
+
+```powershell
+$email = "compose-$(Get-Date -Format yyyyMMddHHmmss)@example.com"
+Invoke-RestMethod -Uri "http://localhost:5000/api/v1/auth/register" -Method Post -ContentType "application/json" -Body (@{ email = $email; password = "P@ssword123"; displayName = "TV4 Compose" } | ConvertTo-Json)
+```
+
+Mở `http://127.0.0.1:8025` để xem email trong MailHog. Mỗi lần thử, đăng ký
+bằng email mới.
+
+**Cảnh báo xung đột cổng:** không chạy đồng thời script
+`.\tools\run-welcome-email-demo.ps1` (Cách B) khi Compose đang chạy — cả hai đều
+chiếm cổng `1025`/`8025` trên `127.0.0.1`.
+
+Dừng dịch vụ, giữ nguyên dữ liệu trong volumes (xem mục 5):
+`docker compose down` — **không** thêm `-v`.
+
+Hangfire Dashboard (`/hangfire`): chỉ nhận `Authorization: Bearer <JWT có role
+Admin>`; không nhận token qua query string, chưa có luồng đăng nhập browser an
+toàn, nên Admin chưa mở được Dashboard qua trình duyệt — đang chờ nhóm/TV1 chốt.
+
+### Cách B: Script local (môi trường Development ngoài Docker)
 
 Đảm bảo Docker Desktop đang chạy và đã có `.env` (nếu chưa, làm theo bước 1).
 Từ thư mục gốc repository, chạy một lệnh:
@@ -148,7 +180,7 @@ nếu chưa chủ động sao lưu/xóa dữ liệu.
 - Docker chưa chạy: mở Docker Desktop rồi kiểm tra `docker info`.
 - API không khởi động: chạy `docker compose logs --tail 100 api`; kiểm tra
   `JWT_SECRET` và trạng thái PostgreSQL bằng `docker compose ps`.
-- Cổng đã được dùng: giải phóng cổng 5000, 5432, 6379, 9000 hoặc 9001 trước
+- Cổng đã được dùng: giải phóng cổng 5000, 8025, 1025, 5432, 6379, 9000 hoặc 9001 trước
   khi chạy Compose.
 - Database từng được tạo với migration `AuthDbContext`: migration hợp nhất không
   tự chuyển database cũ. Giữ nguyên dữ liệu, tạo database mới theo

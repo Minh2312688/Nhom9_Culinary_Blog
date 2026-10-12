@@ -17,6 +17,11 @@ public interface IObjectStorageClient
         string contentType,
         CancellationToken cancellationToken);
 
+    Task<Stream> DownloadAsync(
+        string bucketName,
+        string objectName,
+        CancellationToken cancellationToken);
+
     Task DeleteAsync(
         string bucketName,
         string objectName,

@@ -8,6 +8,7 @@ public class RecipeImage : BaseEntity
     public string OriginalUrl { get; set; } = string.Empty;
     public string? MediumUrl { get; set; }
     public string? ThumbnailUrl { get; set; }
+    public RecipeImageVariantStatus VariantStatus { get; set; } = RecipeImageVariantStatus.Pending;
     public string? AltText { get; set; }
     public bool IsPrimary { get; set; }
     public int OrderIndex { get; set; }

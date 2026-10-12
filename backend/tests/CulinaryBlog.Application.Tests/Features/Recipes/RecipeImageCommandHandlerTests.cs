@@ -1,6 +1,7 @@
 using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Persistence;
+using CulinaryBlog.Application.Contracts.Recipes;
 using CulinaryBlog.Application.Contracts.Storage;
 using CulinaryBlog.Application.Features.Recipes.Commands;
 using CulinaryBlog.Domain.Entities;
@@ -32,8 +33,10 @@ public sealed class RecipeImageCommandHandlerTests
         await using var fixture = await RecipeImageFixture.CreateAsync();
         var storage = CreateStorageMock();
         var cache = new RecordingRecipeCache();
+        var enqueuer = new RecordingImageJobEnqueuer(fixture.Db);
         var handler = new UploadRecipeImageCommandHandler(
-            fixture.Db, fixture.User, storage.Object, cache, NullLogger<UploadRecipeImageCommandHandler>.Instance);
+            fixture.Db, fixture.User, storage.Object, cache, enqueuer,
+            NullLogger<UploadRecipeImageCommandHandler>.Instance);
 
         var response = await handler.Handle(UploadCommand(fixture.Recipe.Id), CancellationToken.None);
         var savedImage = await fixture.Db.RecipeImages.SingleAsync();
@@ -43,6 +46,47 @@ public sealed class RecipeImageCommandHandlerTests
         Assert.True(response.IsPrimary);
         Assert.Equal(0, savedImage.OrderIndex);
         Assert.Contains("recipes:", cache.RemovedPrefixes);
+        Assert.Equal([savedImage.Id], enqueuer.EnqueuedIds);
+        Assert.True(enqueuer.WasPersistedBeforeEnqueue);
+    }
+
+    [Fact]
+    public async Task Upload_WhenEnqueueFails_StillReturnsPersistedOriginalImage()
+    {
+        await using var fixture = await RecipeImageFixture.CreateAsync();
+        var storage = CreateStorageMock();
+        var enqueuer = new RecordingImageJobEnqueuer(fixture.Db)
+        {
+            Failure = new InvalidOperationException("Hangfire unavailable")
+        };
+        var handler = new UploadRecipeImageCommandHandler(
+            fixture.Db, fixture.User, storage.Object, new RecordingRecipeCache(), enqueuer,
+            NullLogger<UploadRecipeImageCommandHandler>.Instance);
+
+        var response = await handler.Handle(UploadCommand(fixture.Recipe.Id), CancellationToken.None);
+
+        Assert.Equal("https://storage/recipes/photo.jpg", response.OriginalUrl);
+        Assert.Equal(response.ImageId, (await fixture.Db.RecipeImages.SingleAsync()).Id);
+        Assert.Equal([response.ImageId], enqueuer.EnqueuedIds);
+    }
+
+    [Fact]
+    public async Task Upload_WhenDatabaseSaveFails_DoesNotEnqueueAndCleansUpOriginal()
+    {
+        await using var fixture = await RecipeImageFixture.CreateAsync();
+        fixture.Db.FailNextSave = true;
+        var storage = CreateStorageMock();
+        var enqueuer = new RecordingImageJobEnqueuer(fixture.Db);
+        var handler = new UploadRecipeImageCommandHandler(
+            fixture.Db, fixture.User, storage.Object, new RecordingRecipeCache(), enqueuer,
+            NullLogger<UploadRecipeImageCommandHandler>.Instance);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            handler.Handle(UploadCommand(fixture.Recipe.Id), CancellationToken.None));
+
+        Assert.Empty(enqueuer.EnqueuedIds);
+        storage.Verify(service => service.DeleteAsync(
+            "https://storage/recipes/photo.jpg", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -52,6 +96,7 @@ public sealed class RecipeImageCommandHandlerTests
         var storage = CreateStorageMock();
         var handler = new UploadRecipeImageCommandHandler(
             fixture.Db, fixture.User, storage.Object, new RecordingRecipeCache(),
+            new RecordingImageJobEnqueuer(fixture.Db),
             NullLogger<UploadRecipeImageCommandHandler>.Instance);
 
         await Assert.ThrowsAsync<ValidationException>(() =>
@@ -110,6 +155,99 @@ public sealed class RecipeImageCommandHandlerTests
     }
 
     [Fact]
+    public async Task DeleteImage_DeletesOriginalMediumAndThumbnailObjects()
+    {
+        await using var fixture = await RecipeImageFixture.CreateAsync(imageCount: 2);
+        var images = await fixture.Db.RecipeImages.OrderBy(image => image.OrderIndex).ToListAsync();
+        images[0].MediumUrl = "https://storage/image-0-medium.jpg";
+        images[0].ThumbnailUrl = "https://storage/image-0-thumb.jpg";
+        await fixture.Db.SaveChangesAsync();
+
+        var storage = new RecordingStorage();
+        var handler = new DeleteRecipeImageCommandHandler(
+            fixture.Db, fixture.User, storage, new RecordingRecipeCache());
+
+        await handler.Handle(new DeleteRecipeImageCommand(fixture.Recipe.Id, images[0].Id), CancellationToken.None);
+
+        Assert.Equal(new[]
+        {
+            "https://storage/image-0.jpg",
+            "https://storage/image-0-medium.jpg",
+            "https://storage/image-0-thumb.jpg"
+        }, storage.Deleted);
+        Assert.True(await fixture.Db.RecipeImages.IgnoreQueryFilters()
+            .Where(image => image.Id == images[0].Id).Select(image => image.IsDeleted).SingleAsync());
+    }
+
+    [Fact]
+    public async Task DeleteImage_WhenVariantUrlsMissing_DeletesOnlyOriginalObject()
+    {
+        await using var fixture = await RecipeImageFixture.CreateAsync(imageCount: 2);
+        var images = await fixture.Db.RecipeImages.OrderBy(image => image.OrderIndex).ToListAsync();
+        images[0].MediumUrl = string.Empty;
+        images[0].ThumbnailUrl = null;
+        await fixture.Db.SaveChangesAsync();
+
+        var storage = new RecordingStorage();
+        var handler = new DeleteRecipeImageCommandHandler(
+            fixture.Db, fixture.User, storage, new RecordingRecipeCache());
+
+        await handler.Handle(new DeleteRecipeImageCommand(fixture.Recipe.Id, images[0].Id), CancellationToken.None);
+
+        Assert.Equal(new[] { images[0].OriginalUrl }, storage.Deleted);
+    }
+
+    [Fact]
+    public async Task DeleteImage_WhenOneObjectDeleteFails_AttemptsRemainingAndLeavesRowForRetry()
+    {
+        await using var fixture = await RecipeImageFixture.CreateAsync(imageCount: 2);
+        var images = await fixture.Db.RecipeImages.OrderBy(image => image.OrderIndex).ToListAsync();
+        images[0].MediumUrl = "https://storage/image-0-medium.jpg";
+        images[0].ThumbnailUrl = "https://storage/image-0-thumb.jpg";
+        await fixture.Db.SaveChangesAsync();
+
+        var storage = new RecordingStorage { FailUrl = "https://storage/image-0-medium.jpg" };
+        var handler = new DeleteRecipeImageCommandHandler(
+            fixture.Db, fixture.User, storage, new RecordingRecipeCache());
+
+        await Assert.ThrowsAsync<StorageUnavailableException>(() =>
+            handler.Handle(new DeleteRecipeImageCommand(fixture.Recipe.Id, images[0].Id), CancellationToken.None));
+
+        Assert.Contains("https://storage/image-0-thumb.jpg", storage.Deleted);
+        Assert.False(await fixture.Db.RecipeImages.IgnoreQueryFilters()
+            .Where(image => image.Id == images[0].Id).Select(image => image.IsDeleted).SingleAsync());
+    }
+
+    [Fact]
+    public async Task DeleteImage_WhenSaveFailsAfterStorageDelete_LeavesRowForRetry()
+    {
+        await using var fixture = await RecipeImageFixture.CreateAsync(imageCount: 2);
+        var images = await fixture.Db.RecipeImages.OrderBy(image => image.OrderIndex).ToListAsync();
+        images[0].MediumUrl = "https://storage/image-0-medium.jpg";
+        images[0].ThumbnailUrl = "https://storage/image-0-thumb.jpg";
+        await fixture.Db.SaveChangesAsync();
+
+        var storage = new RecordingStorage();
+        var cache = new RecordingRecipeCache();
+        var handler = new DeleteRecipeImageCommandHandler(fixture.Db, fixture.User, storage, cache);
+
+        fixture.Db.FailNextSave = true;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            handler.Handle(new DeleteRecipeImageCommand(fixture.Recipe.Id, images[0].Id), CancellationToken.None));
+
+        Assert.Equal(new[]
+        {
+            "https://storage/image-0.jpg",
+            "https://storage/image-0-medium.jpg",
+            "https://storage/image-0-thumb.jpg"
+        }, storage.Deleted);
+        Assert.False(await fixture.Db.RecipeImages.IgnoreQueryFilters()
+            .Where(image => image.Id == images[0].Id).Select(image => image.IsDeleted).SingleAsync());
+        Assert.Empty(cache.RemovedPrefixes);
+    }
+
+    [Fact]
     public async Task ImageCommands_RejectNonOwner()
     {
         await using var fixture = await RecipeImageFixture.CreateAsync(imageCount: 1);
@@ -136,9 +274,32 @@ public sealed class RecipeImageCommandHandlerTests
         return storage;
     }
 
+    private sealed class RecordingStorage : IFileStorageService
+    {
+        public List<string> Deleted { get; } = [];
+        public string? FailUrl { get; init; }
+
+        public Task<FileUploadResult> UploadAsync(FileUploadRequest request, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task<Stream> DownloadAsync(string fileUrl, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public Task DeleteAsync(string fileUrl, CancellationToken cancellationToken = default)
+        {
+            Deleted.Add(fileUrl);
+            if (FailUrl is not null && string.Equals(FailUrl, fileUrl, StringComparison.Ordinal))
+            {
+                throw new StorageUnavailableException("Object storage is unavailable.");
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
     private sealed class RecipeImageFixture : IAsyncDisposable
     {
-        public required ApplicationDbContext Db { get; init; }
+        public required TestApplicationDbContext Db { get; init; }
         public required TestCurrentUser User { get; init; }
         public required Recipe Recipe { get; init; }
 
@@ -146,7 +307,7 @@ public sealed class RecipeImageCommandHandlerTests
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseInMemoryDatabase($"RecipeImages_{Guid.NewGuid():N}").Options;
-            var db = new ApplicationDbContext(options);
+            var db = new TestApplicationDbContext(options);
             var user = new TestCurrentUser { Id = "recipe-owner" };
             var category = Category.Create("Soup", null);
             var recipe = new Recipe
@@ -171,7 +332,66 @@ public sealed class RecipeImageCommandHandlerTests
             return new RecipeImageFixture { Db = db, User = user, Recipe = recipe };
         }
 
+        public sealed class TestApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : ApplicationDbContext(options)
+        {
+            public bool FailNextSave { get; set; }
+
+            public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+            {
+                if (FailNextSave)
+                {
+                    FailNextSave = false;
+                    throw new InvalidOperationException("Simulated database failure.");
+                }
+
+                return base.SaveChangesAsync(cancellationToken);
+            }
+        }
+
+        private sealed class RecordingImageJobEnqueuer(ApplicationDbContext db) : IRecipeImageJobEnqueuer
+        {
+            public List<Guid> EnqueuedIds { get; } = [];
+            public Exception? Failure { get; init; }
+            public bool WasPersistedBeforeEnqueue { get; private set; }
+
+            public Task EnqueueAsync(Guid imageId, CancellationToken cancellationToken = default)
+            {
+                EnqueuedIds.Add(imageId);
+                WasPersistedBeforeEnqueue = db.ChangeTracker
+                    .Entries<RecipeImage>()
+                    .Any(entry => entry.Entity.Id == imageId && entry.State == EntityState.Unchanged);
+                if (Failure is not null)
+                {
+                    throw Failure;
+                }
+
+                return Task.CompletedTask;
+            }
+        }
+
         public ValueTask DisposeAsync() => Db.DisposeAsync();
+    }
+
+    private sealed class RecordingImageJobEnqueuer(ApplicationDbContext db) : IRecipeImageJobEnqueuer
+    {
+        public List<Guid> EnqueuedIds { get; } = [];
+        public Exception? Failure { get; init; }
+        public bool WasPersistedBeforeEnqueue { get; private set; }
+
+        public Task EnqueueAsync(Guid imageId, CancellationToken cancellationToken = default)
+        {
+            EnqueuedIds.Add(imageId);
+            WasPersistedBeforeEnqueue = db.ChangeTracker
+                .Entries<RecipeImage>()
+                .Any(entry => entry.Entity.Id == imageId && entry.State == EntityState.Unchanged);
+            if (Failure is not null)
+            {
+                throw Failure;
+            }
+
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class TestCurrentUser : ICurrentUserService

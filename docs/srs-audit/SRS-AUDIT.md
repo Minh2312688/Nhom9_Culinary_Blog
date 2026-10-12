@@ -137,7 +137,7 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 | **NFR-USE-003** | Error Messages | USE | Trả về chuẩn RFC 7807 Problem Details; frontend inline validation trực quan. | TV1/TV3 | **CONFLICT** | §4.3 p. 42 (Xung đột mã lỗi 422 vs 400) |
 | **NFR-USE-004** | Loading States | USE | Visual feedback cho mọi async operation (Skeleton loading, Toast notifications). | TV3 | **CLEAR** | §4.3 p. 42 |
 | **NFR-REL-001** | Uptime SLA | REL | Uptime ≥ 99.5% (~ 3.65 giờ downtime/năm). Health check định kỳ mỗi 10s. | TV4 | **CLEAR** | §4.4 p. 43 |
-| **NFR-REL-002** | Error Resilience | REL | Global Exception Handler; Redis down tự động fallback DB; Hangfire retry 3 lần. | TV1/TV4 | **CLEAR** | §4.4 p. 43 |
+| **NFR-REL-002** | Error Resilience | REL | Global Exception Handler; Redis down tự động fallback DB; FR-JOB-001 theo chính sách retry tại §12.4: tối đa 5 lần thực thi (1 lần đầu + 4 retries). | TV1/TV4 | **CLEAR** | §4.4 p. 43; chính sách retry FR-JOB-001 được chọn theo §12.4 ngày 2026-10-10 |
 | **NFR-REL-003** | Data Durability | REL | PostgreSQL WAL đảm bảo ACID; Backup tự động hàng ngày 03:00 AM; Soft delete. | TV2 | **CONFLICT** | §4.4 p. 43 (Soft delete vs Hard delete) |
 | **NFR-MAINT-001**| Code Quality | MAINT | Pass static analysis trước khi merge (.NET SonarAnalyzer, ESLint, không warnings). | Toàn đội | **CLEAR** | §4.5 p. 43 |
 | **NFR-MAINT-002**| Test Coverage | MAINT | Unit test coverage ≥ 80% (Domain/Application); Integration test cho luồng chính. | Toàn đội | **CLEAR** | §4.5 p. 43–44 |
@@ -1002,10 +1002,10 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **Priority:** Should Have (S)
 - **Purpose:** Tác vụ nền gửi email HTML chào mừng đến địa chỉ email vừa đăng ký thành công qua MailKit.
 - **Preconditions:** `FR-AUTH-001` thành công.
-- **Inputs:** `userId`, `email`, `fullName`.
+- **Inputs:** `userId`, `email`, `displayName` (the Register API contract in Chapter 8).
 - **Outputs:** Email được gửi thành công qua SMTP.
 - **Happy path:** 1. `BackgroundJob.Enqueue` sau đăng ký $\rightarrow$ 2. Hangfire worker nhận job $\rightarrow$ 3. Render HTML template $\rightarrow$ 4. Kết nối SMTP gửi mail $\rightarrow$ 5. Hoàn tất.
-- **Alternate/error paths:** SMTP fail $\rightarrow$ Tự động retry 3 lần với exponential backoff (1m, 5m, 30m). Sau 3 lần fail chuyển sang Failed state.
+- **Alternate/error paths:** SMTP fail $\rightarrow$ Tự động retry theo exponential backoff, tối đa 5 lần thực thi tổng cộng (1 lần đầu + tối đa 4 retries). Nếu vẫn thất bại, giữ job ở Hangfire `Failed` state để Admin kiểm tra theo yêu cầu Dead Letter Queue (DLQ). Trong triển khai này, `Failed` state + Dashboard tab Failed + Error log là cơ chế tương đương DLQ, không phải một queue riêng.
 - **Validation:** Email hợp lệ.
 - **Authorization:** System Internal.
 - **HTTP method:** Hangfire Background Task
@@ -1021,7 +1021,7 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **Related CONS:** `CONS-009`.
 - **Related API Chapter 8:** None.
 - **Related Data Model:** §7.7.
-- **Conflict IDs:** Không.
+- **Conflict IDs:** Không còn xung đột trong chính sách retry sau quyết định áp dụng §12.4 (2026-10-10).
 - **Technical Risk IDs:** `TECH-RISK-009`.
 - **Status:** **CLEAR**
 
@@ -1421,13 +1421,13 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **ID:** NFR-REL-002
 - **Category:** Độ tin cậy (Reliability)
 - **Requirement:** Xử lý lỗi linh hoạt (gracefully), không sập toàn bộ ứng dụng khi một dịch vụ phụ trợ gặp sự cố.
-- **Metric/threshold:** Global Exception Handler bắt toàn bộ unhandled exceptions; Database connection pool tự reconnect với timeout 30s; Khi Redis offline $\rightarrow$ tự động fallback sang database trực tiếp (không throw exception); Hangfire retry 3 lần với exponential backoff.
+- **Metric/threshold:** Global Exception Handler bắt toàn bộ unhandled exceptions; Database connection pool tự reconnect với timeout 30s; Khi Redis offline $\rightarrow$ tự động fallback sang database trực tiếp (không throw exception); FR-JOB-001 dùng Hangfire exponential backoff với tối đa 5 lần thực thi tổng cộng (1 lần đầu + tối đa 4 retries), sau đó giữ job ở Failed state.
 - **Technology:** ASP.NET Core Middleware, Polly, Hangfire.
 - **Affected modules:** Toàn bộ backend.
 - **Owner(s):** TV1 (Exception Middleware), TV4 (Redis & Hangfire).
 - **Verification method:** Tắt thử nghiệm Redis container trong khi API đang chạy và xác minh API vẫn đọc được DB.
 - **Related FR:** `FR-JOB-001..003`, `FR-CAT-001`, `FR-RCP-002`.
-- **Conflict:** Không.
+- **Conflict:** Chính sách retry FR-JOB-001 theo §12.4; đã thống nhất với quyết định triển khai ngày 2026-10-10.
 - **Risk:** `TECH-RISK-005` (Quên bắt exception Redis connection làm crash pipeline).
 - **Evidence page:** §4.4 trang 43.
 
@@ -1938,7 +1938,7 @@ Hệ thống Culinary Blog tích hợp với 9 dịch vụ và thành phần m�
 - **Mục đích:** Gửi email chào mừng kích hoạt tài khoản bất đồng bộ (`FR-JOB-001`).
 - **Giao thức / SDK:** `MailKit` / `MimeKit` qua interface `IEmailSender`.
 - **Cấu hình / Secrets:** `Smtp__Host`, `Smtp__Port`, `Smtp__Username`, `Smtp__Password`. Local: trỏ vào `mailhog:1025`.
-- **Hành vi khi lỗi:** Hangfire tự động retry theo cơ chế Exponential Backoff (tối đa 5 lần). Nếu thất bại hoàn toàn chuyển vào Dead Letter Queue để Admin kiểm tra.
+- **Hành vi khi lỗi:** Hangfire tự động retry theo cơ chế Exponential Backoff, tối đa 5 lần thực thi tổng cộng (1 lần chạy đầu + tối đa 4 retries). Nếu vẫn thất bại, giữ job ở Hangfire `Failed` state để Admin kiểm tra theo yêu cầu Dead Letter Queue (DLQ). `Failed` state + Dashboard tab Failed + Error log là cơ chế tương đương DLQ trong triển khai này, không phải một queue riêng.
 - **Owner:** TV4 (Hangfire), TV1 (Trigger event khi register).
 - **Tham chiếu:** `FR-JOB-001`, `NFR-REL-001`.
 - **Technical Risk:** `TECH-RISK-006`.

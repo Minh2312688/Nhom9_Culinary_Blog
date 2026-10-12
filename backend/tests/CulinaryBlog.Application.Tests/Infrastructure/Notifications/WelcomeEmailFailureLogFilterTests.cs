@@ -1,4 +1,4 @@
-using CulinaryBlog.Infrastructure.Notifications;
+﻿using CulinaryBlog.Infrastructure.Notifications;
 using FluentAssertions;
 using Hangfire;
 using Hangfire.Common;
@@ -12,6 +12,17 @@ namespace CulinaryBlog.Application.Tests.Infrastructure.Notifications;
 
 /// <summary>
 /// Verifies the FR-JOB-001 failure filter: an explicit Error (with job id,
+/// userId and email context, and the original exception) is logged only when a
+/// WelcomeEmailJob enters the Failed state; other states or other job types
+/// are ignored. Never logs secrets.
+///
+/// Retry semantics (SRS-AUDIT sec-12-4, group-confirmed current policy):
+/// the job runs 1 initial run plus up to 4 retries (at most 5 executions)
+/// with Hangfire built-in exponential backoff (no custom delay list).
+/// When retry attempts are exhausted the job stays in the Failed state
+/// (OnAttemptsExceeded=Fail, never deleted). The failure error log is the
+/// DLQ-equivalent inspection path for this FR; a Hangfire Failed state is
+/// NOT a separate DLQ queue. The filter behavior is otherwise unchanged.
 /// userId and email context, and the original exception) is logged only when a
 /// WelcomeEmailJob enters the Failed state; other states or other job types are
 /// ignored. Never logs secrets.

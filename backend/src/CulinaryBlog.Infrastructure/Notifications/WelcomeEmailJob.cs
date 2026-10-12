@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using CulinaryBlog.Application.Contracts.Notifications;
 using Hangfire;
 using Microsoft.Extensions.Logging;
@@ -8,15 +8,22 @@ namespace CulinaryBlog.Infrastructure.Notifications;
 /// <summary>
 /// FR-JOB-001 worker: renders the welcome email HTML and sends it via
 /// <see cref="IEmailSender"/> (MailKit/SMTP).
-/// Retry policy (SRS FR-JOB-001): 3 retries after the first run with delays
-/// of 1 minute, 5 minutes and 30 minutes; when retries are exhausted the job
+/// Retry policy (SRS-AUDIT §12.4, group-confirmed current policy): at most
+/// 5 executions in total - the initial run plus at most 4 retries - using
+/// Hangfire's built-in increasing exponential backoff between attempts
+/// (the SRS specifies no concrete delay). When retries are exhausted
+/// the job stays in the Failed state (OnAttemptsExceeded=Fail, never
+/// deleted). The group accepts persistent Failed jobs + Dashboard
+/// Failed tab + failure Error log as the DLQ-equivalent inspection
+/// for this FR. SRS-AUDIT §3.6 (3 retries / 1/5/30 minutes) is
+/// the outdated conflicting text and must not be used for config.
 /// stays in the Failed state (no catch-and-report-success, no nested retry).
 /// Keep the signature to serializable primitives only: userId, email, displayName.
 /// </summary>
 public sealed class WelcomeEmailJob
 {
-    public const int RetryAttempts = 3;
-    public static readonly int[] RetryDelaysInSeconds = [60, 300, 1800];
+    public const int RetryAttempts = 4;
+    public static readonly int[] RetryDelaysInSeconds = [];
 
     private readonly IEmailSender _emailSender;
     private readonly ILogger<WelcomeEmailJob> _logger;
@@ -27,7 +34,7 @@ public sealed class WelcomeEmailJob
         _logger = logger;
     }
 
-    [AutomaticRetry(Attempts = RetryAttempts, DelaysInSeconds = new[] { 60, 300, 1800 }, OnAttemptsExceeded = AttemptsExceededAction.Fail, LogEvents = true)]
+    [AutomaticRetry(Attempts = RetryAttempts, OnAttemptsExceeded = AttemptsExceededAction.Fail, LogEvents = true)]
     public async Task SendWelcomeEmailAsync(string userId, string email, string displayName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);

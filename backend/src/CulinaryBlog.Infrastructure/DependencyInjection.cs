@@ -3,11 +3,14 @@ using CulinaryBlog.Application.Contracts.Authentication;
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Notifications;
 using CulinaryBlog.Application.Contracts.Persistence;
+using CulinaryBlog.Application.Contracts.Recipes;
 using CulinaryBlog.Infrastructure.Authentication;
+using CulinaryBlog.Infrastructure.Images;
 using CulinaryBlog.Infrastructure.Identity;
 using CulinaryBlog.Infrastructure.Notifications;
 using CulinaryBlog.Infrastructure.Persistence;
 using CulinaryBlog.Infrastructure.Repositories;
+using CulinaryBlog.Infrastructure.Sitemap;
 using CulinaryBlog.Infrastructure.Storage;
 using CulinaryBlog.Application.Common.Files;
 using CulinaryBlog.Application.Contracts.Storage;
@@ -19,6 +22,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.IdentityModel.Tokens;
@@ -217,8 +221,42 @@ public static class DependencyInjection
 
             // Background job server (no Dashboard in this scope).
             services.AddHangfireServer();
+            services.AddHangfireServer(options =>
+            {
+                options.Queues = ["image-processing"];
+                options.WorkerCount = 2;
+            });
 
             services.AddScoped<IWelcomeEmailEnqueuer, WelcomeEmailEnqueuer>();
+            services.AddScoped<IRecipeImageJobEnqueuer, RecipeImageJobEnqueuer>();
+
+            // FR-JOB-003 (Sitemap Generation, SRS-AUDIT §3.6 / NFR-SEO-003).
+            // PublicBaseUrl is required environment-specific configuration used to
+            // build absolute <loc> values; it is never hard-coded. PublicSitemapUrl is
+            // a separate, optional setting holding the exact public URL of sitemap.xml
+            // that Google Ping should receive; it is intentionally NOT derived from
+            // PublicBaseUrl, which only represents the website <loc> host. Binding here
+            // does not validate - SitemapJob validates at run time: an empty/invalid
+            // PublicBaseUrl or a malformed PublicSitemapUrl makes the job fail (and
+            // retry per policy), while an empty PublicSitemapUrl skips the ping but
+            // still stores the sitemap.
+            services.Configure<SitemapOptions>(
+                configuration.GetSection(SitemapOptions.SectionName));
+            services.AddSingleton(resolver =>
+                resolver.GetRequiredService<IOptions<SitemapOptions>>().Value);
+            services.AddSingleton<SitemapXmlGenerator>();
+            services.AddHttpClient<GoogleSitemapPingClient>();
+            services.AddScoped(resolver => new SitemapJob(
+                resolver.GetRequiredService<IApplicationDbContext>(),
+                resolver.GetRequiredService<IObjectStorageClient>(),
+                resolver.GetRequiredService<SitemapXmlGenerator>(),
+                resolver.GetRequiredService<GoogleSitemapPingClient>(),
+                resolver.GetRequiredService<SitemapOptions>(),
+                bucketName,
+                resolver.GetRequiredService<ILogger<SitemapJob>>()));
+
+            // Recurring schedule: daily at 02:00 UTC (cron "0 2 * * *").
+            services.AddHostedService<SitemapScheduleHostedService>();
         }
         else
         {
@@ -227,7 +265,11 @@ public static class DependencyInjection
             // boot and resolve the graph; integration tests that assert
             // enqueue behavior override IWelcomeEmailEnqueuer with a spy.
             services.AddScoped<IWelcomeEmailEnqueuer, NoOpWelcomeEmailEnqueuer>();
+            services.AddScoped<IRecipeImageJobEnqueuer, NoOpRecipeImageJobEnqueuer>();
         }
+
+        services.AddSingleton<RecipeImageProcessor>();
+        services.AddScoped<RecipeImageProcessingJob>();
 
         return services;
     }

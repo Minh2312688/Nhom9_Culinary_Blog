@@ -1,0 +1,48 @@
+# TV4 E2E override for FR-JOB-001 verification runs only (isolated from the
+# default project). Usage:
+#   docker compose -p <unique-project> -f docker-compose.yml -f docker-compose.e2e.yml --env-file .env.example up --build -d api
+#
+# Isolation guarantees provided by this file (verified via resolved config
+# gate before any `up`):
+#   * container_name of every service carries the run's project name, so the
+#     5 container names are unique per run (base file hardcodes names).
+#   * Postgres/Redis/MinIO publish NO host port (ports !reset).
+#   * API binds only 127.0.0.1:5080 (not 0.0.0.0:5000).
+#   * MailHog binds only 127.0.0.1:18025 for the UI; SMTP 1025 is NOT
+#     published - the API uses the in-network name mailhog:1025.
+#   * API connects to the dedicated E2E database culinary_blog_e2e.
+services:
+  api:
+    container_name: ${COMPOSE_PROJECT_NAME}-api
+    environment:
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=culinary_blog_e2e;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+    ports: !override ["127.0.0.1:5080:8080"]
+
+  postgres:
+    container_name: ${COMPOSE_PROJECT_NAME}-postgres
+    environment:
+      POSTGRES_DB: culinary_blog_e2e
+    # Base healthcheck checks ${POSTGRES_DB} (culinary_blog from .env.example);
+    # override to the E2E database, otherwise postgres never becomes healthy
+    # and the api (depends_on service_healthy) would never start.
+    healthcheck: !override
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d culinary_blog_e2e"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports: !reset []
+
+  redis:
+    container_name: ${COMPOSE_PROJECT_NAME}-redis
+    ports: !reset []
+
+  minio:
+    container_name: ${COMPOSE_PROJECT_NAME}-minio
+    ports: !reset []
+
+  mailhog:
+    container_name: ${COMPOSE_PROJECT_NAME}-mailhog
+    # UI only, host-bound to 127.0.0.1:18025. SMTP 1025 stays internal
+    # (no host binding) - nothing in this E2E run sends mail from outside
+    # the Compose network.
+    ports: !override ["127.0.0.1:18025:8025"]

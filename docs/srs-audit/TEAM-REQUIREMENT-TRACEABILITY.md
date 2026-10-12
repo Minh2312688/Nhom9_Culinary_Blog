@@ -1,4 +1,4 @@
-# CulinaryBlog Team Requirement Traceability Matrix
+﻿# CulinaryBlog Team Requirement Traceability Matrix
 
 > **BẢN QUYỀN TÀI LIỆU:**
 > ĐÂY LÀ TÀI LIỆU MA TRẬN TRUY VẾT YÊU CẦU TOÀN DIỆN CHO CẢ 4 THÀNH VIÊN (TV1, TV2, TV3, TV4).
@@ -77,7 +77,7 @@ Quy ước trạng thái:
 | **FR-SRCH-004** | | **X** | X | | **TV2** | Pagination component (TV3) | CONFLICT-012 | **BLOCKED** |
 | **FR-FILE-001** | | X | X | **X** | **TV4** | MinIO S3 SDK, Image upload form (TV3) | TECH-RISK-006, TECH-RISK-015 | **NOT_STARTED** |
 | **FR-FILE-002** | | X | | **X** | **TV4** | MinIO S3 SDK, Hangfire Delete Job (TV4) | None | **NOT_STARTED** |
-| **FR-JOB-001** | X | | | **X** | **TV4** | Hangfire Queue, MailKit SMTP, Auth Trigger (TV1) | TECH-RISK-009 | **NOT_STARTED** |
+| **FR-JOB-001** | X | | | **X** | **TV4** | Hangfire Queue, MailKit SMTP, Auth Trigger (TV1). Đã triển khai một phần: retry theo quyết định §12.4 (`AutomaticRetry(Attempts=4)`, tối đa 5 executions tổng cộng, Failed không Delete), Dashboard `/hangfire` bảo vệ Bearer-Admin, MailHog trong Compose, E2E Compose cách ly + unit/integration test. Pending: Admin browser login Dashboard, SMTP production, E2E WelcomeEmail hết retry, đồng bộ SRS §3.6 vs §12.4 | TECH-RISK-009 | **IN_PROGRESS** |
 | **FR-JOB-002** | | X | | **X** | **TV4** | ImageSharp/SkiaSharp, MinIO, Recipe Upload (TV2) | None | **NOT_STARTED** |
 | **FR-JOB-003** | | X | X | **X** | **TV4** | Published Recipes (TV2), Google Console Ping | None | **NOT_STARTED** |
 | **FR-OBS-001** | X | X | | **X** | **TV4** | Postgres Health, Redis Health, MinIO Health | None | **NOT_STARTED** |
@@ -100,7 +100,7 @@ Quy ước trạng thái:
 | **NFR-USE-003** | X | | **X** | | **TV1 / TV3** | RFC 7807 Problem Details, React Hook Form UI | CONFLICT-011 | **BLOCKED** |
 | **NFR-USE-004** | | | **X** | | **TV3** | Skeleton components, Toast notifications | None | **NOT_STARTED** |
 | **NFR-REL-001** | | | | **X** | **TV4** | Uptime SLA >= 99.5%, Health check readiness | None | **NOT_STARTED** |
-| **NFR-REL-002** | **X** | X | | X | **TV1 / TV4** | Global Exception Handler, Redis fallback | TECH-RISK-005 | **DONE** (TV1 Middleware base) |
+| **NFR-REL-002** | **X** | X | | X | **TV1 / TV4** | Global Exception Handler, Redis fallback (TV1: DONE). Phần Hangfire reliability (TV4): retry policy + Failed persistence đã kiểm chứng trên PostgreSQL cách ly; WelcomeEmail hết retry E2E và DLQ inspection qua Dashboard còn pending | TECH-RISK-005 | **IN_PROGRESS** (TV1 middleware DONE; Hangfire reliability còn pending) |
 | **NFR-REL-003** | | **X** | | X | **TV2 / TV4** | PostgreSQL WAL, automated backup, Soft delete | CONFLICT-001 | **BLOCKED** |
 | **NFR-MAINT-001**| **X** | X | X | X | **Toàn đội** | SonarAnalyzer (.NET), ESLint (Next.js) | None | **NOT_STARTED** |
 | **NFR-MAINT-002**| **X** | X | X | X | **Toàn đội** | Unit & Integration Test Coverage >= 80% | None | **DONE** (Phase 1 Baseline tests) |
@@ -229,7 +229,7 @@ Quy ước trạng thái:
 | **Full-Text Search Accuracy** | Integration Test (PostgreSQL) | **TV2** | Tìm kiếm không dấu tiếng Việt (unaccent) trả đúng kết quả; rank theo ts_rank_cd chính xác. |
 | **Category CRUD & Slug Generation** | Unit & Integration Test | **TV4** | Tên có dấu sinh slug không dấu chuẩn; trùng tên tự động thêm suffix `-1`, `-2`; xóa khi còn recipe trả lỗi 400. |
 | **File Storage & Magic Bytes** | Unit & Integration Test (MinIO Testcontainer) | **TV4** | Đổi đuôi file .exe thành .jpg bị chặn bởi magic bytes check; upload ảnh hợp lệ lưu đúng bucket, max 5MB. |
-| **Hangfire Background Execution** | Integration Test | **TV4** | Welcome email enqueue thành công; retry 3 lần khi SMTP timeout; job không thất bại ngầm. |
+| **Hangfire Background Execution** | Integration Test | **TV4** | Welcome email enqueue thành công; retry policy theo quyết định §12.4 (Attempts=4, tối đa 5 executions tổng cộng, Failed không Delete); job không thất bại ngầm. |
 | **Health Checks Endpoints** | Integration Test | **TV4** | `/health/live` luôn trả 200; `/health/ready` trả 503 khi DB hoặc Redis tắt; trả 200 khi cả hai hoạt động. |
 | **Frontend Responsive & Layout** | Visual & Component Test | **TV3** | Hiển thị đúng trên 320px (mobile), 768px (tablet), 1200px (desktop); không vỡ layout. |
 | **Accessibility Compliance** | Automated a11y Test (axe-core / Lighthouse) | **TV3** | WCAG 2.1 Level AA: Color contrast >= 4.5:1; đầy đủ ARIA labels; bàn phím điều hướng được 100%. |

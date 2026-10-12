@@ -17,7 +17,7 @@ Tài liệu này ghi nhận toàn bộ các điểm mâu thuẫn thực tế, ch
 
 ---
 
-## 2. Bảng tổng hợp 25 mâu thuẫn & quyết định kiến trúc
+## 2. Bảng tổng hợp 27 mâu thuẫn & quyết định kiến trúc
 
 | ID | Chủ đề | Mô tả mâu thuẫn | Phương án A | Phương án B | Status | Quyết định cuối | Người xác nhận | Ngày | Module ảnh hưởng |
 |---|---|---|---|---|---|---|---|---|---|
@@ -46,10 +46,12 @@ Tài liệu này ghi nhận toàn bộ các điểm mâu thuẫn thực tế, ch
 | **CONFLICT-023** | Recipe Image Set Primary Contract | Mâu thuẫn thiết kế endpoint đặt ảnh chính cho công thức nấu ăn. | **Endpoint riêng:** `PATCH /api/v1/recipes/{id}/images/{imageId}/primary` (§3.3 FR-RCP-008 trang 34). | **Endpoint chung:** `PATCH /api/v1/recipes/{id}/images/{imageId}` với body `{ isPrimary: true }` (§8.4 trang 64). | DECIDED | Use the dedicated PATCH /api/v1/recipes/{id}/images/{imageId}/primary endpoint. | Đại diện nhóm (xác nhận chính thức trong hội thoại) | 2026-09-23 | TV2 Recipe / TV4 Storage / TV3 UI |
 | **CONFLICT-024** | Recipe Image Upload Response Shape / URL Property Naming | Mâu thuẫn payload phản hồi upload ảnh giữa FR-RCP-008 và Chapter 8 §8.4 / Data Model §7.5. | **FR Response Shape:** Upload trả HTTP 201 với { url, isPrimary } (FR-RCP-008 p.34). | **Chapter 8 & Data Model:** Upload trả HTTP 201 với { imageId, originalUrl, altText, isPrimary } (§8.4 p.64) và cột DB là OriginalUrl (§7.5 p.58). | DECIDED | Upload returns imageId, originalUrl, altText, and isPrimary. | Đại diện nhóm (xác nhận chính thức trong hội thoại) | 2026-09-23 | TV2 Recipe / TV4 Storage / TV3 UI |
 | **CONFLICT-025** | BaseEntity Inheritance vs ApplicationUser Identity Inheritance | Mâu thuẫn mô hình kế thừa thực thể giữa quy tắc chung tất cả entities kế thừa BaseEntity và bảng ApplicationUser kế thừa IdentityUser<string>. | **SRS §6.4 p.52 & §7.1 p.54:** Tất cả entities kế thừa BaseEntity (có Id, CreatedAt, UpdatedAt, IsDeleted, RowVersion). | **SRS §7.7 p.58–59:** ApplicationUser được đặc tả kế thừa trực tiếp IdentityUser<string> (không mô tả các trường BaseEntity). | DECIDED | ApplicationUser remains a direct IdentityUser<string> subtype and an explicit exception to BaseEntity; do not apply BaseEntity RowVersion or IsDeleted global filtering to Identity. | Đại diện nhóm (xác nhận chính thức trong hội thoại) | 2026-09-23 | TV1 Auth / TV2 DbContext |
+| **CONFLICT-026** | Welcome Email Retry Policy | Mâu thuẫn số lần retry của job welcome email giữa §3.6/NFR-REL-002 và §12.4. | **3 retries (§3.6 FR-JOB-001 & NFR-REL-002):** SMTP fail thì retry 3 lần (1m, 5m, 30m) rồi Failed. | **Tối đa 5 lần thực thi (§12.4):** 1 lần chạy đầu + tối đa 4 retry, exponential backoff; hết retry giữ Failed để Admin kiểm tra (yêu cầu DLQ tương đương). | DECIDED | Áp dụng §12.4: `AutomaticRetry(Attempts = 4, OnAttemptsExceeded = Fail, LogEvents = true)` = tối đa 5 executions tổng cộng, exponential backoff mặc định Hangfire (SRS không nêu delay cụ thể), hết retry giữ Failed state (không Delete). §3.6/NFR-REL-002 (3 retries, 1/5/30 phút) là nội dung cũ, lệch với quyết định này; SRS chưa được sửa để đồng bộ. | Người dùng dự án (chọn phương án B trong yêu cầu triển khai FR-JOB-001) | 2026-10-10 | TV4 Hangfire / SMTP |
+| **CONFLICT-027** | AVIF Recipe Image Variants | FR-FILE-001 chấp nhận AVIF nhưng SkiaSharp native assets không giải mã AVIF; không thêm native dependency theo chỉ đạo. | **Tạo variants AVIF:** thêm codec native. | **Không tạo variants:** giữ ảnh gốc, đánh dấu variants Unsupported, frontend fallback về ảnh gốc. | DECIDED | Chọn phương án B: persist `VariantStatus=Unsupported`, giữ URL variants rỗng, frontend dùng `OriginalUrl`. FR-FILE-001 vẫn cho upload AVIF gốc; giới hạn chỉ áp dụng thumbnail/medium. | Người dùng giao việc (chỉ đạo triển khai hiện tại; chưa có xác nhận toàn nhóm) | 2026-10-11 | TV4 Background Jobs / TV3 Frontend / RecipeImage DB |
 
 ---
 
-## 3. Chi tiết bằng chứng đối chiếu 25 Conflicts (Traceability Evidence)
+## 3. Chi tiết bằng chứng đối chiếu 26 Conflicts (Traceability Evidence)
 
 ### Quy ước route tìm kiếm (SRS §8.3)
 - **Quyết định triển khai:** endpoint chuẩn `GET /api/v1/recipes/search?q={keyword}`; các query phân trang và filter FR-SRCH-002 có thể kết hợp trên endpoint này.
@@ -272,3 +274,26 @@ ightarrow$ Điều kiện filter cho Author chỉ gồm: `Status == Published OR
 - **Status:** `DECIDED`
 - **Affected:** TV1 Auth Entity / TV2 DbContext & Migrations.
 - **Cross-Team Blocker:** TV1 ↔ TV2 (Group 4).
+
+### CONFLICT-026: Welcome Email Retry Policy (§3.6/NFR-REL-002 vs §12.4)
+- **Mô tả:** Mâu thuẫn số lần retry của job welcome email (FR-JOB-001) giữa mô tả Functional Requirement và chính sách vận hành SMTP trong audit.
+- **Evidence A:** SRS §3.6 FR-JOB-001 (Alternate/error paths): "SMTP fail → Tự động retry 3 lần với exponential backoff (1m, 5m, 30m). Sau 3 lần fail chuyển sang Failed state."
+- **Evidence B:** SRS §12.4 SMTP Server & Mailhog (Hành vi khi lỗi): "Hangfire tự động retry theo cơ chế Exponential Backoff (tối đa 5 lần). Nếu thất bại hoàn toàn chuyển vào Dead Letter Queue để Admin kiểm tra."
+- **Impact:** TV4 Hangfire (WelcomeEmailJob), SMTP/MailHog, Dashboard/Admin inspection.
+- **Decision:** Áp dụng §12.4 (phương án B), do người dùng dự án chọn trong yêu cầu triển khai FR-JOB-001:
+  - `WelcomeEmailJob` dùng `AutomaticRetry(Attempts = 4, OnAttemptsExceeded = Fail, LogEvents = true)` = 1 lần chạy đầu + tối đa 4 retry, tối đa 5 executions tổng cộng (không hiểu là 5 retry/6 executions).
+  - Delay theo exponential backoff mặc định của Hangfire; SRS không nêu delay cụ thể nên không cấu hình `DelaysInSeconds`.
+  - Hết retry giữ job ở Failed state (không Delete); nhóm chấp nhận Failed jobs bền vững + Dashboard tab Failed + Error log là cơ chế tương đương yêu cầu DLQ cho FR-JOB-001.
+  - §3.6/NFR-REL-002 (3 retries, 1/5/30 phút) là nội dung cũ, đang lệch với quyết định này; SRS-AUDIT/SRS chưa được sửa đồng bộ (chờ quyết định riêng).
+- **Confirmed by:** Người dùng dự án (quyết định trong yêu cầu triển khai FR-JOB-001, 2026-10-10). Chưa có bằng chứng phê duyệt của giảng viên hoặc toàn bộ team.
+- **Status:** `DECIDED`
+- **Affected:** TV4 Hangfire / SMTP / Dashboard.
+- **Note:** Không mô tả SRS-AUDIT là đã nhất quán; mâu thuẫn §3.6/NFR-REL-002 vs §12.4 vẫn cần đồng bộ trong tài liệu SRS.
+
+### CONFLICT-027: AVIF Recipe Image Variants
+- **Mô tả:** FR-FILE-001 cho phép upload AVIF, nhưng SkiaSharp 4.153.1 với native assets Win32/Linux NoDependencies đang dùng không giải mã được AVIF. Người dùng quyết định không thêm native dependency.
+- **Decision:** AVIF upload vẫn giữ nguyên ảnh gốc và không làm thất bại luồng upload. Job không retry decode AVIF; lưu `VariantStatus=Unsupported`, không đặt `ThumbnailUrl`/`MediumUrl`. Frontend hiển thị `OriginalUrl` khi không có URL variant.
+- **Confirmed by:** Người dùng giao việc, 2026-10-11. Chưa có bằng chứng phê duyệt của giảng viên hoặc toàn bộ team.
+- **Status:** `DECIDED` cho hướng triển khai được chỉ đạo; cần nhóm đối chiếu/cập nhật SRS-AUDIT FR-FILE-001/FR-JOB-002 trước khi coi đây là quyết định chính thức toàn nhóm.
+- **Affected:** TV4 Background Jobs / TV3 Frontend / RecipeImage DB.
+- **Test evidence:** `backend/tests/CulinaryBlog.Application.Tests/TestData/AVIF-TEST-ASSET-NOTICE.txt`; AVIF test xác nhận Unsupported, original unchanged, và null variant URLs.

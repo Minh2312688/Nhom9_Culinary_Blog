@@ -1,9 +1,12 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using CulinaryBlog.Application.DTOs.Auth;
 using CulinaryBlog.Infrastructure.Authentication;
 using FluentAssertions;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -72,13 +75,55 @@ public class CustomAuthWebApplicationFactory : WebApplicationFactory<Program>
             }
 
             services.AddSingleton(GoogleTokenValidatorMock.Object);
+            services.AddTransient<IStartupFilter, TestRemoteIpStartupFilter>();
         });
+    }
+
+    private sealed class TestRemoteIpStartupFilter : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next)
+        {
+            return app =>
+            {
+                app.Use(async (context, nextMiddleware) =>
+                {
+                    if (context.Request.Headers.TryGetValue("X-Test-Client-IP", out var testIp))
+                    {
+                        if (IPAddress.TryParse(testIp.ToString(), out var parsedIp))
+                        {
+                            context.Connection.RemoteIpAddress = parsedIp;
+                        }
+                        else
+                        {
+                            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(testIp.ToString()!));
+                            context.Connection.RemoteIpAddress = new IPAddress(new byte[] { 10, bytes[0], bytes[1], (byte)(bytes[2] % 250 + 1) });
+                        }
+                    }
+                    else if (context.Connection.RemoteIpAddress == null)
+                    {
+                        context.Connection.RemoteIpAddress = IPAddress.Loopback;
+                    }
+
+                    await nextMiddleware();
+                });
+
+                next(app);
+            };
+        }
     }
 
     public HttpClient CreateIsolatedClient()
     {
         var client = CreateClient();
-        client.DefaultRequestHeaders.Add("X-Test-Client-IP", $"192.168.1.{Guid.NewGuid():N}");
+        var bytes = Guid.NewGuid().ToByteArray();
+        client.DefaultRequestHeaders.Add("X-Test-Client-IP", $"10.{bytes[0]}.{bytes[1]}.{(bytes[2] % 250) + 1}");
+        return client;
+    }
+
+    public HttpClient CreateClientWithIp(string ipAddress)
+    {
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Add("X-Test-Client-IP", ipAddress);
         return client;
     }
 }

@@ -45,7 +45,8 @@ public sealed class UpdateCategoryCommandValidator : AbstractValidator<UpdateCat
         RuleFor(command => command.Description)
             .Must(description => description is null ||
                 description.Trim().Length <= Category.MaxDescriptionLength)
-                .WithMessage($"Description must not exceed {Category.MaxDescriptionLength} characters.");
+                .WithMessage($"Description must not exceed {Category.MaxDescriptionLength} characters.")
+            .MustNotContainHtmlMarkup();
 
         RuleFor(command => command.ImageUrl)
             .Must(imageUrl => imageUrl is null ||

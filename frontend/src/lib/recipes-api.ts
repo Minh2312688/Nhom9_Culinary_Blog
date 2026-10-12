@@ -122,8 +122,9 @@ export async function getRecipes(
   signal: AbortSignal,
   pageSize = 12,
   token?: string,
+  page = 1,
 ): Promise<PaginatedResult<RecipeSummary>> {
-  return request(`/api/v1/recipes/?page=1&pageSize=${pageSize}`, {
+  return request(`/api/v1/recipes/?page=${page}&pageSize=${pageSize}`, {
     signal,
     headers: token ? authHeaders(token) : undefined,
   });

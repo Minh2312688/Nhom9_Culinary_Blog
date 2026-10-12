@@ -110,6 +110,54 @@ public sealed class RecipeValidatorsTests
         Assert.Contains(result.Errors, error => error.PropertyName == nameof(GetRecipesQuery.SortOrder));
     }
 
+    [Theory]
+    [InlineData("title", "asc")]
+    [InlineData("createdAt", "DESC")]
+    [InlineData("cookTime", "desc")]
+    [InlineData("prepTime", "asc")]
+    public async Task GetRecipes_ShouldAcceptSupportedSortOptions(string sortBy, string sortOrder)
+    {
+        var validator = new GetRecipesQueryValidator();
+
+        var result = await validator.ValidateAsync(new GetRecipesQuery(SortBy: sortBy, SortOrder: sortOrder));
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public async Task GetRecipes_ShouldRejectSortOrderWithoutSortField()
+    {
+        var validator = new GetRecipesQueryValidator();
+
+        var result = await validator.ValidateAsync(new GetRecipesQuery(SortOrder: "asc"));
+
+        Assert.Contains(result.Errors, error => error.PropertyName == nameof(GetRecipesQuery.SortOrder));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task GetRecipes_ShouldRejectPageBelowOne(int page)
+    {
+        var validator = new GetRecipesQueryValidator();
+
+        var result = await validator.ValidateAsync(new GetRecipesQuery(Page: page));
+
+        Assert.Contains(result.Errors, error => error.PropertyName == nameof(GetRecipesQuery.Page));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(51)]
+    public async Task GetRecipes_ShouldRejectPageSizeOutsideRange(int pageSize)
+    {
+        var validator = new GetRecipesQueryValidator();
+
+        var result = await validator.ValidateAsync(new GetRecipesQuery(PageSize: pageSize));
+
+        Assert.Contains(result.Errors, error => error.PropertyName == nameof(GetRecipesQuery.PageSize));
+    }
+
     [Fact]
     public async Task GetRecipes_SearchLength100IsAcceptedAnd101IsRejected()
     {

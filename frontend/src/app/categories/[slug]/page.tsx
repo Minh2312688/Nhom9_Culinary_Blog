@@ -3,26 +3,37 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getCategory, searchRecipes, type RecipeCategory, type RecipeSummary } from "@/lib/recipes-api";
-import { ErrorNotice, LoadingNotice, SitePage } from "../../site-ui";
+import { getCategory, searchRecipes, type PaginatedResult, type RecipeCategory, type RecipeSummary } from "@/lib/recipes-api";
+import { ErrorNotice, LoadingNotice, Pagination, SitePage } from "../../site-ui";
 import styles from "../../site-ui.module.css";
 
 export default function CategoryDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const [category, setCategory] = useState<RecipeCategory | null>(null);
-  const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
+  const [result, setResult] = useState<PaginatedResult<RecipeSummary> | null>(null);
+  const [page, setPage] = useState(1);
+  const [initialized, setInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const requestedPage = Number(new URLSearchParams(window.location.search).get("page"));
+    setPage(Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1);
+    setInitialized(true);
+  }, []);
+
+  useEffect(() => {
+    if (!initialized) return;
     const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+    window.history.replaceState(null, "", page === 1 ? `/categories/${slug}` : `/categories/${slug}?page=${page}`);
     async function load() {
       try {
         const item = await getCategory(slug, controller.signal);
         setCategory(item);
-        const query = new URLSearchParams({ categoryId: item.id, page: "1", pageSize: "50" });
-        const result = await searchRecipes(query, controller.signal);
-        setRecipes(result.items);
+        const query = new URLSearchParams({ categoryId: item.id, page: String(page), pageSize: "12" });
+        setResult(await searchRecipes(query, controller.signal));
       } catch (reason) {
         if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Không thể tải danh mục.");
       } finally {
@@ -31,7 +42,7 @@ export default function CategoryDetailPage() {
     }
     void load();
     return () => controller.abort();
-  }, [slug]);
+  }, [initialized, page, slug]);
 
   return (
     <SitePage>
@@ -45,7 +56,7 @@ export default function CategoryDetailPage() {
             {category.description && <p className={styles.description}>{category.description}</p>}
           </div>
           <div className={styles.grid}>
-            {recipes.map((recipe) => (
+            {result?.items.map((recipe) => (
               <Link className={styles.card} href={`/recipes/${recipe.slug}`} key={recipe.id}>
                 <p className={styles.cardLabel}>{recipe.difficulty}</p>
                 <h2>{recipe.title}</h2>
@@ -54,7 +65,10 @@ export default function CategoryDetailPage() {
               </Link>
             ))}
           </div>
-          {!loading && recipes.length === 0 && <p className={styles.notice}>Danh mục này chưa có công thức.</p>}
+          {!loading && result?.items.length === 0 && <p className={styles.notice}>Danh mục này chưa có công thức.</p>}
+          {result && <Pagination page={result.page} totalPages={result.totalPages}
+            hasNextPage={result.hasNextPage} hasPreviousPage={result.hasPreviousPage}
+            onPageChange={setPage} label="Phân trang công thức trong danh mục" />}
         </>}
       </main>
     </SitePage>

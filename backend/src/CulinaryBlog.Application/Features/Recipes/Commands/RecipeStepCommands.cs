@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Exceptions;
+using CulinaryBlog.Application.Common.Validation;
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Application.DTOs.Recipes;
@@ -21,8 +22,8 @@ public sealed class AddRecipeStepCommandValidator : AbstractValidator<AddRecipeS
     public AddRecipeStepCommandValidator()
     {
         RuleFor(x => x.RecipeId).NotEmpty();
-        RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.Description).NotEmpty();
+        RuleFor(x => x.Title).NotEmpty().MaximumLength(200).MustNotContainHtmlMarkup();
+        RuleFor(x => x.Description).NotEmpty().MustNotContainHtmlMarkup();
         RuleFor(x => x.DurationMinutes).GreaterThanOrEqualTo(0);
         RuleFor(x => x.ImageUrl).MaximumLength(500);
     }
@@ -73,8 +74,8 @@ public sealed class UpdateRecipeStepCommandValidator : AbstractValidator<UpdateR
     {
         RuleFor(x => x.RecipeId).NotEmpty();
         RuleFor(x => x.StepId).NotEmpty();
-        RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.Description).NotEmpty();
+        RuleFor(x => x.Title).NotEmpty().MaximumLength(200).MustNotContainHtmlMarkup();
+        RuleFor(x => x.Description).NotEmpty().MustNotContainHtmlMarkup();
         RuleFor(x => x.DurationMinutes).GreaterThanOrEqualTo(0);
         RuleFor(x => x.ImageUrl).MaximumLength(500);
     }

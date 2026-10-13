@@ -30,12 +30,15 @@ public class JwtService : IJwtTokenGenerator
         {
             new(JwtRegisteredClaimNames.Sub, userId),
             new(JwtRegisteredClaimNames.Email, email),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new("userId", userId) // NFR-SEC-002: SRS compatibility alias
         };
 
-        foreach (var role in roles)
+        var rolesList = roles as IList<string> ?? roles.ToList();
+        foreach (var role in rolesList)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
+            claims.Add(new Claim("roles", role)); // NFR-SEC-002: SRS compatibility alias
         }
 
         // CONS-004 / NFR-SEC-002: TTL = 15 minutes

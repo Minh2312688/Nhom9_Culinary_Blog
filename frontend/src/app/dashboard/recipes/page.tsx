@@ -3,39 +3,48 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { deleteRecipe, getRecipes, publishRecipe, type RecipeSummary } from "@/lib/recipes-api";
-import { ErrorNotice, LoadingNotice, SectionTitle, SitePage } from "../../site-ui";
+import { deleteRecipe, getRecipes, publishRecipe, type PaginatedResult, type RecipeSummary } from "@/lib/recipes-api";
+import { ErrorNotice, LoadingNotice, Pagination, SectionTitle, SitePage } from "../../site-ui";
 import styles from "../../site-ui.module.css";
 
 export default function DashboardRecipesPage() {
   const router = useRouter();
   const [token, setToken] = useState("");
-  const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
+  const [result, setResult] = useState<PaginatedResult<RecipeSummary> | null>(null);
+  const [page, setPage] = useState(1);
+  const [initialized, setInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadRecipes = useCallback(async (accessToken: string) => {
+  const loadRecipes = useCallback(async (accessToken: string, requestedPage = page) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await getRecipes(new AbortController().signal, 50, accessToken);
-      setRecipes(result.items);
+      setResult(await getRecipes(new AbortController().signal, 12, accessToken, requestedPage));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Không thể tải công thức.");
     } finally {
       setLoading(false);
     }
+  }, [page]);
+
+  useEffect(() => {
+    const requestedPage = Number(new URLSearchParams(window.location.search).get("page"));
+    setPage(Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1);
+    setInitialized(true);
   }, []);
 
   useEffect(() => {
+    if (!initialized) return;
     const accessToken = sessionStorage.getItem("culinary_access_token");
     if (!accessToken) {
       router.replace("/auth/login");
       return;
     }
     setToken(accessToken);
+    window.history.replaceState(null, "", page === 1 ? "/dashboard/recipes" : `/dashboard/recipes?page=${page}`);
     void loadRecipes(accessToken);
-  }, [loadRecipes, router]);
+  }, [initialized, loadRecipes, page, router]);
 
   async function handlePublish(id: string) {
     try {
@@ -68,16 +77,16 @@ export default function DashboardRecipesPage() {
       <main className={styles.content}>
         <SectionTitle eyebrow="QUẢN LÝ NỘI DUNG" title="Công thức của tôi" description="Lưu bản nháp, cập nhật hoặc xuất bản nội dung." />
         <div className={styles.toolbar}>
-          <h2>{recipes.length} công thức</h2>
+          <h2>{result?.totalCount ?? 0} công thức</h2>
           <Link className={styles.button} href="/dashboard/recipes/new">Tạo công thức</Link>
         </div>
         {loading && <LoadingNotice />}
         {error && <ErrorNotice>{error}</ErrorNotice>}
-        {!loading && !error && recipes.length === 0 && <p className={styles.notice}>Bạn chưa có công thức nào.</p>}
-        {recipes.length > 0 && <div style={{ overflowX: "auto" }}>
+        {!loading && !error && result?.items.length === 0 && <p className={styles.notice}>Bạn chưa có công thức nào.</p>}
+        {!!result?.items.length && <div style={{ overflowX: "auto" }}>
           <table className={styles.table}>
             <thead><tr><th>Tên món</th><th>Trạng thái</th><th>Thời gian nấu</th><th>Thao tác</th></tr></thead>
-            <tbody>{recipes.map((recipe) => (
+            <tbody>{result.items.map((recipe) => (
               <tr key={recipe.id}>
                 <td><strong>{recipe.title}</strong></td>
                 <td><span className={styles.status}>{statusLabel(recipe.status)}</span></td>
@@ -94,6 +103,9 @@ export default function DashboardRecipesPage() {
             ))}</tbody>
           </table>
         </div>}
+        {result && <Pagination page={result.page} totalPages={result.totalPages}
+          hasNextPage={result.hasNextPage} hasPreviousPage={result.hasPreviousPage}
+          onPageChange={setPage} label="Phân trang công thức của tôi" />}
       </main>
     </SitePage>
   );

@@ -111,6 +111,7 @@
 .cardMeta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: auto; color: #53645a; font: 11px "Trebuchet MS", sans-serif; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0 14px; }
 .toolbar h2 { margin: 0; color: var(--forest); font: 500 25px Georgia, serif; }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 22px; color: var(--muted); font: 600 12px "Trebuchet MS", sans-serif; }
 .notice, .error { padding: 14px 16px; border: 1px solid var(--line); color: var(--muted); background: #fff; font: 13px/1.5 "Trebuchet MS", sans-serif; }
 .error { border-left: 3px solid var(--tomato); color: #7b3022; background: #f8e4dd; }
 .detail { width: min(860px, 100%); margin: 0 auto; padding: 42px 28px 64px; }

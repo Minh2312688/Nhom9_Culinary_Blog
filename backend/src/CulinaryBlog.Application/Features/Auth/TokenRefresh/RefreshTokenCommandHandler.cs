@@ -42,16 +42,27 @@ public sealed class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCom
             var prefix = incomingHash.Length > 8 ? incomingHash[..8] : incomingHash;
             _logger.LogWarning("Security Warning: Refresh token reuse detected for TokenHash prefix {TokenHashPrefix}", prefix);
 
-            // Invalidate active descendant in the token rotation chain
-            if (!string.IsNullOrEmpty(existingToken.ReplacedByTokenHash))
+            // NFR-SEC-002: Invalidate ALL active descendants in the compromised token family lineage
+            var revocationTime = DateTimeOffset.UtcNow;
+            var currentDescendantHash = existingToken.ReplacedByTokenHash;
+            var visitedHashes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { incomingHash };
+
+            while (!string.IsNullOrEmpty(currentDescendantHash) && visitedHashes.Add(currentDescendantHash))
             {
-                var descendant = await _refreshTokenRepository.GetByHashAsync(existingToken.ReplacedByTokenHash, cancellationToken);
-                if (descendant != null && descendant.RevokedAt == null)
+                var descendant = await _refreshTokenRepository.GetByHashAsync(currentDescendantHash, cancellationToken);
+                if (descendant == null)
                 {
-                    descendant.RevokedAt = DateTimeOffset.UtcNow;
+                    break;
+                }
+
+                if (descendant.RevokedAt == null)
+                {
+                    descendant.RevokedAt = revocationTime;
                     await _refreshTokenRepository.UpdateRefreshTokenAsync(descendant, cancellationToken);
                     _logger.LogWarning("Security Action: Compromised descendant token revoked due to rotation reuse.");
                 }
+
+                currentDescendantHash = descendant.ReplacedByTokenHash;
             }
 
             throw new UnauthorizedException("Invalid or expired refresh token.");

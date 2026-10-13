@@ -32,6 +32,23 @@ export default function RecipeDetailPage() {
         {recipe && <>
           <h1>{recipe.title}</h1>
           {recipe.description && <p className={styles.detailLead}>{recipe.description}</p>}
+          {recipe.images.length > 0 && (
+            <div className={styles.recipeImages}>
+              {recipe.images
+                .slice()
+                .sort((first, second) => Number(second.isPrimary) - Number(first.isPrimary) ||
+                  first.orderIndex - second.orderIndex)
+                .map((image) => (
+                  <img
+                    className={styles.recipeImage}
+                    key={image.id}
+                    src={image.mediumUrl ?? image.thumbnailUrl ?? image.originalUrl}
+                    alt={image.altText ?? recipe.title}
+                    loading="lazy"
+                  />
+                ))}
+            </div>
+          )}
           <div className={styles.cardMeta}>
             <span>Chuẩn bị {recipe.prepTimeMinutes} phút</span>
             <span>Nấu {recipe.cookTimeMinutes} phút</span>

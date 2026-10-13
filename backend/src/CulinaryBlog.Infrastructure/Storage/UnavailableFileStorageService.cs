@@ -10,6 +10,11 @@ public sealed class UnavailableFileStorageService : IFileStorageService
         CancellationToken cancellationToken = default)
         => throw new StorageUnavailableException("Object storage is not configured.");
 
+    public Task<Stream> DownloadAsync(
+        string fileUrl,
+        CancellationToken cancellationToken = default)
+        => throw new StorageUnavailableException("Object storage is not configured.");
+
     public Task DeleteAsync(string fileUrl, CancellationToken cancellationToken = default)
         => throw new StorageUnavailableException("Object storage is not configured.");
 }

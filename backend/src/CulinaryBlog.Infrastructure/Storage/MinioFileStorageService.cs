@@ -54,6 +54,23 @@ public sealed class MinioFileStorageService : IFileStorageService
             validation.SizeBytes);
     }
 
+    public async Task<Stream> DownloadAsync(
+        string fileUrl,
+        CancellationToken cancellationToken = default)
+    {
+        var objectName = ExtractObjectName(fileUrl);
+
+        try
+        {
+            await client.EnsureBucketExistsAsync(bucketName, cancellationToken);
+            return await client.DownloadAsync(bucketName, objectName, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            throw new StorageUnavailableException("Object storage is unavailable.", exception);
+        }
+    }
+
     public async Task DeleteAsync(
         string fileUrl,
         CancellationToken cancellationToken = default)

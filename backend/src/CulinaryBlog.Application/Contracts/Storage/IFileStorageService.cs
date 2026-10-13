@@ -9,6 +9,9 @@ public interface IFileStorageService
     /// <summary>Upload file và trả thông tin object đã lưu (không phải response contract của API upload).</summary>
     Task<FileUploadResult> UploadAsync(FileUploadRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>Đọc file theo URL lưu trữ; caller sở hữu và phải dispose stream trả về.</summary>
+    Task<Stream> DownloadAsync(string fileUrl, CancellationToken cancellationToken = default);
+
     /// <summary>Xóa file theo URL/object name; idempotent khi object không tồn tại (FR-FILE-002).</summary>
     Task DeleteAsync(string fileUrl, CancellationToken cancellationToken = default);
 }

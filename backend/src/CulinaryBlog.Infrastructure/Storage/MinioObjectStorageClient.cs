@@ -54,6 +54,31 @@ internal sealed class MinioObjectStorageClient : IObjectStorageClient
                 .WithContentType(contentType),
             cancellationToken);
 
+    public async Task<Stream> DownloadAsync(
+        string bucketName,
+        string objectName,
+        CancellationToken cancellationToken)
+    {
+        var content = new MemoryStream();
+        try
+        {
+            await client.GetObjectAsync(
+                new GetObjectArgs()
+                    .WithBucket(bucketName)
+                    .WithObject(objectName)
+                    .WithCallbackStream(stream => stream.CopyTo(content)),
+                cancellationToken);
+
+            content.Position = 0;
+            return content;
+        }
+        catch
+        {
+            await content.DisposeAsync();
+            throw;
+        }
+    }
+
     public Task DeleteAsync(
         string bucketName,
         string objectName,

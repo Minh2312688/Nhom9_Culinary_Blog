@@ -26,7 +26,15 @@ const recipe = {
   rowVersion: "AAAAAA==",
   ingredients: [{ id: "ingredient-1", name: "Thịt bò", quantity: 300, unit: "g", notes: null, orderIndex: 0 }],
   steps: [{ id: "step-1", stepNumber: 1, title: null, description: "Nấu nước dùng.", durationMinutes: 10, imageUrl: null }],
-  images: [],
+  images: [{
+    id: "image-1",
+    originalUrl: "https://storage.example.test/original.avif",
+    mediumUrl: null,
+    thumbnailUrl: null,
+    altText: "Phở bò",
+    isPrimary: true,
+    orderIndex: 0,
+  }],
   nutrition: null,
 };
 
@@ -94,6 +102,11 @@ test("recipe detail renders ingredients and preparation steps", async ({ page })
   await expect(page.getByText("Nấu nước dùng.")).toBeVisible();
 });
 
+test("recipe detail falls back to original image when variants are unavailable", async ({ page }) => {
+  await page.goto("/recipes/pho-bo");
+
+  await expect(page.getByRole("img", { name: "Phở bò" }))
+    .toHaveAttribute("src", "https://storage.example.test/original.avif");
 test("search sorting is sent to the API and resets pagination", async ({ page }) => {
   const requests: URL[] = [];
   await page.route("**/api/v1/recipes/search**", async route => {

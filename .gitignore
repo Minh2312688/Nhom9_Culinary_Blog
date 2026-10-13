@@ -25,3 +25,9 @@ docker-compose.override.yml
 **/TestResults/
 test-results/
 playwright-report/
+
+# Local TV4 run logs
+tv4-*.log
+
+# Other
+docs/TV4/

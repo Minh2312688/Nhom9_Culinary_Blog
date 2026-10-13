@@ -13,6 +13,10 @@ public sealed class RecipeImageConfiguration : IEntityTypeConfiguration<RecipeIm
         builder.Property(image => image.OriginalUrl).IsRequired().HasMaxLength(500);
         builder.Property(image => image.MediumUrl).HasMaxLength(500);
         builder.Property(image => image.ThumbnailUrl).HasMaxLength(500);
+        builder.Property(image => image.VariantStatus)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(RecipeImageVariantStatus.Pending);
         builder.Property(image => image.AltText).HasMaxLength(200);
         builder.HasQueryFilter(image => !image.IsDeleted);
     }

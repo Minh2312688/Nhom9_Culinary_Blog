@@ -4,6 +4,9 @@ using CulinaryBlog.API.Middleware;
 using CulinaryBlog.Application;
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Infrastructure;
+using CulinaryBlog.Infrastructure.Notifications;
+using Hangfire;
+using Hangfire.Dashboard;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -67,6 +70,9 @@ builder.Services.AddRateLimiter(options =>
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
     {
         var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+
+        if ((builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing")) &&
+            httpContext.Request.Headers.TryGetValue("X-Test-Client-IP", out var testIp))
         return RateLimitPartition.GetFixedWindowLimiter(ipAddress, _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 100,
@@ -140,6 +146,21 @@ if (app.Environment.IsDevelopment())
             await CulinaryBlog.Infrastructure.Persistence.Seed.Lab02DataSeeder.SeedAsync(db, userManager, logger);
         }
     }
+}
+
+// FR-JOB-001 / SRS-AUDIT sec-12-5: Hangfire Dashboard at /hangfire, protected
+// by the Admin-only Bearer filter (HangfireDashboardAuthorizationFilter).
+// Registered only when Hangfire is configured (not "Testing", which skips
+// Hangfire storage/server entirely). See HangfireDashboardAuthorizationFilter
+// for the bearer-only policy: no query-string token, no cookie, no login
+// flow; the Dashboard UI is not considered usable by Admin until the team
+// confirms a secure provisioning flow.
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    app.MapHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = [new HangfireDashboardAuthorizationFilter(app.Configuration)]
+    });
 }
 
 app.Run();

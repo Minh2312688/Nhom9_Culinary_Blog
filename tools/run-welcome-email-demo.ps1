@@ -146,7 +146,7 @@ try {
         $random.Dispose()
     }
 
-    $env:ConnectionStrings__Postgres = "Host=localhost;Port=5432;Database=$demoDatabase;Username=$postgresUser;Password='$escapedPassword'"
+    $env:ConnectionStrings__Postgres = "Host=localhost;Port=5433;Database=$demoDatabase;Username=$postgresUser;Password='$escapedPassword'"
     $env:Jwt__Key = [Convert]::ToBase64String($keyBytes)
     $env:ASPNETCORE_ENVIRONMENT = "Development"
     $env:ASPNETCORE_URLS = "http://localhost:$ApiPort"

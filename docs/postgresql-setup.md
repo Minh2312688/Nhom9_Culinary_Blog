@@ -18,6 +18,10 @@ docker compose logs api
 
 PostgreSQL tạo database và role `POSTGRES_USER` khi volume được khởi tạo lần đầu. API chạy ở Development, tự áp dụng toàn bộ migration của `ApplicationDbContext`; `Seed__Enabled=true` tạo tối thiểu 20 danh mục và 100 công thức mẫu. API: `http://localhost:5000`.
 
+PostgreSQL được publish trên máy host tại `localhost:5433` (cổng container vẫn
+là `5432`, và API trong Compose kết nối bằng `postgres:5432`). Cổng host `5433`
+tránh xung đột với PostgreSQL cục bộ đang dùng `5432`.
+
 Nếu PostgreSQL đang dùng volume cũ, đổi `POSTGRES_DB` trong `.env` không tự tạo database mới. Để giữ dữ liệu cũ, tạo database mới qua `psql` trước, đổi `POSTGRES_DB` sang tên mới, rồi khởi động lại API:
 
 ```powershell
@@ -91,7 +95,7 @@ hợp nhất giữ nguyên cột chuỗi này. Test mapping tương ứng:
 API tự migrate khi chạy Development. Nếu cần chạy EF CLI, đặt connection string trong biến môi trường; factory design-time không chứa mật khẩu mặc định:
 
 ```powershell
-$env:ConnectionStrings__Postgres = "Host=localhost;Port=5432;Database=culinary_blog;Username=culinary;Password=<POSTGRES_PASSWORD>"
+$env:ConnectionStrings__Postgres = "Host=localhost;Port=5433;Database=culinary_blog;Username=culinary;Password=<POSTGRES_PASSWORD>"
 dotnet ef migrations list `
   --project backend/src/CulinaryBlog.Infrastructure `
   --startup-project backend/src/CulinaryBlog.API `

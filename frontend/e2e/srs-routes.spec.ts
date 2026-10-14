@@ -67,6 +67,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("all SRS screens have real routes", async ({ page }) => {
+  test.setTimeout(90_000);
+
   const routes = [
     "/",
     "/recipes",
@@ -107,6 +109,8 @@ test("recipe detail falls back to original image when variants are unavailable",
 
   await expect(page.getByRole("img", { name: "Phở bò" }))
     .toHaveAttribute("src", "https://storage.example.test/original.avif");
+});
+
 test("search sorting is sent to the API and resets pagination", async ({ page }) => {
   const requests: URL[] = [];
   await page.route("**/api/v1/recipes/search**", async route => {

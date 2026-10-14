@@ -16,7 +16,7 @@ docker info
 ```
 
 - Clone repository và mở terminal tại thư mục gốc có `docker-compose.yml`.
-- Đảm bảo các cổng `3000`, `5000`, `5432`, `6379`, `9000`, `9001` chưa bị ứng dụng
+- Đảm bảo các cổng `3000`, `5000`, `5433`, `6379`, `9000`, `9001` chưa bị ứng dụng
   khác sử dụng. PostgreSQL, Redis và MinIO được publish ra máy host để tiện phát
   triển; không nên mở các cổng này ra Internet.
 
@@ -49,7 +49,7 @@ thời gian. Khi các container đã chạy:
 |---|---|---|
 | Frontend | http://localhost:3000 | Giao diện web |
 | API | http://localhost:5000 | API và endpoint kiểm tra `/` |
-| PostgreSQL | `localhost:5432` | Database `culinary_blog` |
+| PostgreSQL | `localhost:5433` | Database `culinary_blog` |
 | Redis | `localhost:6379` | Cache |
 | MinIO API | http://localhost:9000 | Lưu ảnh |
 | MinIO Console | http://localhost:9001 | Đăng nhập bằng credentials MinIO trong `.env` |

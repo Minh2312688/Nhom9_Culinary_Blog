@@ -73,6 +73,10 @@ builder.Services.AddRateLimiter(options =>
 
         if ((builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing")) &&
             httpContext.Request.Headers.TryGetValue("X-Test-Client-IP", out var testIp))
+        {
+            ipAddress = testIp.ToString();
+        }
+
         return RateLimitPartition.GetFixedWindowLimiter(ipAddress, _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = 100,
@@ -121,9 +125,6 @@ app.MapGet("/", () => Results.Ok(new
     phase = "TV1 - Giai doan 2 Auth",
     status = "running"
 }));
-app.UseAuthentication();
-app.UseAuthorization();
-// Đăng ký tất cả endpoints
 app.MapCategoryEndpoints();
 app.MapRecipeEndpoints();
 app.MapRecipeImageEndpoints();

@@ -177,10 +177,17 @@ nếu chưa chủ động sao lưu/xóa dữ liệu.
 
 ## Khắc phục nhanh
 
+- GitHub báo conflict ở `Program.cs` hoặc `srs-routes.spec.ts`: giữ một cặp
+  `UseAuthentication()`/`UseAuthorization()` duy nhất và đóng từng khối
+  Playwright `test(...)` bằng `});`. Sau đó chạy
+  `npx playwright test e2e/srs-routes.spec.ts --list` từ `frontend` để kiểm
+  tra file test được nạp.
+- E2E route cần chạy cùng `npm run dev -- --port 3001`. Lần chạy đầu có thể
+  biên dịch lazy nhiều trang, vì vậy test quét route dùng timeout 90 giây.
 - Docker chưa chạy: mở Docker Desktop rồi kiểm tra `docker info`.
 - API không khởi động: chạy `docker compose logs --tail 100 api`; kiểm tra
   `JWT_SECRET` và trạng thái PostgreSQL bằng `docker compose ps`.
-- Cổng đã được dùng: giải phóng cổng 5000, 8025, 1025, 5432, 6379, 9000 hoặc 9001 trước
+- Cổng đã được dùng: giải phóng cổng 5000, 8025, 1025, 5433, 6379, 9000 hoặc 9001 trước
   khi chạy Compose.
 - Database từng được tạo với migration `AuthDbContext`: migration hợp nhất không
   tự chuyển database cũ. Giữ nguyên dữ liệu, tạo database mới theo

@@ -1,6 +1,6 @@
 # Checklist triển khai Culinary Blog, hồ sơ tác giả và SEO
 
-**Trạng thái:** Chưa triển khai
+**Trạng thái:** Đang triển khai (Task 1 implementation ready; verification blocked)
 **Đặc tả:** `../superpowers/specs/2026-10-14-frontend-screens-usability-seo-design.md`
 **Kế hoạch:** `../superpowers/plans/2026-10-14-frontend-screens-usability-seo.md`
 
@@ -8,10 +8,12 @@
 
 ## 1. PublishedAt và database
 
-- [ ] `Recipe.PublishedAt` nullable UTC; publish sets, archive preserves, republish refreshes.
-- [ ] Migration adds nullable column without backfill from `CreatedAt`.
+- [x] `Recipe.PublishedAt` nullable UTC; publish sets, archive preserves, republish refreshes.
+- [x] Migration adds nullable column without backfill from `CreatedAt`.
 - [ ] Domain/lifecycle tests pass; API builds with migration.
-- [ ] Commit riêng cho mốc persistence.
+- [x] Commit riêng cho mốc persistence.
+
+> Task 1 verification is currently blocked: `dotnet test` and API build fail before compiling Infrastructure because existing `NU1902`/`NU1903` warnings for `System.Security.Cryptography.Pkcs` 10.0.0 are treated as errors. The Domain and Application projects build successfully. No dependency changes were made.
 
 ## 2. Public author API
 

@@ -16,17 +16,20 @@ public class Recipe : BaseEntity
     public int Servings { get; set; }
     public RecipeDifficulty Difficulty { get; set; } = RecipeDifficulty.Easy;
     public RecipeStatus Status { get; set; } = RecipeStatus.Draft;
+    public DateTimeOffset? PublishedAt { get; set; }
 
     public ICollection<RecipeIngredient> Ingredients { get; set; } = new List<RecipeIngredient>();
     public ICollection<RecipeStep> Steps { get; set; } = new List<RecipeStep>();
     public ICollection<RecipeImage> Images { get; set; } = new List<RecipeImage>();
     public RecipeNutrition? Nutrition { get; set; }
 
-    public void Publish()
+    public void Publish(DateTimeOffset publishedAt)
     {
         if (Ingredients.Count == 0 || Steps.Count == 0)
             throw new DomainRuleViolationException("A recipe must have at least one step and one ingredient before publishing.");
 
+        if (Status != RecipeStatus.Published)
+            PublishedAt = publishedAt.ToUniversalTime();
         Status = RecipeStatus.Published;
     }
 }

@@ -248,7 +248,7 @@ public sealed class RecipeLifecycleHandler :
     private async Task ChangeStatus(Guid id, RecipeStatus status, CancellationToken ct, bool requireChildren)
     {
         var recipe = await GetOwnedRecipe(id, ct);
-        if (requireChildren) recipe.Publish();
+        if (requireChildren) recipe.Publish(DateTimeOffset.UtcNow);
         else recipe.Status = status;
         await context.SaveChangesAsync(ct);
         await cache.RemoveAsync($"recipes:slug:{recipe.Slug}", ct); await cache.RemoveByPrefixAsync("recipes:", ct);

@@ -39,4 +39,20 @@ public sealed class SystemEndpointsTests : IClassFixture<CustomAuthWebApplicatio
         Assert.Equal("CulinaryBlog.API", body.Application);
         Assert.False(string.IsNullOrWhiteSpace(body.Environment));
     }
+
+    [Fact]
+    public async Task GetHealthLive_ShouldReturnHealthy_WithNoCacheHeaders()
+    {
+        // Act
+        var response = await _client.GetAsync("/health/live");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Equal("Healthy", body);
+
+        Assert.True(response.Headers.CacheControl?.NoStore ?? false);
+        Assert.True(response.Headers.CacheControl?.NoCache ?? false);
+    }
 }

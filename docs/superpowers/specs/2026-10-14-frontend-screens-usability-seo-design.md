@@ -1,16 +1,16 @@
 # Đặc tả giao diện Public, Author Dashboard và NFR
 
 **Ngày:** 2026-10-14  
-**Trạng thái:** Chờ người dùng duyệt  
-**Phạm vi:** Tài liệu hóa kế hoạch chỉnh sửa frontend hiện có; chưa thực hiện thay đổi giao diện.
+**Trạng thái:** Bản cập nhật theo phạm vi đã duyệt, chờ người dùng rà soát
+**Phạm vi:** Hoàn thiện frontend, thêm API public hồ sơ tác giả và thời điểm xuất bản recipe; làm mới nhận diện trên toàn bộ giao diện.
 
 ## 1. Mục tiêu
 
-Rà soát và hoàn thiện có kiểm soát các giao diện public, author dashboard,
-khả năng sử dụng NFR-USE-001..004 và dữ liệu có cấu trúc NFR-SEO-001. Xây dựng
-bố cục chung phù hợp cho blog nhưng không làm mất hành vi, API, nội dung hoặc
-phong cách đang có. Các route đã tồn tại sẽ được chỉnh sửa tại chỗ; không tạo
-lại ứng dụng hoặc thiết kế lại diện rộng.
+Hoàn thiện các giao diện public, author dashboard, hồ sơ tác giả, NFR-USE-001..004
+và NFR-SEO-001. Làm mới toàn bộ nhận diện thành “Culinary Blog”, cung cấp dữ
+liệu tác giả/ngày xuất bản từ API và database để hiển thị hồ sơ public cùng
+Recipe JSON-LD. Chỉnh sửa tăng dần trên kiến trúc hiện tại, không thay đổi
+nghiệp vụ recipe hiện có ngoài timestamp xuất bản; không thêm tính năng khác.
 
 ## 2. Căn cứ và hiện trạng
 
@@ -21,9 +21,12 @@ lại ứng dụng hoặc thiết kế lại diện rộng.
   điều hướng quản trị khỏi header/footer public mà vẫn giữ các trang nội dung.
 - Các màn hình được nêu đã có route và giao diện. Các trang recipe đang dùng
   client-side API, các trạng thái tải/lỗi cơ bản và CSS Modules.
-- `RecipeDetailDto`/`RecipeDetail` có nguyên liệu, bước nấu, ảnh, dinh dưỡng
-  tùy chọn và `AuthorId`; chưa có tên tác giả hoặc ngày xuất bản trong hợp
-  đồng API/kiểu dữ liệu frontend.
+- `ApplicationUser` đã có `DisplayName`, `AvatarUrl`, `Bio`; hồ sơ hiện tại
+  thuộc API xác thực và không có endpoint đọc hồ sơ public.
+- `RecipeDetailDto` có `AuthorId`, nguyên liệu, bước nấu, ảnh và dinh dưỡng
+  tùy chọn; entity `Recipe` chưa có thời điểm xuất bản.
+- Frontend dùng CSS Modules, Tailwind và `lucide-react`; nhận diện hiện tại là
+  “Culinary Table”, màu xanh rừng/cà chua và serif.
 - Quyết định `CONFLICT-011` đã chốt lỗi validation API dùng HTTP 400 với
   Problem Details; giao diện không được giả định 422.
 
@@ -41,13 +44,17 @@ Tài liệu tham chiếu: `README.md` (phạm vi tuần 6 và màn hình), `docs
   `/categories/[slug]`, `/search`.
 - Author area: `/dashboard` (tổng quan), `/dashboard/recipes`,
   `/dashboard/recipes/new`, `/dashboard/recipes/[id]/edit`.
+- Public author profile: `/authors/[id]`; chỉ hiển thị tên, avatar, bio và
+  danh sách recipe Published có phân trang. Email, roles và recipe không
+  công khai tuyệt đối không được trả trong contract này.
 - Bố cục public dùng điều hướng public và footer blog.
 - Bố cục author có điều hướng quản trị riêng, liên kết rõ giữa tổng quan,
   danh sách, tạo/chỉnh sửa công thức và đường quay lại public.
-- `/dashboard/categories`, authentication, profile và các API/service hiện
-  hữu tiếp tục hoạt động; không nằm trong phạm vi redesign. Nếu cần dùng layout
-  mới để giữ luồng điều hướng nhất quán, thay đổi chỉ giới hạn ở shell và phải
-  giữ nguyên nội dung/hành vi trang.
+- `/dashboard/categories`, authentication và profile cá nhân tiếp tục hoạt
+  động; authentication, profile cá nhân và dashboard cũng được cập nhật nhận
+  diện, nhưng giữ nguyên luồng, quyền và payload hiện hữu.
+- Chỉ thêm nghiệp vụ hồ sơ tác giả public và lưu ngày xuất bản; không thêm
+  ratings, favorites, follows hoặc các tính năng nghiệp vụ khác.
 
 ### 3.2 Chức năng phi chức năng
 
@@ -60,7 +67,8 @@ Tài liệu tham chiếu: `README.md` (phạm vi tuần 6 và màn hình), `docs
   thành phần giao diện.
 - **NFR-USE-003:** Lỗi tải/lưu dễ hiểu và có thể hành động; lỗi trường hiển thị
   sát trường nhập. Hiểu Problem Details theo hợp đồng hiện hành và HTTP 400;
-  không sửa API, validation nghiệp vụ hoặc payload trong phạm vi này.
+  bổ sung contract đọc public theo allowlist; không đổi validation, payload
+  ghi, authorization hay semantics thao tác recipe hiện có.
 - **NFR-USE-004:** Trạng thái chờ/tải, thành công, lỗi và rỗng nhất quán; khóa
   thao tác gửi lặp; dùng optimistic update cho thao tác nhanh, có thể hoàn tác
   khi thất bại mà không đổi semantics. Tiến độ upload chỉ hiển thị nếu API
@@ -68,33 +76,52 @@ Tài liệu tham chiếu: `README.md` (phạm vi tuần 6 và màn hình), `docs
 - **NFR-SEO-001:** Trang chi tiết recipe có JSON-LD `Recipe` được tuần tự hóa
   an toàn, nhất quán với nội dung hiển thị và chỉ dành cho recipe public đã
   xuất bản. Dùng các trường có dữ liệu nguồn: tên, mô tả, ảnh, thời gian,
-  khẩu phần, nguyên liệu, hướng dẫn và dinh dưỡng khi có.
+  khẩu phần, nguyên liệu, hướng dẫn, dinh dưỡng khi có, `author.name` và
+  `datePublished` khi có giá trị xuất bản đáng tin cậy.
+
+### 3.3 Data/API additions
+
+- Thêm `Recipes.PublishedAt` nullable (UTC). Khi recipe chuyển thành Published,
+  ghi thời điểm hiện tại; archive giữ lại giá trị cũ; lần publish lại ghi thời
+  điểm mới. Không thay đổi payload ghi hoặc trạng thái nghiệp vụ hiện có.
+- Migration không suy ngày xuất bản từ `CreatedAt`; recipe lịch sử chưa có
+  timestamp giữ `PublishedAt = null`.
+- Bổ sung `GET /api/v1/authors/{id}?page={page}&pageSize={pageSize}` trả
+  allowlist `{ id, displayName, avatarUrl, bio, recipes: PaginatedResult }`;
+  chỉ account active và recipe Published được trả. Không trả email/roles.
+- Thêm author display data và `publishedAt` vào response recipe public cần
+  hiển thị/SEO; giữ nguyên các trường hiện có và response ghi.
 
 ## 4. Ràng buộc thiết kế và hành vi
 
 1. Ưu tiên tái sử dụng cấu trúc, component, CSS Modules, API client, form state,
    tham số truy vấn, payload, điều kiện xác thực và điều hướng đang dùng.
-2. Giữ ngôn ngữ hình ảnh hiện tại của Culinary Table (nền sáng, xanh rừng,
-   điểm nhấn màu cà chua, kiểu chữ serif cho tiêu đề); chỉ sửa layout/spacing/
-   responsive/feedback khi cần để đáp ứng tiêu chí.
-3. Không thay đổi schema/database/backend DTO, business logic, trạng thái recipe,
-   phân quyền, endpoint hay semantics thao tác. Không đưa dữ liệu giả vào UI
-   hoặc metadata.
+2. Thay thương hiệu “Culinary Table” bằng “Culinary Blog”; dùng nhận diện hiện
+   đại, rực rỡ (coral/cam, vàng nghệ, teal đậm, nền kem), typography và logo
+   mark thống nhất trên mọi route frontend. Giữ CSS Modules/Tailwind; giữ
+   `lucide-react`, thêm Motion cho chuyển động nhỏ và tôn trọng reduced motion.
+3. Chỉ thêm schema/API cho `PublishedAt` và public author profile; giữ nguyên
+   nghiệp vụ, phân quyền và contract ghi recipe hiện có. Không đưa dữ liệu giả
+   vào UI hoặc metadata.
 4. Dashboard dùng shell riêng; thay đổi shell phải không vô tình mở quyền truy
    cập hoặc làm thay đổi kiểm tra token hiện có.
 5. Kiểm tra `RecipeStatus` và trạng thái quyền từ API trước khi phát JSON-LD.
    Nội dung draft/archived không được phát markup công khai.
-6. API chưa cung cấp `author.name`, `datePublished` hoặc rating; `nutrition`
-   cũng có thể null. Không thể tuyên bố đáp ứng đầy đủ Schema.org/Rich Results
-   theo SRS nếu thiếu dữ liệu này. Trong giới hạn không đổi API, chỉ phát các
-   giá trị có căn cứ, bỏ thuộc tính không có dữ liệu và ghi nhận NFR-SEO-001
-   còn phụ thuộc quyết định/mở rộng hợp đồng riêng. Không dùng `AuthorId` làm
-   tên tác giả, ngày tạo làm ngày xuất bản hoặc rating giả.
+6. JSON-LD dùng display name và `PublishedAt` do API trả; recipe lịch sử có
+   `PublishedAt = null` thì không phát `datePublished`. Không dùng `AuthorId`
+   làm tên, `CreatedAt` làm ngày xuất bản hoặc rating giả. Nutrition có thể
+   null và tiếp tục chỉ phát khi có dữ liệu.
 
 ## 5. Tiêu chí nghiệm thu
 
 - Mọi route trong phạm vi hoạt động với API client và luồng hiện tại; tạo/sửa
   công thức giữ nguyên payload, concurrency token, xác thực và đích điều hướng.
+- Hồ sơ `/authors/[id]` và endpoint tương ứng chỉ tiết lộ allowlist đã nêu,
+  loại recipe không Published, hỗ trợ phân trang và hiển thị lỗi/empty/loading.
+- Publish ghi timestamp UTC; archive không xóa; publish lại cập nhật timestamp.
+  Recipe cũ thiếu ngày vẫn render được và không có `datePublished` trong schema.
+- Nhận diện “Culinary Blog” nhất quán trên public, auth, profile và dashboard;
+  contrast được kiểm chứng, Motion tôn trọng reduced motion.
 - Public pages cùng dùng public shell; dashboard dùng shell quản trị riêng,
   có liên kết đến `/dashboard` và các route công thức.
 - Các trang hiển thị được ở 320, 768, 1024, 1200 px, không xuất hiện tràn
@@ -103,27 +130,19 @@ Tài liệu tham chiếu: `README.md` (phạm vi tuần 6 và màn hình), `docs
   alternative text và thông báo live phù hợp; tương phản được kiểm tra.
 - Mọi thao tác bất đồng bộ có trạng thái phù hợp; lỗi và trạng thái rỗng không
   che nội dung hoặc tạo thành công giả.
-- JSON-LD hợp lệ về cú pháp, escape dữ liệu an toàn, khớp recipe đang hiển thị;
-  nội dung draft/archived không có structured data public. Báo cáo rõ trường
-  nào bị chặn vì thiếu dữ liệu API; không tuyên bố Google Rich Results/star
-  rating đạt khi chưa đủ dữ liệu/kiểm chứng.
-- Không hồi quy: lint/type-check/build frontend, E2E route và form hiện có;
-  kiểm tra thủ công responsive, bàn phím, thông báo tải/lỗi và Rich Results
-  Test khi có URL/môi trường phù hợp.
+- JSON-LD có author/datePublished khi API trả dữ liệu; escape an toàn và khớp
+  recipe hiển thị. Draft/archived không có schema public; không khai báo rating.
+- Không hồi quy: backend unit/integration/architecture tests, migration check,
+  frontend lint/type-check/build, E2E route/form/responsive/SEO và smoke test.
 
 ## 6. Ngoài phạm vi
 
-- Viết hoặc sửa giao diện trong đợt đặc tả/kế hoạch này.
-- Thay đổi API/backend/database để bổ sung author profile hoặc publish date.
-- Làm mới toàn bộ nhận diện thương hiệu, thêm tính năng nghiệp vụ, đổi thư viện
-  form/toast hoặc sửa các trang auth/profile/category administration.
-- Thay đổi cách SSR/ISR/API caching ngoài phần tối thiểu được xác định trong
-  kế hoạch và được duyệt trước khi triển khai.
+- Ratings, reviews, favorites, follows và các tính năng nghiệp vụ khác ngoài
+  hồ sơ tác giả/ngày xuất bản.
+- Đổi thư viện form/toast hoặc thay `lucide-react`; không chuyển sang UI kit.
+- Thay đổi cache/ISR ngoài mức cần thiết cho fetch profile/recipe SSR.
 
 ## 7. Điều kiện trước khi triển khai
 
-- Người dùng duyệt đặc tả này.
-- Người sở hữu API quyết định cách cung cấp tên tác giả và ngày xuất bản nếu
-  yêu cầu Rich Results đầy đủ vẫn là điều kiện bắt buộc; rating chỉ được khai
-  báo nếu có dữ liệu review hợp lệ. Các quyết định đó là thay đổi hợp đồng
-  riêng, không tự bao gồm trong phạm vi frontend hiện tại.
+- Người dùng rà soát và duyệt bản đặc tả cập nhật này trước khi lập kế hoạch
+  triển khai chi tiết.

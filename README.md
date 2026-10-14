@@ -482,8 +482,16 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 | 1 | Dương Văn Minh | FR-SRCH-003,004 |
 | 2 | Nguyễn Phạm Phú Nam | NFR-SEC-001-->004|
 | 3 | Mai Quý Phước | FR-JOB | 
-| 4 | Trần Hữu Phan Lâm | Hoàn thành tất cả giao diện, NFR-USE, NFR-FR-USE-001 |
+| 4 | Trần Hữu Phan Lâm | Hoàn thành tất cả giao diện, NFR-USE, NFR-SEO-001 |
 
+### Tuần 6
+
+| STT | Thành viên | Công việc được giao |
+|---:|---|---|
+| 1 | Dương Văn Minh | Xây dựng giao diện Public Screens /,/recipes, /recipes/[slug], /categories, /categories/[slug], /search, Author Dashboard, /dashboard/recipes, /dashboard/recipes/new, /dashboard/recipes/[id]/edit, NFR-USE, NFR-SEO-001
+|
+| 2 | Nguyễn Phạm Phú Nam | NFR-SEC-005-->007|
+| 3 | Mai Quý Phước | FR-OBS | 
 ---
 
 ## 10. Theo dõi tiến độ thực tế theo từng thành viên

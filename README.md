@@ -488,8 +488,7 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 
 | STT | Thành viên | Công việc được giao |
 |---:|---|---|
-| 1 | Dương Văn Minh | Xây dựng giao diện Public Screens /,/recipes, /recipes/[slug], /categories, /categories/[slug], /search, Author Dashboard, /dashboard/recipes, /dashboard/recipes/new, /dashboard/recipes/[id]/edit, NFR-USE, NFR-SEO-001
-|
+| 1 | Dương Văn Minh | Xây dựng giao diện Public Screens /,/recipes, /recipes/[slug], /categories, /categories/[slug], /search, Author Dashboard, /dashboard/recipes, /dashboard/recipes/new, /dashboard/recipes/[id]/edit, NFR-USE, NFR-SEO-001|
 | 2 | Nguyễn Phạm Phú Nam | NFR-SEC-005-->007|
 | 3 | Mai Quý Phước | FR-OBS | 
 ---

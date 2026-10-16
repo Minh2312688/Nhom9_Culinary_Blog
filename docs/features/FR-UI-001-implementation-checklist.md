@@ -13,7 +13,7 @@
 - [x] Domain/lifecycle tests pass; API builds with migration and EF reports no pending model changes.
 - [x] Commit riêng cho mốc persistence.
 
-> NU1902/NU1903 advisories for `System.Security.Cryptography.Pkcs` 10.0.0 remain visible as warnings; `backend/Directory.Build.props` downgrades only these NuGet audit codes from errors so builds and tests can run without suppressing the findings or changing package versions.
+> NU1902/NU1903 advisories for `System.Security.Cryptography.Pkcs` 10.0.0 remain visible and normal backend builds treat them according to the strict repository warning policy. For Task 1 validation only, the focused test/build commands use a command-scoped `WarningsNotAsErrors=NU1902;NU1903` override; advisories are not suppressed and package versions are unchanged.
 
 ## 2. Public author API
 

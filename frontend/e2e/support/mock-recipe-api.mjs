@@ -54,7 +54,7 @@ function sendJson(response, statusCode, payload) {
   response.end(JSON.stringify(payload));
 }
 
-const server = createServer((request, response) => {
+const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", "http://127.0.0.1");
 
   if (url.pathname === "/health") {
@@ -68,6 +68,12 @@ const server = createServer((request, response) => {
     return;
   }
 
+  if (request.method === "GET" && url.pathname === "/api/v1/recipes/slow-recipe") {
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    sendJson(response, 200, recipe({ id: "recipe-slow", title: "Slow recipe", slug: "slow-recipe" }));
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/v1/recipes/historical-recipe") {
     sendJson(response, 200, recipe({
       id: "recipe-2",
@@ -78,7 +84,11 @@ const server = createServer((request, response) => {
     return;
   }
 
-  if (request.method === "GET" && url.pathname === "/api/v1/authors/author-1") {
+  if (request.method === "GET" &&
+      (url.pathname === "/api/v1/authors/author-1" || url.pathname === "/api/v1/authors/slow-author")) {
+    if (url.pathname.endsWith("/slow-author")) {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+    }
     const page = Number(url.searchParams.get("page") ?? "1");
     const items = page === 1
       ? [{

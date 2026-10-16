@@ -17,6 +17,12 @@ test("renders the published author and publication date in initial Recipe JSON-L
   await expect(page.getByRole("heading", { name: "Linh Nguyen" })).toBeVisible();
 });
 
+test("shows loading feedback while the recipe server fetch is pending", async ({ page }) => {
+  await page.goto("/recipes/slow-recipe", { waitUntil: "commit" });
+  await expect(page.getByRole("status")).toHaveText("Đang tải công thức...");
+  await expect(page.getByRole("heading", { name: "Slow recipe" })).toBeVisible();
+});
+
 test("omits the publication date for a historical recipe in UI and JSON-LD", async ({ page }) => {
   await page.goto("/recipes/historical-recipe");
 

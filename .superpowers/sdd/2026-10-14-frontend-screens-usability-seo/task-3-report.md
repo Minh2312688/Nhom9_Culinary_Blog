@@ -30,13 +30,31 @@ Observed red: 3 tests failed against the missing profile/SSR implementation. The
 
 The first Playwright launch attempt could not find Playwright's bundled Chromium. The focused tests were rerun using the already-installed Chrome executable; no browser download was needed.
 
+## Review Fix Round 1: Route Loading Feedback
+
+### TDD red
+
+Added focused E2E checks that intentionally delay the mock API response for `/recipes/slow-recipe` and `/authors/slow-author`, then assert a visible status message before the server page completes.
+
+Command, run from `frontend` with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` set to the installed Chrome executable:
+
+```text
+npx playwright test e2e/recipe-json-ld.spec.ts e2e/author-profile.spec.ts --grep "shows loading feedback"
+```
+
+Before adding route loading boundaries, **2 tests failed** as expected: `getByRole('status')` was not found while the API response was delayed (one recipe case and one author case).
+
+### Fix
+
+Added App Router `loading.tsx` boundaries under both `/recipes/[slug]` and `/authors/[id]`, each rendering the existing site shell and a route-specific accessible `role="status"` feedback message.
+
 ## Final Verification
 
 | Command | Result |
 | --- | --- |
 | `node --experimental-strip-types --test src/lib/recipe-json-ld.test.ts` | **Passed:** 5 tests, 0 failures. Covers author/date, null historical date, absent author, null nutrition, and hostile `<script>` content serialized with `<` escaped as `\\u003c`. Node emitted the existing typeless-package module warning. |
-| `npx playwright test e2e/recipe-json-ld.spec.ts e2e/author-profile.spec.ts` | **Passed:** 3 tests, 0 failures. Verifies initial-HTML Recipe JSON-LD, matching author-profile navigation, hidden historical date, profile pagination, and no email in HTML/UI. Used installed Chrome via `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. |
-| `npm run build` | **Passed:** production build, lint, and TypeScript checks completed. One `@next/next/no-img-element` warning remains for the recipe image element; the prior recipe-detail implementation already used the same plain `<img>` behavior. |
+| `npx playwright test e2e/recipe-json-ld.spec.ts e2e/author-profile.spec.ts` | **Passed:** 5 tests, 0 failures. Verifies initial-HTML Recipe JSON-LD, matching author-profile navigation, historical date omission, profile pagination/no email exposure, and visible loading feedback while each server-side API request is pending. Used installed Chrome via `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. |
+| `npm run build` | **Passed:** final sequential production build, lint, and TypeScript checks completed. One existing `@next/next/no-img-element` warning remains for the recipe image element. A first build attempt run concurrently with Playwright failed when concurrent Next processes contended for `.next` output (`PageNotFoundError: Cannot find module for page: /_document`); rerunning the build after E2E completed passed. |
 | `git diff --check` | **Passed.** |
 
 ## Changed Files
@@ -47,7 +65,9 @@ The first Playwright launch attempt could not find Playwright's bundled Chromium
 - `frontend/e2e/support/mock-recipe-api.mjs`
 - `frontend/playwright.config.ts`
 - `frontend/src/app/authors/[id]/author-profile-client.tsx`
+- `frontend/src/app/authors/[id]/loading.tsx`
 - `frontend/src/app/authors/[id]/page.tsx`
+- `frontend/src/app/recipes/[slug]/loading.tsx`
 - `frontend/src/app/recipes/[slug]/page.tsx`
 - `frontend/src/app/recipes/[slug]/recipe-detail-client.tsx`
 - `frontend/src/lib/recipe-json-ld.test.ts`
@@ -61,3 +81,5 @@ The pre-existing dirty `README.md` was not modified or staged. No backend contra
 ## Commit
 
 Committed with subject `feat: render public author profiles and recipe metadata` and the required Copilot co-author trailer.
+
+Review fix round 1 is tracked in a separate commit with the same required co-author trailer.

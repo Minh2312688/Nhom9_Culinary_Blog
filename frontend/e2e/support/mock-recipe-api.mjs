@@ -68,6 +68,46 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (request.method === "GET" && url.pathname === "/api/v1/recipes/pho-bo") {
+    sendJson(response, 200, recipe({
+      id: "00000000-0000-0000-0000-000000000001",
+      title: "Phở bò",
+      slug: "pho-bo",
+      description: "Nước dùng đậm đà",
+      prepTimeMinutes: 20,
+      cookTimeMinutes: 90,
+      servings: 4,
+      difficulty: "Medium",
+      ingredients: [{
+        id: "ingredient-1",
+        name: "Thịt bò",
+        quantity: 300,
+        unit: "g",
+        notes: null,
+        orderIndex: 0,
+      }],
+      steps: [{
+        id: "step-1",
+        stepNumber: 1,
+        title: null,
+        description: "Nấu nước dùng.",
+        durationMinutes: 10,
+        imageUrl: null,
+      }],
+      images: [{
+        id: "image-1",
+        originalUrl: "https://storage.example.test/original.avif",
+        mediumUrl: null,
+        thumbnailUrl: null,
+        altText: "Phở bò",
+        isPrimary: true,
+        orderIndex: 0,
+      }],
+      author: null,
+    }));
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/v1/recipes/slow-recipe") {
     await new Promise((resolve) => setTimeout(resolve, 1200));
     sendJson(response, 200, recipe({ id: "recipe-slow", title: "Slow recipe", slug: "slow-recipe" }));

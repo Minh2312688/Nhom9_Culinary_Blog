@@ -48,12 +48,14 @@
 
 ## 5. Layout, usability và accessibility
 
-- [ ] Sáu public routes và `/authors/[id]` dùng public shell; `/search` không lặp header/footer.
-- [ ] `/dashboard/**` có shell quản trị riêng; token checks, form payload/API và semantics không đổi.
-- [ ] Loading/error/empty/success feedback phù hợp; HTTP 400 Problem Details và field errors gắn đúng input.
-- [ ] Submit khóa khi lưu; publish rollback khi lỗi; delete vẫn confirm.
-- [ ] Keyboard, focus, accessible names, labels, alt text, landmarks và responsive UI được kiểm chứng.
-- [ ] Route/UI Playwright tests pass; commit riêng.
+- [x] Public routes và `/authors/[id]` dùng public shell; `/search` giữ tagline, dotted background và footer message mà không lặp header/footer.
+- [x] `/dashboard/**` có shell quản trị riêng, active route/return link; auth token, payload và handlers giữ nguyên.
+- [x] Loading skeletons và feedback status/alert; HTTP Problem Details được map vào field hoặc error summary.
+- [x] Submit khóa khi lưu; publish lỗi giữ nguyên bản nháp; delete vẫn yêu cầu xác nhận.
+- [x] Keyboard focus, accessible names, labels, alt text, một main landmark và responsive routes được kiểm chứng.
+- [x] Route/UI regression 24/24 pass (SRS, UI acceptance, author profile và brand); production build/type/lint pass.
+
+> Build còn warning `<img>` đã có trong recipe detail. Recipe-detail SRS fixture được bổ sung vào mock API server để khớp với SSR data fetching.
 
 ## 6. Tài liệu, regression và chạy ứng dụng
 

@@ -25,21 +25,25 @@ export function SiteHeader() {
   );
 }
 
-export function SiteFooter() {
+export function SiteFooter({ message }: Readonly<{ message?: string }>) {
   return (
     <footer className={styles.footer}>
       <span>CULINARY BLOG</span>
-      <span>Chia sẻ hương vị, kết nối đam mê.</span>
+      <span>{message ?? "Chia sẻ hương vị, kết nối đam mê."}</span>
     </footer>
   );
 }
 
-export function SitePage({ children }: Readonly<{ children: React.ReactNode }>) {
+export function SitePage({
+  children,
+  className,
+  footerMessage,
+}: Readonly<{ children: React.ReactNode; className?: string; footerMessage?: string }>) {
   return (
-    <div className={styles.page}>
+    <div className={[styles.page, className].filter(Boolean).join(" ")}>
       <SiteHeader />
       {children}
-      <SiteFooter />
+      <SiteFooter message={footerMessage} />
     </div>
   );
 }
@@ -68,6 +72,23 @@ export function ErrorNotice({ children }: Readonly<{ children: React.ReactNode }
 
 export function LoadingNotice() {
   return <p className={styles.notice} role="status">Đang tải dữ liệu...</p>;
+}
+
+export function LoadingSkeleton({ variant }: Readonly<{ variant: "cards" | "detail" | "form" }>) {
+  const labels = {
+    cards: "Đang tải danh sách công thức",
+    detail: "Đang tải nội dung công thức",
+    form: "Đang tải biểu mẫu",
+  };
+  const itemCount = variant === "form" ? 6 : variant === "detail" ? 4 : 3;
+
+  return (
+    <div className={`${styles.skeleton} ${styles[`skeleton-${variant}`]}`} role="status" aria-busy="true" aria-label={labels[variant]}>
+      {Array.from({ length: itemCount }, (_, index) => (
+        <span className={styles.skeletonItem} key={index} aria-hidden="true" />
+      ))}
+    </div>
+  );
 }
 
 export function Pagination({

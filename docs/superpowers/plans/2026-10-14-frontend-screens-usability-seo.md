@@ -297,6 +297,7 @@ export function BrandMotion({ children }: Readonly<{ children: React.ReactNode }
 - Modify: `frontend/src/app/dashboard/page.tsx`, `dashboard/recipes/page.tsx`, `dashboard/recipe-editor.tsx`, `dashboard/categories/page.tsx`
 - Modify: `frontend/src/lib/recipes-api.ts`
 - Modify: `frontend/e2e/srs-routes.spec.ts`
+- Modify: `frontend/e2e/support/mock-recipe-api.mjs`
 - Create: `frontend/e2e/ui-acceptance.spec.ts`
 
 **Interfaces:**
@@ -313,29 +314,30 @@ type FeedbackApi = {
 };
 ```
 
-- [ ] **Step 1: Extend route assertions before changing shells**
+- [x] **Step 1: Extend route assertions before changing shells**
   - Test public routes `/`, `/recipes`, `/recipes/[slug]`, `/categories`, `/categories/[slug]`, `/search`, `/authors/[id]` for public header/footer and exactly one main landmark.
   - Test `/dashboard`, `/dashboard/recipes`, `/dashboard/recipes/new`, `/dashboard/recipes/[id]/edit`, `/dashboard/categories` for dashboard navigation and preserved public return link.
-- [ ] **Step 2: Add dashboard segment shell and remove nested public wrappers**
+- [x] **Step 2: Add dashboard segment shell and remove nested public wrappers**
   - Create the layout/shell, add active route state, accessible nav name and focus styles.
   - Remove only the `SitePage` wrappers from dashboard child pages; preserve every handler/API/token/payload/navigation.
-- [ ] **Step 3: Move search into the shared public shell**
+- [x] **Step 3: Move search into the shared public shell**
   - Keep the search tagline in page content, preserve its dotted background through optional `className`, and retain its existing footer text via `footerMessage`.
   - Remove duplicate search topbar/footer; keep query/debounce/filter behavior unchanged.
-- [ ] **Step 4: Add shared accessible loading and feedback**
+- [x] **Step 4: Add shared accessible loading and feedback**
   - Mount one feedback provider in root layout; toast success uses `role="status"` and errors use `role="alert"`.
   - Show skeletons only for regions loading data; keep persistent page errors visible.
-- [ ] **Step 5: Preserve structured Problem Details and field feedback**
+- [x] **Step 5: Preserve structured Problem Details and field feedback**
   - Keep HTTP 400 handling; parse `title/detail/errors`, display unmatched messages in an error summary, and associate field errors with inputs via `aria-describedby`.
   - Ensure submit buttons disable while saving; publish rolls back if API fails; delete retains confirmation.
-- [ ] **Step 6: Add accessibility and viewport acceptance checks**
+- [x] **Step 6: Add accessibility and viewport acceptance checks**
   - Check named controls, labels, keyboard focus, `aria-current`, image alt fallback, table containment and no overflow at 375/768/1024/1280 px.
   - Check contrast thresholds using computed colors; add no axe or other dependency.
-- [ ] **Step 7: Run route and UI regression tests**
-  - Run: `npx playwright test e2e/srs-routes.spec.ts e2e/ui-acceptance.spec.ts e2e/author-profile.spec.ts`.
-- [ ] **Step 8: Commit shared layouts and usability milestone**
+- [x] **Step 7: Run route and UI regression tests**
+  - Run: route, UI acceptance, author-profile and brand acceptance suites: **24/24 passed**.
+  - `npm run build` passed; the existing `@next/next/no-img-element` warning remains in recipe detail.
+- [x] **Step 8: Commit shared layouts and usability milestone**
   - Stage only shell/feedback/search/dashboard files and related tests.
-  - Commit: `feat: unify public and author dashboard layouts`.
+  - Commit: pending.
 
 ### Task 6: Update project documentation and verify/run the application
 

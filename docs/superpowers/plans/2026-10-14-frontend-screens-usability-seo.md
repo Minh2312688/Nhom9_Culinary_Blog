@@ -155,7 +155,7 @@ Assert.False(json.RootElement.TryGetProperty("roles", out _));
   - Review fix round: focused application tests 15 passed; integration tests 17 passed; API build succeeded with the same scoped exception and NU1902/NU1903 warnings visible.
   - Default strict application restore and API build were run and blocked: NU1902/NU1903 for `System.Security.Cryptography.Pkcs` 10.0.0 are warning-as-error findings. Override-scoped passes are functional validation only, not strict-policy passes. No dependency or global configuration change.
 - [x] **Step 7: Commit the public API milestone**
-  - Commit: `53393861 feat: expose public author profiles`.
+  - Commits: `53393861 feat: expose public author profiles`; `26958bb1 fix: prevent author pagination offset overflow`.
 
 ### Task 3: Render author profiles and Recipe SEO from API data
 

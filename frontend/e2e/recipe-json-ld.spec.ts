@@ -19,7 +19,8 @@ test("renders the published author and publication date in initial Recipe JSON-L
 
 test("shows loading feedback while the recipe server fetch is pending", async ({ page }) => {
   await page.goto("/recipes/slow-recipe", { waitUntil: "commit" });
-  await expect(page.getByRole("status")).toHaveText("Đang tải công thức...");
+  await expect(page.getByRole("status")).toHaveAttribute("aria-label", "Đang tải nội dung công thức");
+  await expect(page.getByRole("status")).toHaveAttribute("aria-busy", "true");
   await expect(page.getByRole("heading", { name: "Slow recipe" })).toBeVisible();
 });
 

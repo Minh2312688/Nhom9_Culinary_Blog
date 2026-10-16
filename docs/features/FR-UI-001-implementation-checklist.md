@@ -1,6 +1,6 @@
 # Checklist triển khai Culinary Blog, hồ sơ tác giả và SEO
 
-**Trạng thái:** Đang triển khai
+**Trạng thái:** Hoàn thành
 **Đặc tả:** `../superpowers/specs/2026-10-14-frontend-screens-usability-seo-design.md`
 **Kế hoạch:** `../superpowers/plans/2026-10-14-frontend-screens-usability-seo.md`
 
@@ -59,9 +59,11 @@
 
 ## 6. Tài liệu, regression và chạy ứng dụng
 
-- [ ] Run/Docker docs khớp migration, server-only API URL, profile route và lệnh chạy.
-- [ ] SRS/traceability được cập nhật tại chỗ cần thiết; README có thay đổi sẵn được giữ nguyên.
-- [ ] Backend solution tests/build và frontend TypeScript/build/Playwright pass; skipped/failure được giải thích.
-- [ ] Migration áp dụng được trên PostgreSQL; API, frontend, `/authors/[id]`, recipe SEO và dashboard smoke-test thành công.
-- [ ] Initial HTML có JSON-LD escape đúng; không rò email/role hay recipe private.
-- [ ] Commit tài liệu và checklist sau khi toàn bộ bằng chứng hoàn tất.
+- [x] Run/Docker docs khớp migration, server-only API URL, profile route và lệnh chạy.
+- [x] SRS/traceability được cập nhật tại chỗ cần thiết; README có thay đổi sẵn được giữ nguyên.
+- [x] Backend solution tests/build và frontend TypeScript/build/Playwright pass; skipped/failure được giải thích.
+- [x] Migration áp dụng được trên PostgreSQL; API, frontend, `/authors/[id]`, recipe SEO và dashboard smoke-test thành công.
+- [x] Initial HTML có JSON-LD author; ngày lịch sử NULL không được bịa; API/HTML không lộ email, roles hay recipe chưa Published.
+- [x] Commit tài liệu, kiểm thử liên quan và lockfile đã đồng bộ sau khi toàn bộ bằng chứng hoàn tất.
+
+> Docker frontend build ban đầu phát hiện `package-lock.json` thiếu/có phiên bản sai của các gói optional platform-specific. Đã đồng bộ lockfile bằng npm 10 của image Node 22; `npm ci` và production image build sau đó thành công, không đổi package version. Backend tests: 765 passed, 9 skipped, 0 failed. Frontend Playwright: 38/38 passed. Compose chạy đủ 6 dịch vụ; migration có mặt trong `__EFMigrationsHistory`. Smoke test: API 200, 14 route 200, profile pagination 100 recipes, không có email/roles, JSON-LD có author và bỏ qua ngày xuất bản lịch sử NULL.

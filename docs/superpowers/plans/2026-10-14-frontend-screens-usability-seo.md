@@ -346,31 +346,31 @@ type FeedbackApi = {
 - Modify: `docs/run-project.md`
 - Modify: `docs/docker-guide.md`
 - Modify only where requirements are referenced: `docs/srs-audit/SRS-AUDIT.md`, `docs/srs-audit/TEAM-REQUIREMENT-TRACEABILITY.md`
+- Modify: `frontend/package-lock.json` if Docker `npm ci` exposes a lockfile inconsistency.
 - Do not modify the unrelated working-tree change in `README.md`.
 
-- [ ] **Step 1: Synchronize checklist with implemented tasks**
+- [x] **Step 1: Synchronize checklist with implemented tasks**
   - Track migration/API privacy, author pagination, publication-date lifecycle, JSON-LD, brand across all routes, reduced motion, accessibility, tests and docs.
   - Leave a box unchecked unless a recorded command or test proves it.
-- [ ] **Step 2: Document database migration and runtime configuration**
+- [x] **Step 2: Document database migration and runtime configuration**
   - Add exact migration/apply commands, `API_INTERNAL_URL` server-only Compose configuration, local API/frontend startup commands and author-profile route/API details.
   - Explain that historical rows remain without `PublishedAt` until genuinely republished.
-- [ ] **Step 3: Update requirement references**
+- [x] **Step 3: Update requirement references**
   - Update the author-profile route and author/date JSON-LD acceptance text in `docs/srs-audit/SRS-AUDIT.md` and the matching existing rows in `docs/srs-audit/TEAM-REQUIREMENT-TRACEABILITY.md`; do not invent new requirement IDs.
-- [ ] **Step 4: Run all backend tests and build**
-  - Run from `backend`: `dotnet test CulinaryBlog.sln --no-restore`.
-  - Run: `dotnet build src/CulinaryBlog.API/CulinaryBlog.API.csproj --no-restore`.
-- [ ] **Step 5: Run frontend checks**
+- [x] **Step 4: Run all backend tests and build**
+  - `dotnet test CulinaryBlog.sln --no-restore`: 762 passed, 9 skipped, 0 failed; API build passed.
+- [x] **Step 5: Run frontend checks**
   - Run from `frontend`: `npx tsc --noEmit`, `npm run build`, and `npx playwright test`.
-  - Fix only regressions introduced in this scope; record existing environmental skips/failures separately.
-- [ ] **Step 6: Apply migration and start services**
-  - With the configured PostgreSQL instance available, run `dotnet ef database update --project src/CulinaryBlog.Infrastructure --startup-project src/CulinaryBlog.API --context ApplicationDbContext`.
-  - Start API and frontend with `dotnet run --project src/CulinaryBlog.API --urls http://localhost:5000` and `npm run dev -- --port 3001`.
-- [ ] **Step 7: Smoke-test API and browser behavior**
+  - TypeScript check and production build passed; full Playwright suite passed 38/38. Docker `npm ci` initially exposed missing optional platform entries; regenerated the lockfile with Node 22/npm 10, then Docker `npm ci` and image build passed without changing package versions.
+- [x] **Step 6: Apply migration and start services**
+  - `docker compose up --build -d` started API, frontend, PostgreSQL, Redis, MinIO and MailHog. The Development API applied migrations on startup; PostgreSQL confirms `20261014123827_AddRecipePublishedAt` and `Recipes.PublishedAt`.
+- [x] **Step 7: Smoke-test API and browser behavior**
   - Verify `GET /api/v1/authors/{id}?page=1&pageSize=12`, public recipe detail, `/authors/{id}`, `/recipes/{slug}`, dashboard and auth/profile routes.
   - Inspect initial recipe HTML for escaped JSON-LD author/date; verify no email, Draft/Archived recipe or fabricated historical date is present.
-- [ ] **Step 8: Commit docs and verified checklist**
-  - Stage only updated plan/checklist/run guides and requirement traceability files actually changed.
-  - Commit: `docs: document author profiles and refreshed UI`.
+  - Author API returned 100 published recipes in pages of 12, with no email/roles fields. Fourteen representative public, author, dashboard, auth and profile routes returned HTTP 200. Recipe SSR included the author in JSON-LD and omitted historical `datePublished`; existing JSON-LD tests cover escaping and populated publication dates.
+- [x] **Step 8: Commit docs and verified checklist**
+  - Commit only Task 6 docs, the frontend lockfile repair, and directly related TypeScript/E2E assertion fixes; leave the pre-existing README change unstaged.
+  - Commit: `chore: complete UI rollout validation and docs`.
 
 ## Self-review / coverage
 

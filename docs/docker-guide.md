@@ -33,6 +33,10 @@ Thay `POSTGRES_PASSWORD`, `MINIO_ROOT_PASSWORD` và `JWT_SECRET` bằng giá tr�
 `JWT_SECRET` phải có ít nhất 32 ký tự. Không gửi hoặc commit file `.env`.
 Giữ `NEXT_PUBLIC_API_URL=http://localhost:5000` khi mở web trên chính máy đang
 chạy Docker. Giá trị này được nhúng vào frontend lúc build.
+Frontend nhận `API_INTERNAL_URL=http://api:8080` lúc runtime để Server
+Components gọi API qua mạng nội bộ Compose. Biến này không có tiền tố
+`NEXT_PUBLIC_` và không được chuyển xuống browser; khi frontend chạy trực tiếp
+trên host, dùng `API_INTERNAL_URL=http://localhost:5000`.
 
 ## 3. Khởi chạy toàn bộ ứng dụng
 
@@ -58,6 +62,31 @@ thời gian. Khi các container đã chạy:
 Development, API tự áp dụng EF migration khi khởi động; `Seed__Enabled=true`
 bật dữ liệu mẫu gồm 20 danh mục và 100 công thức. Nếu API chưa sẵn sàng, đợi
 PostgreSQL/Redis khởi động rồi xem log ở bước dưới.
+
+Có thể áp dụng migration thủ công từ host sau khi PostgreSQL Compose sẵn sàng.
+Connection string `Postgres` cần dùng host port `5433`; lấy database/user/password
+từ `.env` và không ghi secret vào shell history:
+
+```powershell
+Set-Location backend
+$postgres = @{}
+Get-Content ..\.env | ForEach-Object {
+    if ($_ -match '^\s*(POSTGRES_DB|POSTGRES_USER|POSTGRES_PASSWORD)=(.*)$') {
+        $postgres[$matches[1]] = $matches[2].Trim().Trim('"').Trim("'")
+    }
+}
+if (-not $postgres.POSTGRES_DB -or -not $postgres.POSTGRES_USER -or -not $postgres.POSTGRES_PASSWORD) {
+    throw "Missing PostgreSQL settings in ..\.env"
+}
+$env:ConnectionStrings__Postgres = "Host=localhost;Port=5433;Database=$($postgres.POSTGRES_DB);Username=$($postgres.POSTGRES_USER);Password=$($postgres.POSTGRES_PASSWORD)"
+dotnet ef database update --project src\CulinaryBlog.Infrastructure --startup-project src\CulinaryBlog.API --context ApplicationDbContext
+Remove-Item Env:ConnectionStrings__Postgres
+```
+
+Migration `20261014123827_AddRecipePublishedAt` thêm `PublishedAt` nullable.
+Recipe đã Published trước migration vẫn giữ `NULL`; không backfill bằng
+`CreatedAt`. UTC publication time chỉ được ghi khi recipe thực sự chuyển sang
+Published.
 
 ## 4. Theo dõi, kiểm tra và chẩn đoán
 

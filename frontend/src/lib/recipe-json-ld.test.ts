@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { RecipeDetail } from "./recipes-api.ts";
-import { buildRecipeJsonLd, serializeRecipeJsonLd } from "./recipe-json-ld.ts";
+import type { RecipeDetail } from "./recipes-api";
+import { buildRecipeJsonLd, serializeRecipeJsonLd } from "./recipe-json-ld";
 
 function recipe(overrides: Partial<RecipeDetail> = {}): RecipeDetail {
   return {

@@ -109,7 +109,7 @@ Quy ước trạng thái:
 | **NFR-SCALE-001**| **X** | | | X | **TV1 / TV4** | Stateless Backend, JWT, Redis Distributed Cache | CONFLICT-020 | **BLOCKED** |
 | **NFR-SCALE-002**| | **X** | | | **TV2** | Npgsql Connection Pooling, B-tree/GIN indexes | None | **NOT_STARTED** |
 | **NFR-SCALE-003**| X | X | X | **X** | **Toàn đội** | Docker Multi-container setup, Nginx reverse proxy | None | **DONE** (Docker Compose base) |
-| **NFR-SEO-001** | | | **X** | | **TV3** | JSON-LD Schema.org Recipe structured data | None | **NOT_STARTED** |
+| **NFR-SEO-001** | | | **X** | | **TV3** | SSR Recipe JSON-LD; author/datePublished có điều kiện, NULL lịch sử được bỏ qua; 5/5 unit cases gồm hostile-content escaping | None | **DONE** |
 | **NFR-SEO-002** | | | **X** | | **TV3** | Open Graph, Twitter Cards, dynamic meta tags | None | **NOT_STARTED** |
 | **NFR-SEO-003** | | | X | **X** | **TV4** | Sitemap.xml generation (FR-JOB-003), robots.txt | None | **NOT_STARTED** |
 | **NFR-SEO-004** | | X | **X** | | **TV2 / TV3** | Slug-based URLs (/recipes/{slug}), 301 redirects | TECH-RISK-003 | **NOT_STARTED** |
@@ -166,11 +166,11 @@ Quy ước trạng thái:
 - **Test Expectations:** Unit tests cho Recipe handlers, EF Core in-memory/sqlite tests cho CRUD, Integration tests cho FTS PostgreSQL, Concurrency conflict tests.
 
 ### 3.3. TV3 Traceability (Frontend Platform & UI/UX)
-- **Phạm vi (Scope):** Toàn bộ giao diện người dùng trên nền Next.js App Router (13 màn hình/routes), State management, Form validation UX, Tối ưu SEO và Core Web Vitals.
+- **Phạm vi (Scope):** Toàn bộ giao diện người dùng trên nền Next.js App Router (15 màn hình/routes), State management, Form validation UX, Tối ưu SEO và Core Web Vitals.
 - **FR Supported:** Toàn bộ giao diện tương ứng 34 FRs (Auth screens, Category pages, Recipe browsing/detail/wizard, Search UI, Author dashboard).
 - **NFR Owned:** `NFR-PERF-005` (Core Web Vitals), `NFR-USE-001` (Responsive), `NFR-USE-002` (Accessibility a11y), `NFR-USE-003` (Error UX), `NFR-USE-004` (Loading states), `NFR-SEO-001` (JSON-LD), `NFR-SEO-002` (Meta / Open Graph).
 - **CONS Affected:** `CONS-003` (Next.js App Router, không Pages Router).
-- **Routes Managed:** `/`, `/recipes`, `/recipes/[slug]`, `/categories`, `/categories/[slug]`, `/auth/login`, `/auth/register`, `/dashboard`, `/dashboard/recipes`, `/dashboard/recipes/new`, `/dashboard/recipes/[id]/edit`, `/profile`, `/search`.
+- **Routes Managed:** `/`, `/recipes`, `/recipes/[slug]`, `/authors/[id]`, `/categories`, `/categories/[slug]`, `/auth/login`, `/auth/register`, `/dashboard`, `/dashboard/recipes`, `/dashboard/recipes/new`, `/dashboard/recipes/[id]/edit`, `/dashboard/categories`, `/profile`, `/search`.
 - **Dependencies:** TV1 (API Contracts Auth & Tokens), TV2 (API Contracts Recipes & Search), TV4 (API Contracts Categories & Image URLs).
 - **Conflicts liên quan:** `CONFLICT-003` (Sorting query string), `CONFLICT-009` (Display name), `CONFLICT-010` (Register redirect vs auto-login), `CONFLICT-012` (Pagination data shape), `CONFLICT-013` (Google OAuth login flow), `CONFLICT-022` (Browser version matrix).
 - **Technical Risks:** `TECH-RISK-010` (Next.js standalone build & runtime environment variables).

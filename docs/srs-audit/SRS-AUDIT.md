@@ -92,7 +92,7 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 | **FR-CAT-004** | Cập nhật Danh mục | CAT | Admin cập nhật danh mục. Tạo slug mới nếu đổi tên. Invalidate cache. | TV4 | Phase 3 | **CONFLICT** | §3.2 p. 26, §8.2 p. 63 (Fields allowed to update) |
 | **FR-CAT-005** | Xóa Danh mục | CAT | Admin xóa danh mục. Chặn nếu còn chứa công thức. | TV4 | Phase 3 | **CONFLICT** | §3.2 p. 26–27, §7.6 p. 58 (Hard vs Soft Delete) |
 | **FR-RCP-001** | Xem danh sách Công thức | RCP | Lấy danh sách công thức Published có lọc, phân trang, sắp xếp. | TV2 | Phase 3 | **CONFLICT** | §3.3 p. 27–28 (Sorting, Pagination, Author visibility) |
-| **FR-RCP-002** | Xem chi tiết Công thức | RCP | Lấy chi tiết công thức kèm steps, ingredients, nutrition, author theo slug. | TV2 | Phase 3 | **CONFLICT** | §3.3 p. 28–29 (OutputCache 60m vs Redis 5m) |
+| **FR-RCP-002** | Xem chi tiết Công thức | RCP | Lấy chi tiết công thức kèm steps, ingredients, nutrition, author và `PublishedAt` (nếu có) theo slug. | TV2 | Phase 3 | **CONFLICT** | §3.3 p. 28–29 (OutputCache 60m vs Redis 5m) |
 | **FR-RCP-003** | Tạo Công thức mới | RCP | Author/Admin tạo công thức dạng Draft. Sinh slug duy nhất. | TV2 | Phase 3 | **CONFLICT** | §3.3 p. 29–30 (Ingredient & Nutrition fields) |
 | **FR-RCP-004** | Cập nhật Công thức | RCP | Author-Owner/Admin cập nhật công thức. Kiểm tra RowVersion tránh xung đột. | TV2 | Phase 3 | **CONFLICT** | §3.3 p. 30–31 (409 vs 422 Concurrency status) |
 | **FR-RCP-005** | Xuất bản / Hủy xuất bản | RCP | Chuyển đổi trạng thái giữa Draft và Published. Invalidate cache liên quan. | TV2 | Phase 3 | **CLEAR** | §3.3 p. 31–32 |
@@ -1546,8 +1546,8 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 ### NFR-SEO-001: Structured Data (Recipe Schema.org)
 - **ID:** NFR-SEO-001
 - **Category:** Tối ưu Tìm kiếm (SEO)
-- **Requirement:** Mọi trang chi tiết công thức nấu ăn phải có siêu dữ liệu có cấu trúc JSON-LD chuẩn Schema.org.
-- **Metric/threshold:** Khai báo `@type: "Recipe"` với đầy đủ các thuộc tính: name, description, image, author, datePublished, prepTime, cookTime, totalTime, recipeYield, recipeIngredient[], recipeInstructions[], nutrition; Đạt 100% Google Rich Results Test (hiển thị star rating, time, ingredients trên Google Search).
+- **Requirement:** Mọi trang chi tiết công thức nấu ăn phải có JSON-LD chuẩn Schema.org được tạo từ dữ liệu công khai thực tế.
+- **Metric/threshold:** Khai báo `@type: "Recipe"` và các thuộc tính có dữ liệu nguồn như name, description, image, author, `datePublished`, prepTime, cookTime, recipeYield, ingredients, instructions và nutrition. Bỏ qua trường không có dữ liệu; không suy diễn publication date lịch sử từ `CreatedAt` và không tạo rating giả.
 - **Technology:** Next.js JSON-LD script, Schema.org.
 - **Affected modules:** Frontend Recipe Detail (TV3).
 - **Owner(s):** TV3 (Primary).
@@ -1836,13 +1836,14 @@ Base URL: `/api/v1`. Toàn bộ response chuẩn hóa JSON theo envelope `{ data
 
 Hệ thống frontend được xây dựng trên nền tảng **Next.js App Router (React 19)** theo mô hình kết hợp Single Page Application (SPA), Server-Side Rendering (SSR), và Incremental Static Regeneration (ISR).
 
-### 10.1. Danh mục 14 Routes / Màn hình giao diện
+### 10.1. Danh mục 15 Routes / Màn hình giao diện
 
 | Route / Màn hình | Mục đích & Nội dung | Loại Rendering | Yêu cầu Authentication | Quyền hạn (Role) | SEO / Metadata | Owner |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `/` | Trang chủ: Banner, danh sách công thức nổi bật, categories | ISR (`revalidate=3600`) | Không | Public | Meta tags, Open Graph, Twitter Cards | TV3 |
 | `/recipes` | Danh sách công thức: Tìm kiếm, lọc theo category/difficulty/thời gian, phân trang | SSR (Dynamic) | Không | Public | Meta tags động theo query | TV3 |
-| `/recipes/[slug]` | Chi tiết công thức: Nguyên liệu, các bước nấu có timer, bảng dinh dưỡng, tác giả | ISR (`revalidate=300`) | Không (Public); Author/Admin xem được Draft | Public | JSON-LD Schema.org/Recipe, Open Graph đầy đủ | TV3 |
+| `/recipes/[slug]` | Chi tiết recipe Published: nguyên liệu, các bước, dinh dưỡng, tác giả và ngày xuất bản nếu có | SSR (server-fetched API) | Không | Public | Recipe JSON-LD; author/date chỉ khi dữ liệu tồn tại | TV3 |
+| `/authors/[id]` | Hồ sơ công khai: display name, avatar, bio và danh sách recipe Published có phân trang; không lộ email/roles | SSR (server-fetched API) | Không | Public | Metadata hồ sơ tác giả | TV3 |
 | `/categories` | Danh mục tổng hợp tất cả thể loại món ăn | ISR (`revalidate=3600`) | Không | Public | Meta tags tĩnh | TV3 |
 | `/categories/[slug]` | Danh sách công thức thuộc danh mục cụ thể | ISR (`revalidate=600`) | Không | Public | Canonical URL, Meta description động | TV3 |
 | `/auth/login` | Form đăng nhập email/password, nút Google OAuth 2.0 | CSR | Không (Redirect sang dashboard nếu đã đăng nhập) | Guest | Noindex, Nofollow | TV1 |

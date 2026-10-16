@@ -223,12 +223,12 @@ return {
 **Files:**
 - Modify: `frontend/src/app/globals.css`
 - Modify: `frontend/src/app/layout.tsx`
-- Modify: `frontend/src/app/site-ui.tsx`, `frontend/src/app/site-ui.module.css`
+- Modify: `frontend/src/app/site-ui.tsx`, `frontend/src/app/site-ui.module.css`, `frontend/tailwind.config.ts`
+- Create: `frontend/src/app/brand-motion.tsx`
 - Modify: `frontend/src/app/search/search.module.css`
-- Create: `frontend/src/app/dashboard/dashboard.module.css`
-- Modify: public pages `page.tsx`, `recipes/page.tsx`, `recipes/[slug]/recipe-detail-client.tsx`, `categories/page.tsx`, `categories/[slug]/page.tsx`, `search/page.tsx`
+- Modify: shared UI consumers including home, recipe detail, author profile, categories, search and dashboard
 - Modify: account pages `auth/login/page.tsx`, `auth/register/page.tsx`, `profile/page.tsx`
-- Modify: dashboard pages/components under `frontend/src/app/dashboard/`
+- Modify: dashboard page and category-administration UI through the shared design system
 - Modify: `frontend/package.json`, `frontend/package-lock.json`
 - Test: `frontend/e2e/brand-acceptance.spec.ts` (create)
 
@@ -245,7 +245,7 @@ export function BrandMotion({ children }: Readonly<{ children: React.ReactNode }
   const reduceMotion = useReducedMotion();
   return (
     <motion.div
-      initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+      initial={reduceMotion ? false : { opacity: 1, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduceMotion ? 0 : 0.2 }}
     >
@@ -255,34 +255,35 @@ export function BrandMotion({ children }: Readonly<{ children: React.ReactNode }
 }
 ```
 
-- [ ] **Step 1: Add failing brand assertions**
+- [x] **Step 1: Add failing brand assertions**
   - Create route checks that assert document title/wordmark “Culinary Blog” on public, author, authentication, profile and dashboard routes.
-- [ ] **Step 2: Run assertions and confirm the old brand is detected**
+- [x] **Step 2: Run assertions and confirm the old brand is detected**
   - Run: `npx playwright test e2e/brand-acceptance.spec.ts`.
-  - Expected: current “Culinary Table” metadata/wordmark fails the new assertion.
-- [ ] **Step 3: Install the approved animation dependency**
+  - Expected: the stale “Culinary Table” wordmark fails; global metadata already uses “Culinary Blog”.
+- [x] **Step 3: Install the approved animation dependency**
   - Run from `frontend`: `npm install motion`.
   - Keep `lucide-react`; do not install a UI component framework or alternate icon set.
-- [ ] **Step 4: Define shared design tokens and metadata**
+- [x] **Step 4: Define shared design tokens and metadata**
   - Replace stale global values with the approved coral/orange, turmeric, deep teal and cream palette; set typography, content widths, focus styles and reduced-motion behavior.
   - Update document title and description to Culinary Blog.
-- [ ] **Step 5: Refresh the shared public shell and common primitives**
+- [x] **Step 5: Refresh the shared public shell and common primitives**
   - Update wordmark/logo mark, responsive header/navigation, footer, section headings, cards, buttons, notices, pagination, forms and tables.
   - Preserve existing Vietnamese labels and route destinations.
-- [ ] **Step 6: Apply the shared system to every existing app route**
+- [x] **Step 6: Apply the shared system to every existing app route**
   - Bring auth, personal profile, dashboard and category administration into the same brand system without changing handlers, authorization, request bodies or state transitions.
   - Keep public and dashboard navigation shells distinct.
-- [ ] **Step 7: Add restrained, accessible Motion**
+- [x] **Step 7: Add restrained, accessible Motion**
   - Use Motion only for a short hero/card reveal; disable motion when reduced-motion is requested.
   - Do not animate status/error content in a way that delays screen-reader announcements or blocks interaction.
-- [ ] **Step 8: Check visual snapshots, brand routes and reduced motion**
+- [x] **Step 8: Check visual snapshots, brand routes and reduced motion**
   - Capture/update snapshots for home, recipe detail, author profile and dashboard at mobile and desktop sizes after review.
-  - Run: `npx playwright test e2e/brand-acceptance.spec.ts`.
-  - Verify 375/768/1024/1280 px with no document horizontal overflow; verify reduced-motion emulation disables nonessential transitions.
-  - Measure key foreground/background pairs to ensure 4.5:1 text contrast and 3:1 controls.
-- [ ] **Step 9: Commit the design-system milestone**
+  - Run: `npx playwright test e2e/brand-acceptance.spec.ts` (7/7 passed).
+  - Verify 375/768/1024/1280 px with no document horizontal overflow on representative public, author, auth, profile and dashboard routes; reduced-motion emulation disables card transitions and hero entrance motion.
+  - Verify the profile's alpha-tinted gradient renders with its CSS-variable palette; measure CTA colors in the browser.
+  - Measure key foreground/background pairs to ensure 4.5:1 text contrast and 3:1 controls: 12.79:1 ink/cream, 9.41:1 teal/cream, 5.52:1 on-coral/coral, 6.10:1 teal/turmeric.
+- [x] **Step 9: Commit the design-system milestone**
   - Stage only dependency manifests/lock, shared styles/components, affected route styles and brand tests.
-  - Commit: `feat: refresh Culinary Blog visual identity`.
+  - Commit: `403ebecd feat: refresh Culinary Blog visual identity`.
 
 ### Task 5: Complete shared layouts, usability feedback and route acceptance
 

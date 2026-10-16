@@ -48,9 +48,12 @@ test("keeps the shared brand color pairs readable", async ({ page }) => {
   const contrastRatios = await page.evaluate(() => {
     const styles = getComputedStyle(document.documentElement);
     const parse = (value: string) => {
-      const match = value.match(/^#([0-9a-f]{6})$/i);
-      if (!match) return null;
-      const channels = match[1].match(/.{2}/g)?.map((channel) => parseInt(channel, 16) / 255);
+      const hex = value.match(/^#([0-9a-f]{6})$/i);
+      const rgb = value.match(/^rgba?\(([^)]+)\)$/i);
+      const channels = hex
+        ? hex[1].match(/.{2}/g)?.map((channel) => parseInt(channel, 16) / 255)
+        : rgb?.[1].match(/[\d.]+/g)?.slice(0, 3).map((channel) => Number(channel) / 255);
+      if (!channels) return null;
       return channels?.map((channel) =>
         channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
       ) ?? null;
@@ -64,11 +67,17 @@ test("keeps the shared brand color pairs readable", async ({ page }) => {
       return (lighter + 0.05) / (darker + 0.05);
     };
     const token = (name: string) => styles.getPropertyValue(name).trim();
+    const primary = document.querySelector('main a[href="/recipes"]');
+    const secondary = document.querySelector('main a[href="/categories"]');
+    const primaryStyle = primary ? getComputedStyle(primary) : null;
+    const secondaryStyle = secondary ? getComputedStyle(secondary) : null;
     return [
       ratio(token("--color-ink"), token("--color-cream")),
       ratio(token("--color-teal"), token("--color-cream")),
       ratio(token("--color-on-coral"), token("--color-coral")),
       ratio(token("--color-teal"), token("--color-turmeric")),
+      primaryStyle ? ratio(primaryStyle.color, primaryStyle.backgroundColor) : 0,
+      secondaryStyle ? ratio(secondaryStyle.color, secondaryStyle.backgroundColor) : 0,
     ];
   });
 
@@ -76,6 +85,20 @@ test("keeps the shared brand color pairs readable", async ({ page }) => {
   expect(contrastRatios[1]).toBeGreaterThanOrEqual(4.5);
   expect(contrastRatios[2]).toBeGreaterThanOrEqual(4.5);
   expect(contrastRatios[3]).toBeGreaterThanOrEqual(4.5);
+  expect(contrastRatios[4]).toBeGreaterThanOrEqual(4.5);
+  expect(contrastRatios[5]).toBeGreaterThanOrEqual(4.5);
+});
+
+test("renders the profile's alpha-tinted brand gradient", async ({ page }) => {
+  await page.addInitScript(() => {
+    sessionStorage.setItem("culinary_access_token", "brand-acceptance-token");
+  });
+  await page.goto("/profile", { waitUntil: "domcontentloaded" });
+  const backgroundImage = await page.locator(".bg-gradient-to-br").evaluate((element) =>
+    getComputedStyle(element).backgroundImage,
+  );
+
+  expect(backgroundImage).toContain("linear-gradient");
 });
 
 test("reduces card transitions when reduced motion is requested", async ({ page }) => {
@@ -94,8 +117,37 @@ test("reduces card transitions when reduced motion is requested", async ({ page 
   expect(Number.parseFloat(reducedDuration)).toBeLessThanOrEqual(0.001);
 });
 
+test("disables the homepage hero entrance motion for reduced motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+
+  const heading = page.getByRole("heading", { name: "Mỗi món ngon bắt đầu từ một câu chuyện." });
+  await expect(heading).toBeVisible();
+  const heroMotion = heading.locator("xpath=../..");
+  const motionStyles = await heroMotion.evaluate((element) => {
+    const styles = getComputedStyle(element);
+    return { opacity: styles.opacity, transform: styles.transform, transitionDuration: styles.transitionDuration };
+  });
+
+  expect(motionStyles.opacity).toBe("1");
+  expect(motionStyles.transform).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/);
+  expect(Number.parseFloat(motionStyles.transitionDuration.split(",")[0])).toBeLessThanOrEqual(0.001);
+});
+
 test("avoids horizontal overflow at supported viewport widths", async ({ page }) => {
-  for (const route of ["/", "/search", "/dashboard/recipes/new"]) {
+  await page.addInitScript(() => {
+    sessionStorage.setItem("culinary_access_token", "brand-acceptance-token");
+  });
+
+  for (const route of [
+    "/",
+    "/recipes/recipe-with-author",
+    "/authors/author-1",
+    "/search",
+    "/profile",
+    "/auth/login",
+    "/dashboard/recipes/new",
+  ]) {
     await page.goto(route);
     for (const width of [375, 768, 1024, 1280]) {
       await page.setViewportSize({ width, height: 900 });

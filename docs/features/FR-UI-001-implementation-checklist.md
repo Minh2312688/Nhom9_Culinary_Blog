@@ -38,11 +38,13 @@
 
 ## 4. Nhận diện mới và Motion
 
-- [ ] Tên “Culinary Blog”, logo mark, palette coral/orange–turmeric–teal–cream, typography và tokens áp dụng nhất quán toàn app.
-- [ ] Public, auth, profile, dashboard và administration giữ nguyên hành vi, labels/route destinations.
-- [ ] Giữ CSS Modules/Tailwind và `lucide-react`; Motion chỉ dùng cho chuyển động nhỏ, tắt khi reduced motion.
-- [ ] Contrast đạt 4.5:1 văn bản, 3:1 controls; test viewport 375/768/1024/1280 không tràn ngang.
-- [ ] Brand/reduced-motion tests pass; commit riêng.
+- [x] Tên “Culinary Blog”, logo mark, palette coral/orange–turmeric–teal–cream, typography và shared tokens áp dụng nhất quán toàn app.
+- [x] Public, auth, profile, dashboard và administration giữ nguyên hành vi, labels/route destinations.
+- [x] Giữ CSS Modules/Tailwind và `lucide-react`; Motion chỉ dùng cho chuyển động nhỏ, SSR giữ hero hiển thị và reduced motion tắt chuyển động.
+- [x] Contrast đạt 4.5:1 văn bản, 3:1 controls; brand E2E xác nhận viewport 375/768/1024/1280 không tràn ngang.
+- [x] Brand/reduced-motion tests 7/7 pass, including rendered alpha gradient, hero reduced motion, and responsive overflow.
+
+> Task 4 production build and Next.js type/lint checks pass; only the pre-existing `<img>` optimization warning remains. `npx tsc --noEmit` alone reports TS5097 in the Task 3 JSON-LD test import; the complete TypeScript check passes with `--allowImportingTsExtensions`. npm audit reports 13 advisories (3 moderate, 10 high) in existing dependencies; none of the newly added Motion packages are listed. Dependency upgrades outside the approved Motion addition were left out of this task.
 
 ## 5. Layout, usability và accessibility
 

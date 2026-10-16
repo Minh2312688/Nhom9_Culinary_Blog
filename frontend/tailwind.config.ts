@@ -17,18 +17,24 @@ const config: Config = {
             `var(--coral-${shade})`,
           ]),
         ),
-        orange: Object.fromEntries(
-          [50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map((shade) => [
-            shade,
-            `var(--coral-${shade})`,
-          ]),
-        ),
-        amber: Object.fromEntries(
-          [50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map((shade) => [
-            shade,
-            `var(--turmeric-${shade})`,
-          ]),
-        ),
+        orange: {
+          ...Object.fromEntries(
+            [50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map((shade) => [
+              shade,
+              `var(--coral-${shade})`,
+            ]),
+          ),
+          50: "rgb(var(--coral-50-rgb) / <alpha-value>)",
+        },
+        amber: {
+          ...Object.fromEntries(
+            [50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map((shade) => [
+              shade,
+              `var(--turmeric-${shade})`,
+            ]),
+          ),
+          50: "rgb(var(--turmeric-50-rgb) / <alpha-value>)",
+        },
         teal: Object.fromEntries(
           [50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map((shade) => [
             shade,

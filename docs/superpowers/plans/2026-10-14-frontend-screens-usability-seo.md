@@ -56,7 +56,7 @@ public void Publish(DateTimeOffset publishedAt)
 }
 ```
 
-- [ ] **Step 1: Add deterministic domain tests**
+- [x] **Step 1: Add deterministic domain tests**
   - Extend `RecipePublishTests.cs` with cases asserting publish sets the supplied UTC timestamp, archive preserves it, publish after archive overwrites it, and repeated publish without a state transition keeps the existing timestamp.
   - Retain existing missing-ingredient/step assertions.
 
@@ -75,24 +75,24 @@ public void Publish_SetsTheLatestPublicationTimestamp()
     Assert.Equal(RecipeStatus.Published, recipe.Status);
 }
 ```
-- [ ] **Step 2: Run the focused tests to establish the missing behavior**
-  - Run from `backend`: `dotnet test tests/CulinaryBlog.Application.Tests/CulinaryBlog.Application.Tests.csproj --filter FullyQualifiedName~RecipePublishTests`.
-  - Expected: new test fails to compile because `Recipe.Publish(DateTimeOffset)` and `PublishedAt` do not exist yet.
-- [ ] **Step 3: Implement the domain property and lifecycle transition**
+- [x] **Step 2: Run focused publication lifecycle tests**
+  - The pre-implementation failure was not retained; the focused post-implementation domain/lifecycle suite is the completion evidence.
+  - Run from `backend`: `dotnet test tests/CulinaryBlog.Application.Tests/CulinaryBlog.Application.Tests.csproj --no-restore --filter "FullyQualifiedName~RecipePublishTests|FullyQualifiedName~RecipeLifecycleTests" '-p:WarningsNotAsErrors=NU1902%3BNU1903'`.
+- [x] **Step 3: Implement the domain property and lifecycle transition**
   - Add nullable `DateTimeOffset PublishedAt` to `Recipe`.
   - Change `Publish` to accept a timestamp and set it only after existing recipe readiness checks pass.
   - In `RecipeLifecycleHandler.ChangeStatus`, call `recipe.Publish(DateTimeOffset.UtcNow)` only for publish; preserve the existing archive path and cache invalidation.
-- [ ] **Step 4: Map the nullable UTC column**
+- [x] **Step 4: Map the nullable UTC column**
   - Configure `PublishedAt` as nullable PostgreSQL `timestamp with time zone`; leave existing rows null.
-- [ ] **Step 5: Generate and review the EF migration**
+- [x] **Step 5: Generate and review the EF migration**
   - Run from `backend`: `dotnet ef migrations add AddRecipePublishedAt --project src/CulinaryBlog.Infrastructure --startup-project src/CulinaryBlog.API --context ApplicationDbContext --output-dir Persistence/Migrations`.
   - Confirm generated `Up` adds nullable `PublishedAt` and `Down` drops only that column; do not backfill from `CreatedAt`.
-- [ ] **Step 6: Run domain, application and migration compilation tests**
-  - Run: `dotnet test tests/CulinaryBlog.Application.Tests/CulinaryBlog.Application.Tests.csproj --filter FullyQualifiedName~RecipePublishTests`.
-  - Run: `dotnet build src/CulinaryBlog.API/CulinaryBlog.API.csproj --no-restore`.
-- [ ] **Step 7: Commit the timestamp persistence milestone**
-  - Stage only the entity, configuration, lifecycle handler, migration, snapshot and tests.
-  - Commit: `feat: persist recipe publication timestamps`.
+- [x] **Step 6: Run domain, application and migration compilation tests**
+  - Focused domain/lifecycle tests: 7 passed, 0 failed.
+  - API build succeeded; `dotnet ef migrations has-pending-model-changes` reported no pending model changes.
+  - NU1902/NU1903 remain visible as warnings during validation; use only a command-scoped `WarningsNotAsErrors=NU1902;NU1903` override after restoring with the same override. The default repository warning policy remains strict.
+- [x] **Step 7: Commit the timestamp persistence milestone**
+  - Commits: `a716a714` implementation; `ef1fd550` removes the temporary broad audit-warning override. The temporary `ea5e6e76` config commit is superseded.
 
 ### Task 2: Add the public author profile API
 

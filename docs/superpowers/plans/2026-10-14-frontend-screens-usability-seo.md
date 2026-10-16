@@ -337,7 +337,7 @@ type FeedbackApi = {
   - `npm run build` passed; the existing `@next/next/no-img-element` warning remains in recipe detail.
 - [x] **Step 8: Commit shared layouts and usability milestone**
   - Stage only shell/feedback/search/dashboard files and related tests.
-  - Commit: pending.
+  - Commit: `47f92cb3 feat: unify public and author dashboard layouts`.
 
 ### Task 6: Update project documentation and verify/run the application
 

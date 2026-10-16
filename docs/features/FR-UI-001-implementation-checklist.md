@@ -27,12 +27,14 @@
 
 ## 3. Public author UI và Recipe SEO
 
-- [ ] `/authors/[id]` hiển thị avatar fallback, tên, bio, recipe list, pagination, loading/error/empty.
-- [ ] Recipe detail SSR dùng cùng dữ liệu cho UI và JSON-LD; `author`/`datePublished` chỉ khi có dữ liệu.
-- [ ] Chi tiết recipe liên kết đúng hồ sơ tác giả; ngày cũ không có nguồn thì không hiển thị.
-- [ ] JSON-LD escape `<`; không phát schema cho Draft/Archived; recipe lịch sử không có ngày giả.
-- [ ] Compose dùng `API_INTERNAL_URL` server-only; author API không gửi token.
-- [ ] Unit và Playwright author/SEO tests pass; commit riêng.
+- [x] `/authors/[id]` hiển thị avatar fallback, tên, bio, recipe list, pagination, loading/error/empty.
+- [x] Recipe detail SSR dùng cùng dữ liệu cho UI và JSON-LD; `author`/`datePublished` chỉ khi có dữ liệu.
+- [x] Chi tiết recipe liên kết đúng hồ sơ tác giả; ngày cũ không có nguồn thì không hiển thị.
+- [x] JSON-LD escape `<`; không phát schema cho Draft/Archived; recipe lịch sử không có ngày giả.
+- [x] Compose dùng `API_INTERNAL_URL` server-only; author API không gửi token.
+- [x] JSON-LD unit tests 5/5, Playwright profile/SEO/loading tests 5/5, frontend build pass; commits `7fb592a5`, `b6927053`.
+
+> Task 3 passed independent review and scoped re-review. Existing build warnings are documented in the Task 3 report.
 
 ## 4. Nhận diện mới và Motion
 

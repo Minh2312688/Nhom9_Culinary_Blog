@@ -192,33 +192,31 @@ return {
 };
 ```
 
-- [ ] **Step 1: Write builder tests for author/date and escaping**
+- [x] **Step 1: Write builder tests for author/date and escaping**
   - Cover valid published recipe with author/date, historical recipe with null date, absent author, null nutrition, and hostile `<script>` text.
   - Assert generated JSON has correct author/date values and serialization escapes `<` as `\\u003c`.
-- [ ] **Step 2: Run unit tests to confirm missing builder**
+- [x] **Step 2: Run unit tests to confirm missing builder**
   - Run from `frontend`: `node --experimental-strip-types --test src/lib/recipe-json-ld.test.ts`.
   - Expected: FAIL because the builder module is not yet present.
-- [ ] **Step 3: Implement typed API contracts and pure JSON-LD builder**
+- [x] **Step 3: Implement typed API contracts and pure JSON-LD builder**
   - Extend frontend DTO types to match the additive backend fields exactly.
   - Sort images/ingredients/steps as current UI does; only emit optional properties with actual values.
-- [ ] **Step 4: Convert recipe detail to server data plus client presentation**
+- [x] **Step 4: Convert recipe detail to server data plus client presentation**
   - Resolve Next.js 15 `params: Promise<{ slug: string }>` in the server page.
   - Fetch the recipe once, render JSON-LD from that exact object, and pass the object to `RecipeDetailClient`; preserve current loading/error behavior on failure without rendering draft/archived markup.
   - Render the returned author name as a link to `/authors/{author.id}` and show the returned publication date only when non-null.
-- [ ] **Step 5: Implement the paginated author page**
+- [x] **Step 5: Implement the paginated author page**
   - Fetch `/api/v1/authors/{id}?page=&pageSize=12` server-side; render profile avatar fallback, display name, optional bio, recipe cards, pagination links and clear not-found/error/empty states.
   - Use only returned author fields; never render email/roles.
-- [ ] **Step 6: Configure local/container API routing and deterministic E2E fixtures**
+- [x] **Step 6: Configure local/container API routing and deterministic E2E fixtures**
   - Add server-only `API_INTERNAL_URL=http://api:8080` to the frontend Compose service.
   - Extend the Playwright mock server to return a published recipe and paged author profile; keep the test app on an isolated port.
   - Assert initial HTML contains JSON-LD author/date when present and omits date for historical data; assert profile pagination and no email text.
-- [ ] **Step 7: Run focused frontend tests**
-  - Run: `node --experimental-strip-types --test src/lib/recipe-json-ld.test.ts`.
-  - Run: `npx playwright test e2e/recipe-json-ld.spec.ts e2e/author-profile.spec.ts`.
-  - Assert the recipe detail's author link opens the matching profile route and historical recipes hide the date label.
-- [ ] **Step 8: Commit profile and SEO milestone**
-  - Stage API types, server fetchers, author/recipe routes, JSON-LD code, fixtures, config and tests only.
-  - Commit: `feat: render public author profiles and recipe metadata`.
+- [x] **Step 7: Run focused frontend tests**
+  - JSON-LD unit tests: 5/5 passed; Playwright profile/SEO/loading E2E: 5/5 passed; production build passed.
+  - Initial red and review-fix red/green evidence is recorded in the Task 3 report. Existing image lint and Node module-type warnings are documented.
+- [x] **Step 8: Commit profile and SEO milestone**
+  - Commits: `7fb592a5 feat: render public author profiles and recipe metadata`; `b6927053 fix: show loading states on public routes`.
 
 ### Task 4: Refresh the Culinary Blog design system and apply Motion
 

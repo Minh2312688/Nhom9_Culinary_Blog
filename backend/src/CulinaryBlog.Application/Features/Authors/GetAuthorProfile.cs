@@ -40,13 +40,18 @@ public sealed class GetAuthorProfileQueryHandler(
         var query = recipes.Query.AsNoTracking()
             .Where(recipe => recipe.AuthorId == request.AuthorId && recipe.Status == RecipeStatus.Published);
         var totalCount = await query.CountAsync(cancellationToken);
-        var pageItems = await query
-            .OrderBy(recipe => recipe.PublishedAt == null)
-            .ThenByDescending(recipe => recipe.PublishedAt)
-            .ThenBy(recipe => recipe.Id)
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .ToListAsync(cancellationToken);
+        var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
+        var pageItems = new List<Recipe>();
+        if (request.Page <= totalPages)
+        {
+            pageItems = await query
+                .OrderBy(recipe => recipe.PublishedAt == null)
+                .ThenByDescending(recipe => recipe.PublishedAt)
+                .ThenBy(recipe => recipe.Id)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync(cancellationToken);
+        }
 
         var result = new PaginatedResult<RecipeSummaryDto>(
             pageItems.Select(recipe => recipe.ToSummary()).ToList(),

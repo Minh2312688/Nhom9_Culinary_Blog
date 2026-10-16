@@ -131,31 +131,31 @@ Assert.False(json.RootElement.TryGetProperty("email", out _));
 Assert.False(json.RootElement.TryGetProperty("roles", out _));
 ```
 
-- [ ] **Step 1: Write API/query tests for public allowlisting**
+- [x] **Step 1: Write API/query tests for public allowlisting**
   - Test that an active author response has only `id`, `displayName`, `avatarUrl`, `bio`, `recipes`; assert no `email` or `roles`.
   - Seed Published, Draft and Archived recipes for the same author and another author's Published recipe; assert only the first author's Published rows appear.
   - Assert page/pageSize and `hasNextPage`/`hasPreviousPage`; inactive or missing author returns 404.
-- [ ] **Step 2: Run the focused endpoint tests before implementation**
+  - Cover a very large valid page (such as `int.MaxValue`, `pageSize=50`) returning an empty page with correct pagination metadata without offset overflow.
+- [x] **Step 2: Run the focused endpoint tests before implementation**
   - Run from `backend`: `dotnet test tests/CulinaryBlog.Integration.Tests/CulinaryBlog.Integration.Tests.csproj --filter FullyQualifiedName~AuthorEndpointsTests`.
   - Expected: endpoint is not mapped and tests fail with 404.
-- [ ] **Step 3: Add response DTOs and validated query**
+- [x] **Step 3: Add response DTOs and validated query**
   - Define the public response DTO without reusing `UserProfileResult` as the serialized API type.
   - Build the query from `IIdentityService.GetUserProfileByIdAsync` and `IRecipeRepository.Query`; reject absent/inactive authors and select only matching `RecipeStatus.Published`.
   - Sort non-null `PublishedAt` first, newest timestamp first, then by stable `Id` so historical null dates sort last; paginate before materializing; return the existing pagination shape.
-- [ ] **Step 4: Add an anonymous read-only endpoint**
+- [x] **Step 4: Add an anonymous read-only endpoint**
   - Map `GET /api/v1/authors/{id}` with optional page/pageSize query values and send `GetAuthorProfileQuery`.
   - Return 404 for absent/inactive users; never add authorization that could reveal private recipe rows.
-- [ ] **Step 5: Extend recipe read DTOs without changing write contracts**
+- [x] **Step 5: Extend recipe read DTOs without changing write contracts**
   - Add nullable `PublishedAt` to summary/detail projections.
   - Add a small allowlisted `RecipeAuthorDto` to detail mapping; resolve active author's public display fields on recipe-by-slug reads, including cache hits, without embedding Identity fields in the recipe cache entry.
   - Keep create/update command request DTOs and response status/semantics unchanged.
-- [ ] **Step 6: Run focused backend tests and API build**
-  - Run: `dotnet test tests/CulinaryBlog.Application.Tests/CulinaryBlog.Application.Tests.csproj --filter "FullyQualifiedName~GetAuthorProfileTests|FullyQualifiedName~RecipePublishTests"`.
-  - Run: `dotnet test tests/CulinaryBlog.Integration.Tests/CulinaryBlog.Integration.Tests.csproj --filter "FullyQualifiedName~AuthorEndpointsTests|FullyQualifiedName~RecipeSearchEndpointsTests"`.
-  - Run: `dotnet build src/CulinaryBlog.API/CulinaryBlog.API.csproj --no-restore`.
-- [ ] **Step 7: Commit the public API milestone**
-  - Stage only author query/DTO/endpoint, recipe read DTO mapping, API registration and tests.
-  - Commit: `feat: expose public author profiles`.
+- [x] **Step 6: Run focused backend tests and API build**
+  - Initial focused application tests: 14 passed; integration tests: 17 passed; API build succeeded using command-scoped audit-warning exceptions.
+  - Review fix round: focused application tests 15 passed; integration tests 17 passed; API build succeeded with the same scoped exception and NU1902/NU1903 warnings visible.
+  - Default strict application restore and API build were run and blocked: NU1902/NU1903 for `System.Security.Cryptography.Pkcs` 10.0.0 are warning-as-error findings. Override-scoped passes are functional validation only, not strict-policy passes. No dependency or global configuration change.
+- [x] **Step 7: Commit the public API milestone**
+  - Commit: `53393861 feat: expose public author profiles`.
 
 ### Task 3: Render author profiles and Recipe SEO from API data
 

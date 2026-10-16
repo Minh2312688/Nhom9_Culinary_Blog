@@ -97,6 +97,43 @@ public sealed class GetAuthorProfileTests
         recipes.VerifyGet(repository => repository.Query, Times.Never);
     }
 
+    [Fact]
+    public async Task Handle_VeryLargeValidPage_ReturnsEmptyPageWithValidPaginationMetadata()
+    {
+        await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"AuthorProfileLargePage_{Guid.NewGuid():N}").Options);
+        var category = Category.Create("Large Page Test");
+        db.Categories.Add(category);
+        db.Recipes.Add(CreateRecipe(
+            "published",
+            "author-1",
+            category.Id,
+            RecipeStatus.Published,
+            DateTimeOffset.UtcNow));
+        await db.SaveChangesAsync();
+
+        var identity = new Mock<IIdentityService>();
+        identity.Setup(service => service.GetUserProfileByIdAsync("author-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserProfileResult(
+                true, "author-1", "private@example.com", "Public Author", null, null,
+                true, DateTimeOffset.UtcNow, true, false, []));
+        var recipes = new Mock<IRecipeRepository>();
+        recipes.Setup(repository => repository.Query).Returns(db.Recipes);
+        var handler = new GetAuthorProfileQueryHandler(identity.Object, recipes.Object);
+
+        var result = await handler.Handle(
+            new GetAuthorProfileQuery("author-1", Page: int.MaxValue, PageSize: 50),
+            CancellationToken.None);
+
+        Assert.Empty(result.Recipes.Items);
+        Assert.Equal(1, result.Recipes.TotalCount);
+        Assert.Equal(int.MaxValue, result.Recipes.Page);
+        Assert.Equal(50, result.Recipes.PageSize);
+        Assert.Equal(1, result.Recipes.TotalPages);
+        Assert.False(result.Recipes.HasNextPage);
+        Assert.True(result.Recipes.HasPreviousPage);
+    }
+
     [Theory]
     [InlineData(0, 12)]
     [InlineData(1, 0)]

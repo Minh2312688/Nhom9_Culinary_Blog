@@ -13,15 +13,17 @@
 - [x] Domain/lifecycle tests pass; API builds with migration and EF reports no pending model changes.
 - [x] Commit riêng cho mốc persistence.
 
-> NU1902/NU1903 advisories for `System.Security.Cryptography.Pkcs` 10.0.0 remain visible and normal backend builds treat them according to the strict repository warning policy. For Task 1 validation only, the focused test/build commands use a command-scoped `WarningsNotAsErrors=NU1902;NU1903` override; advisories are not suppressed and package versions are unchanged.
+> NU1902/NU1903 advisories for `System.Security.Cryptography.Pkcs` 10.0.0 remain visible. Default strict restore/build treats them as errors; Task 1 and Task 2 focused commands used a command-scoped `WarningsNotAsErrors=NU1902;NU1903` exception, so those results are functional validation with visible warnings, not strict-policy validation. Package versions and global configuration are unchanged.
 
 ## 2. Public author API
 
-- [ ] `GET /api/v1/authors/{id}?page=&pageSize=` trả profile allowlist và trang recipe.
-- [ ] Chỉ account active và recipe Published; không có email/roles/Draft/Archived.
-- [ ] Missing/inactive author trả 404; pagination và thứ tự recipe có test.
-- [ ] Recipe read DTO bổ sung `PublishedAt` và author display data; write contracts không đổi.
-- [ ] Application/integration tests và API build pass; commit riêng.
+- [x] `GET /api/v1/authors/{id}?page=&pageSize=` trả profile allowlist và trang recipe.
+- [x] Chỉ account active và recipe Published; không có email/roles/Draft/Archived.
+- [x] Missing/inactive author trả 404; pagination và thứ tự recipe có test.
+- [x] Recipe read DTO bổ sung `PublishedAt` và author display data; write contracts không đổi.
+- [x] Focused application/integration tests và API build pass with command-scoped audit-warning exceptions; commit `53393861`.
+
+> Review fix round 1: very large valid pagination is covered and returns an empty page without overflowing. Override-scoped focused tests/build pass with NU1902/NU1903 visible. Default strict application restore and API build are blocked by those existing advisories as warning-as-error; strict validation is not claimed. See `task-2-report.md` for commands and outputs.
 
 ## 3. Public author UI và Recipe SEO
 

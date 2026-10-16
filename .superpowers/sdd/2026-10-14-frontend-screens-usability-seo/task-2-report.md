@@ -39,8 +39,48 @@ The author API serializes only `id`, `displayName`, `avatarUrl`, `bio`, and `rec
   **Succeeded: 0 errors.**
 - `git diff --check`: passed.
 
-Restore/test/build output continued to show the repository's existing NU1902 and NU1903 advisories for `System.Security.Cryptography.Pkcs` 10.0.0 (GHSA-2fmv-rv2c-59x7 and GHSA-846f-f764-76mx). Validation used only the documented command-scoped `WarningsNotAsErrors` exception; warnings remained visible, and package/project configuration was not changed.
+The listed passing test/build commands used the documented command-scoped `WarningsNotAsErrors=NU1902;NU1903` exception, with existing NU1902 and NU1903 advisories for `System.Security.Cryptography.Pkcs` 10.0.0 (GHSA-2fmv-rv2c-59x7 and GHSA-846f-f764-76mx) visible in output. These are **override-scoped validation results, not strict-policy validation**. A later default-policy restore/build reproduces NU1902/NU1903 as errors; see the fix-round evidence below. Package versions and global project configuration were not changed.
 
 ## Coverage notes
 
 Tests verify public-property allowlisting, published-only and author-scoped filtering, newest-first publication sorting, stable ID tie-breaking, historical null-date ordering, pagination metadata, invalid pagination, missing/inactive author handling, recipe summary/detail publication timestamps, and fresh public-author lookup on recipe detail cache hits. The cache-miss test also verifies that the cached detail contains no author identity payload.
+
+## Review fix round 1 — overflow-safe pagination and strict-policy caveat
+
+### Finding 1: large valid page overflow
+
+- Covering test: `backend/tests/CulinaryBlog.Application.Tests/Features/Authors/GetAuthorProfileTests.cs`, `Handle_VeryLargeValidPage_ReturnsEmptyPageWithValidPaginationMetadata`.
+- Test-first red command:
+  `Set-Location backend; dotnet test tests/CulinaryBlog.Application.Tests/CulinaryBlog.Application.Tests.csproj --filter FullyQualifiedName~GetAuthorProfileTests.Handle_VeryLargeValidPage_ReturnsEmptyPageWithValidPaginationMetadata --no-restore '-p:WarningsNotAsErrors=NU1902%3BNU1903'`
+- Red output: `Failed! - Failed: 1, Passed: 0`; `Assert.Empty() Failure: Collection was not empty`. The `int.MaxValue` page with pageSize 50 wrapped the `(Page - 1) * PageSize` offset and returned the first recipe rather than an empty out-of-range page.
+- Fix: compare the requested page against computed `totalPages` before calculating the offset. Pages beyond the result range keep the requested page/pageSize and normal `PaginatedResult` metadata while returning an empty list, matching the existing recipe pagination convention.
+- Focused post-fix test:
+  `Set-Location backend; dotnet test tests/CulinaryBlog.Application.Tests/CulinaryBlog.Application.Tests.csproj --filter FullyQualifiedName~GetAuthorProfileTests.Handle_VeryLargeValidPage_ReturnsEmptyPageWithValidPaginationMetadata '-p:WarningsNotAsErrors=NU1902%3BNU1903'`
+- Exact test result: `Passed! - Failed: 0, Passed: 1, Skipped: 0, Duration: 1 s`. The same target was included in the broader 15-test application run below.
+- Green focused application command:
+  `Set-Location backend; dotnet test tests/CulinaryBlog.Application.Tests/CulinaryBlog.Application.Tests.csproj --filter 'FullyQualifiedName~GetAuthorProfileTests|FullyQualifiedName~RecipePublishTests|FullyQualifiedName~GetRecipeBySlugQueryHandlerTests' '-p:WarningsNotAsErrors=NU1902%3BNU1903'`
+- Output: `Passed! - Failed: 0, Passed: 15, Skipped: 0`. NU1902/NU1903 remained visible as warnings.
+
+### Finding 2: strict audit policy evidence
+
+The `WarningsNotAsErrors` test/build commands above and from the initial implementation passed with warnings visible; they must not be read as strict-policy validation. Default strict commands were run in this fix round:
+
+- `Set-Location backend; dotnet restore tests/CulinaryBlog.Application.Tests/CulinaryBlog.Application.Tests.csproj`
+  Exact blocker output included:
+  `error NU1902: Warning As Error: Package 'System.Security.Cryptography.Pkcs' 10.0.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-2fmv-rv2c-59x7`
+  and
+  `error NU1903: Warning As Error: Package 'System.Security.Cryptography.Pkcs' 10.0.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-846f-f764-76mx`.
+  Restore ended with `Failed to restore ... CulinaryBlog.Application.Tests.csproj` and `Failed to restore ... CulinaryBlog.Infrastructure.csproj`.
+- `Set-Location backend; dotnet build src/CulinaryBlog.API/CulinaryBlog.API.csproj`
+  Output: `Build FAILED`; API and Infrastructure restore failed with the same NU1902/NU1903 advisories (`0 Warning(s), 4 Error(s)`).
+- This documents a strict validation **blocker**, not a strict-policy pass. Scoped-override test/build results are useful functional validation only. No audit suppression, dependency change, or global configuration change was made.
+
+### Focused revalidation and scope
+
+- Integration command:
+  `Set-Location backend; dotnet test tests/CulinaryBlog.Integration.Tests/CulinaryBlog.Integration.Tests.csproj --filter 'FullyQualifiedName~AuthorEndpointsTests|FullyQualifiedName~RecipeSearchEndpointsTests' '-p:WarningsNotAsErrors=NU1902%3BNU1903'`
+  Output: `Passed! - Failed: 0, Passed: 17, Skipped: 0`; advisories remained visible as warnings.
+- API command:
+  `Set-Location backend; dotnet build src/CulinaryBlog.API/CulinaryBlog.API.csproj '-p:WarningsNotAsErrors=NU1902%3BNU1903'`
+  Output: `Build succeeded`, `0 Error(s)`, `8 Warning(s)` (NU1902/NU1903 remained visible).
+- Changes in this fix round are limited to the author-profile pagination guard/test and the closely related Task 2 report, checklist and plan audit-validation wording.

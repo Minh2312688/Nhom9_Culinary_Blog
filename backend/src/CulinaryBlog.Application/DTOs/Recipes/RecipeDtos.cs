@@ -13,7 +13,10 @@ public sealed record RecipeSummaryDto(
     RecipeStatus Status,
     Guid CategoryId,
     string AuthorId,
+    DateTimeOffset? PublishedAt,
     byte[] RowVersion);
+
+public sealed record RecipeAuthorDto(string Id, string DisplayName, string? AvatarUrl);
 
 public sealed record RecipeDetailDto(
     Guid Id,
@@ -27,11 +30,13 @@ public sealed record RecipeDetailDto(
     RecipeStatus Status,
     Guid CategoryId,
     string AuthorId,
+    DateTimeOffset? PublishedAt,
     byte[] RowVersion,
     IReadOnlyList<RecipeIngredientDto> Ingredients,
     IReadOnlyList<RecipeStepDto> Steps,
     IReadOnlyList<RecipeImageDto> Images,
-    RecipeNutritionDto? Nutrition);
+    RecipeNutritionDto? Nutrition,
+    RecipeAuthorDto? Author);
 
 public sealed record RecipeIngredientDto(Guid Id, string Name, decimal? Quantity, string? Unit, string? Notes, int OrderIndex);
 public sealed record RecipeStepDto(Guid Id, int StepNumber, string? Title, string Description, int? DurationMinutes, string? ImageUrl);

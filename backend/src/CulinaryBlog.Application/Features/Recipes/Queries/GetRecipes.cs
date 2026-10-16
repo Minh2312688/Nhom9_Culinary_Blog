@@ -143,12 +143,12 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
             .Select(x => new
             {
                 x.Id, x.Title, x.Slug, x.Description, x.Difficulty, x.CookTimeMinutes,
-                x.Servings, x.Status, x.CategoryId, x.AuthorId, x.RowVersion
+                x.Servings, x.Status, x.CategoryId, x.AuthorId, x.PublishedAt, x.RowVersion
             })
             .ToListAsync(cancellationToken);
         var items = rows.Select(x => new RecipeSummaryDto(x.Id, x.Title, x.Slug, x.Description,
             x.Difficulty.ToString(), x.CookTimeMinutes, x.Servings, x.Status, x.CategoryId,
-            x.AuthorId, x.RowVersion)).ToList();
+            x.AuthorId, x.PublishedAt, x.RowVersion)).ToList();
 
         return new PaginatedResult<RecipeSummaryDto>(items, totalCount, request.Page, request.PageSize);
     }

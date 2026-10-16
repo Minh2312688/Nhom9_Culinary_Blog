@@ -21,6 +21,7 @@ export interface RecipeSummary {
   status: string | number;
   categoryId: string;
   authorId: string;
+  publishedAt: string | null;
   rowVersion: string;
 }
 
@@ -63,6 +64,19 @@ export interface RecipeDetail extends RecipeSummary {
     fiber: number;
     sodium: number;
   } | null;
+  author: {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+  } | null;
+}
+
+export interface AuthorProfilePage {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  recipes: PaginatedResult<RecipeSummary>;
 }
 
 export interface RecipeCategory {

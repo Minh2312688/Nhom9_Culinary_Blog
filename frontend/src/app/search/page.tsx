@@ -126,7 +126,7 @@ export default function RecipeSearchPage() {
       <header className={styles.topbar}>
         <Link className={styles.brand} href="/" aria-label="Culinary Blog, trang chủ">
           <span className={styles.brandMark}><ChefHat size={19} /></span>
-          <span>Culinary <strong>Table</strong></span>
+          <span>Culinary <strong>Blog</strong></span>
         </Link>
         <span className={styles.topbarNote}>CÔNG THỨC ĐƯỢC CHIA SẺ BỞI CỘNG ĐỒNG</span>
       </header>
@@ -266,7 +266,7 @@ export default function RecipeSearchPage() {
           )}
         </section>
       </main>
-      <footer className={styles.footer}><span>CULINARY TABLE</span><span>Một công thức hay bắt đầu từ nguyên liệu đúng.</span></footer>
+      <footer className={styles.footer}><span>CULINARY BLOG</span><span>Một công thức hay bắt đầu từ nguyên liệu đúng.</span></footer>
     </div>
   );
 }

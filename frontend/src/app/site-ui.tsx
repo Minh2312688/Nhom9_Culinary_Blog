@@ -2,13 +2,19 @@ import Link from "next/link";
 import { ChefHat } from "lucide-react";
 import styles from "./site-ui.module.css";
 
+export function BrandLink() {
+  return (
+    <Link className={styles.brand} href="/" aria-label="Culinary Blog, trang chủ">
+      <span className={styles.brandMark}><ChefHat size={18} aria-hidden="true" /></span>
+      <span>Culinary <strong>Blog</strong></span>
+    </Link>
+  );
+}
+
 export function SiteHeader() {
   return (
     <header className={styles.header}>
-      <Link className={styles.brand} href="/" aria-label="Culinary Table, trang chủ">
-        <span className={styles.brandMark}><ChefHat size={18} /></span>
-        <span>Culinary <strong>Table</strong></span>
-      </Link>
+      <BrandLink />
       <nav className={styles.nav} aria-label="Điều hướng chính">
         <Link href="/recipes">Công thức</Link>
         <Link href="/categories">Danh mục</Link>
@@ -22,7 +28,7 @@ export function SiteHeader() {
 export function SiteFooter() {
   return (
     <footer className={styles.footer}>
-      <span>CULINARY TABLE</span>
+      <span>CULINARY BLOG</span>
       <span>Chia sẻ hương vị, kết nối đam mê.</span>
     </footer>
   );

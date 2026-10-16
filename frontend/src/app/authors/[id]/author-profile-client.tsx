@@ -37,7 +37,7 @@ export function AuthorProfileClient({
                   flexShrink: 0,
                   borderRadius: "50%",
                   color: "white",
-                  background: "#173d31",
+                  background: "var(--color-teal)",
                   fontSize: 30,
                 }}
               >

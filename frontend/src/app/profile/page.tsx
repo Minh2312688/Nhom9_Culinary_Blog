@@ -241,16 +241,17 @@ export default function ProfilePage() {
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-amber-50/50 via-white to-orange-50/40">
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         {/* Decorative Top Banner */}
-        <div className="h-28 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 relative flex items-end justify-between px-6 pb-3">
+        <div className="h-28 bg-gradient-to-r from-teal-800 via-teal-700 to-orange-700 relative flex items-end justify-between px-6 pb-3">
           <span className="text-xs font-semibold text-white/80 uppercase tracking-widest">
             Hồ sơ đầu bếp
           </span>
           <div className="flex items-center space-x-2">
             <Link
               href="/"
-              className="text-xs text-white/90 hover:text-white underline underline-offset-2 transition"
+              aria-label="Culinary Blog, trang chủ"
+              className="text-xs font-semibold text-white underline underline-offset-2 transition"
             >
-              Trang chủ
+              Culinary Blog
             </Link>
           </div>
         </div>

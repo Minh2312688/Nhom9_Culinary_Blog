@@ -8,7 +8,7 @@ export default function DashboardPage() {
   return (
     <SitePage>
       <main className={styles.content}>
-        <SectionTitle eyebrow="KHÔNG GIAN TÁC GIẢ" title="Bảng điều khiển" description="Quản lý công thức và danh mục của Culinary Table." />
+        <SectionTitle eyebrow="KHÔNG GIAN TÁC GIẢ" title="Bảng điều khiển" description="Quản lý công thức và danh mục của Culinary Blog." />
         <div className={styles.grid}>
           <Link className={styles.card} href="/dashboard/recipes">
             <p className={styles.cardLabel}>NỘI DUNG</p><h2>Công thức</h2>

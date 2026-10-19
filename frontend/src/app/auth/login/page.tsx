@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { loginApi, googleLoginApi, ApiError } from "@/lib/api";
+import { setAuthTokens } from "@/lib/auth-store";
 import { Eye, EyeOff, Loader2, AlertCircle, ChefHat, CheckCircle2 } from "lucide-react";
 
 const loginSchema = z.object({
@@ -41,9 +42,10 @@ export default function LoginPage() {
         password: data.password,
       });
 
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem("culinary_access_token", response.accessToken);
-        sessionStorage.setItem("culinary_refresh_token", response.refreshToken);
+      const saved = setAuthTokens(response.accessToken, response.refreshToken);
+      if (!saved) {
+        setServerError("Không thể lưu phiên đăng nhập vào trình duyệt (sessionStorage bị tắt hoặc đầy bộ nhớ).");
+        return;
       }
 
       setLoginSuccess(true);
@@ -71,9 +73,10 @@ export default function LoginPage() {
             setIsGoogleSubmitting(true);
             try {
               const authResult = await googleLoginApi(response.credential);
-              if (typeof window !== "undefined") {
-                sessionStorage.setItem("culinary_access_token", authResult.accessToken);
-                sessionStorage.setItem("culinary_refresh_token", authResult.refreshToken);
+              const saved = setAuthTokens(authResult.accessToken, authResult.refreshToken);
+              if (!saved) {
+                setServerError("Không thể lưu phiên đăng nhập vào trình duyệt (sessionStorage bị tắt hoặc đầy bộ nhớ).");
+                return;
               }
               setLoginSuccess(true);
             } catch (err) {

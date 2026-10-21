@@ -490,7 +490,14 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 |---:|---|---|
 | 1 | Dương Văn Minh | Xây dựng giao diện Public Screens /,/recipes, /recipes/[slug], /categories, /categories/[slug], /search, Author Dashboard, /dashboard/recipes, /dashboard/recipes/new, /dashboard/recipes/[id]/edit, NFR-USE, NFR-SEO-001|
 | 2 | Nguyễn Phạm Phú Nam | NFR-SEC-005-->007|
-| 3 | Mai Quý Phước | FR-OBS | 
+| 3 | Mai Quý Phước | FR-OBS |
+### Tuần 7
+
+| STT | Thành viên | Công việc được giao |
+|---:|---|---|
+| 1 | Dương Văn Minh | chốt hợp đồng FR-RCP-009 (nguyên liệu quản lý qua payload tạo/sửa hay endpoint riêng). Xây dựng UI Editor công thức căn bản: upload/xem trước/chọn ảnh chính, nhập và sửa 6 trường dinh dưỡng.Bổ sung kiểm thử PostgreSQL/Testcontainers cho migration và cập nhật bước đồng thời.|
+| 2 | Nguyễn Phạm Phú Nam | Hoàn tất xác minh Google Login với Client ID môi trường kiểm thử. Kiểm tra luồng đăng ký – refresh – logout – profile.Rà soát toàn bộ các tiêu chuẩn bảo mật NFR-SEC-005..007. Kiểm thử bảo mật nâng cao (token expiration, CORS, header security)|
+| 3 | Mai Quý Phước |Hoàn thiện/xác minh job thumbnail ảnh và cleanup khi xóa recipe.Kiểm thử retry/thất bại Welcome Email và phân quyền truy cập Hangfire Dashboard.Phối hợp Nam kiểm tra Welcome Email (không dùng MailHog làm cấu hình production). | 
 ---
 
 ## 10. Theo dõi tiến độ thực tế theo từng thành viên
@@ -591,7 +598,7 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 | FR-RCP-001 → FR-RCP-007 | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
 | Database chung & Migration | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
 | FR-SRCH-001 → FR-SRCH-004 | `Đã triển khai; kiểm thử đạt` | Search/filter/sort/pagination có backend và UI; Application 472, Integration 81/81 khi bật MinIO live (6/6), Architecture 3, Playwright 8/8, frontend build đạt; người dùng xác nhận list/search đọc được dữ liệu PostgreSQL | Probe độc lập sau đó API offline; lần kiểm tra trước đó trên môi trường Testing gặp list 500/search timeout |
-| Redis Caching | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
+| Redis Caching | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
 
 ---
 
@@ -614,8 +621,8 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 |---|---|---|---|
 | FR-CAT-001 → FR-CAT-005 | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
 | FR-FILE-001 / 002 | `Xong` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| FR-JOB-001 → 003 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| FR-OBS-001 → 003 | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| FR-JOB-001 → 003 | `Xong` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| FR-OBS-001 → 003 | `Xong` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
 
 ---
 

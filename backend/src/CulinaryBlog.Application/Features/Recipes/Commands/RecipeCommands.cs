@@ -207,10 +207,34 @@ public sealed class UpdateRecipeCommandHandler : IRequestHandler<UpdateRecipeCom
         recipe.PrepTimeMinutes = request.PrepTimeMinutes; recipe.CookTimeMinutes = request.CookTimeMinutes;
         recipe.Servings = request.Servings; recipe.Difficulty = Enum.Parse<RecipeDifficulty>(request.Difficulty, true);
         recipe.Slug = CreateRecipeCommandHandler.Slugify(recipe.Title);
-        foreach (var ingredient in recipe.Ingredients) ingredient.IsDeleted = true;
-        foreach (var step in recipe.Steps) step.IsDeleted = true;
-        recipe.Ingredients.Clear(); recipe.Steps.Clear(); recipe.Nutrition = null;
-        CreateRecipeCommandHandler.AddChildren(recipe, request.Ingredients, request.Steps, request.Nutrition);
+        if (request.Ingredients is not null)
+        {
+            foreach (var ingredient in recipe.Ingredients) ingredient.IsDeleted = true;
+            recipe.Ingredients.Clear();
+            foreach (var item in request.Ingredients) recipe.Ingredients.Add(new RecipeIngredient
+            {
+                Name = item.Name.Trim(), Quantity = item.Quantity, Unit = item.Unit?.Trim(), Notes = item.Notes?.Trim(), OrderIndex = item.OrderIndex
+            });
+        }
+        if (request.Steps is not null)
+        {
+            foreach (var step in recipe.Steps) step.IsDeleted = true;
+            recipe.Steps.Clear();
+            var number = 1;
+            foreach (var item in request.Steps) recipe.Steps.Add(new RecipeStep
+            {
+                StepNumber = number++, Title = item.Title?.Trim(), Description = item.Description.Trim(),
+                DurationMinutes = item.DurationMinutes, ImageUrl = item.ImageUrl?.Trim()
+            });
+        }
+        if (request.Nutrition is not null)
+        {
+            recipe.Nutrition = new RecipeNutrition
+            {
+                Calories = request.Nutrition.Calories, Protein = request.Nutrition.Protein, Carbohydrates = request.Nutrition.Carbohydrates,
+                Fat = request.Nutrition.Fat, Fiber = request.Nutrition.Fiber, Sodium = request.Nutrition.Sodium
+            };
+        }
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateConcurrencyException) { throw new ConcurrencyException(); }
         await cache.RemoveAsync($"recipes:slug:{previousSlug}", cancellationToken);

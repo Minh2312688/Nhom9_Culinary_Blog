@@ -25,27 +25,63 @@ public class GoogleTokenValidator : IGoogleTokenValidator
 
     public async Task<GoogleTokenInfo?> ValidateAsync(string idToken, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(idToken))
+        {
+            return null;
+        }
+
+        var clientId = _configuration["Google:ClientId"];
+        var settings = BuildValidationSettings(clientId);
+        if (settings == null)
+        {
+            return null;
+        }
+
         try
         {
-            var clientId = _configuration["Google:ClientId"];
-            var settings = new GoogleJsonWebSignature.ValidationSettings();
-            if (!string.IsNullOrWhiteSpace(clientId))
-            {
-                settings.Audience = new[] { clientId };
-            }
-
             var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
-            if (payload == null) return null;
-
-            return new GoogleTokenInfo(
-                Subject: payload.Subject,
-                Email: payload.Email,
-                Name: payload.Name ?? payload.Email,
-                Picture: payload.Picture);
+            return ValidatePayload(payload);
         }
         catch (Exception)
         {
             return null;
         }
+    }
+
+    public static GoogleJsonWebSignature.ValidationSettings? BuildValidationSettings(string? clientId)
+    {
+        if (string.IsNullOrWhiteSpace(clientId))
+        {
+            return null;
+        }
+
+        return new GoogleJsonWebSignature.ValidationSettings
+        {
+            Audience = new[] { clientId.Trim() }
+        };
+    }
+
+    public static GoogleTokenInfo? ValidatePayload(GoogleJsonWebSignature.Payload? payload)
+    {
+        if (payload == null)
+        {
+            return null;
+        }
+
+        if (!payload.EmailVerified)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(payload.Subject) || string.IsNullOrWhiteSpace(payload.Email))
+        {
+            return null;
+        }
+
+        return new GoogleTokenInfo(
+            Subject: payload.Subject,
+            Email: payload.Email,
+            Name: string.IsNullOrWhiteSpace(payload.Name) ? payload.Email : payload.Name,
+            Picture: payload.Picture);
     }
 }

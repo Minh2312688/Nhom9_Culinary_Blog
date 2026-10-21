@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { FeedbackProvider } from "./feedback";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Culinary Blog - Khám phá Ẩm thực",
-  description: "Nền tảng chia sẻ công thức nấu ăn và trải nghiệm ẩm thực đỉnh cao",
+  description: "Khám phá công thức nấu ăn, câu chuyện đầu bếp và cảm hứng ẩm thực từ cộng đồng Culinary Blog.",
 };
 
 export default function RootLayout({
@@ -13,7 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <body className="antialiased min-h-screen">{children}</body>
+      <body className="antialiased min-h-screen">
+        <FeedbackProvider>{children}</FeedbackProvider>
+      </body>
     </html>
   );
 }

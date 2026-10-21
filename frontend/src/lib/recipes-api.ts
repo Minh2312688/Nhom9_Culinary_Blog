@@ -21,6 +21,7 @@ export interface RecipeSummary {
   status: string | number;
   categoryId: string;
   authorId: string;
+  publishedAt: string | null;
   rowVersion: string;
 }
 
@@ -63,6 +64,19 @@ export interface RecipeDetail extends RecipeSummary {
     fiber: number;
     sodium: number;
   } | null;
+  author: {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+  } | null;
+}
+
+export interface AuthorProfilePage {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  recipes: PaginatedResult<RecipeSummary>;
 }
 
 export interface RecipeCategory {
@@ -87,14 +101,56 @@ export interface RecipeInput {
   steps: RecipeStep[];
 }
 
+export interface ApiProblemDetails {
+  title?: string;
+  detail?: string;
+  errors?: Record<string, string[]>;
+}
+
+export class ApiRequestError extends Error {
+  constructor(
+    readonly status: number,
+    readonly problem: ApiProblemDetails | undefined,
+    fallbackMessage: string,
+  ) {
+    const validationMessages = Object.values(problem?.errors ?? {}).flat();
+    super(problem?.detail || problem?.title || validationMessages.join(" ") || fallbackMessage);
+    this.name = "ApiRequestError";
+  }
+}
+
+function parseProblemDetails(value: unknown): ApiProblemDetails | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+
+  const source = value as Record<string, unknown>;
+  const errors = source.errors;
+  const parsedErrors = errors && typeof errors === "object" && !Array.isArray(errors)
+    ? Object.fromEntries(
+      Object.entries(errors).flatMap(([key, messages]) => {
+        const values = Array.isArray(messages) ? messages : [messages];
+        const strings = values.filter((message): message is string => typeof message === "string");
+        return strings.length ? [[key, strings]] : [];
+      }),
+    )
+    : undefined;
+
+  return {
+    ...(typeof source.title === "string" ? { title: source.title } : {}),
+    ...(typeof source.detail === "string" ? { detail: source.detail } : {}),
+    ...(parsedErrors ? { errors: parsedErrors } : {}),
+  };
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, init);
   if (!response.ok) {
-    const problem = await response.json().catch(() => null);
-    const validationMessages = problem?.errors
-      ? Object.values(problem.errors).flat().join(" ")
-      : "";
-    throw new Error(validationMessages || problem?.detail || problem?.title || "Yêu cầu không thành công.");
+    let problemBody: unknown;
+    try {
+      problemBody = await response.json();
+    } catch {
+      problemBody = undefined;
+    }
+    throw new ApiRequestError(response.status, parseProblemDetails(problemBody), response.statusText || `Yêu cầu thất bại (${response.status}).`);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;

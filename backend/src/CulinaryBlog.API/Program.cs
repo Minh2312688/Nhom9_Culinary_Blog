@@ -128,6 +128,7 @@ app.MapGet("/", () => Results.Ok(new
 app.MapCategoryEndpoints();
 app.MapRecipeEndpoints();
 app.MapRecipeImageEndpoints();
+app.MapAuthorEndpoints();
 app.MapSystemEndpoints();
 app.MapAuthEndpoints();
 

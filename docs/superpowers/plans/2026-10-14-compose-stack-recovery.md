@@ -19,6 +19,7 @@
 - Delete only verified CulinaryBlog PostgreSQL and MinIO data volumes; preserve Redis and all unrelated resources.
 - Do not expose `.env` values or overwrite unrelated worktree changes.
 - Change code only to fix a reproduced build, test, or runtime failure.
+- NuGet currently reports NU1902/NU1903 for `System.Security.Cryptography.Pkcs` 10.0.0. Keep the repository's default warnings-as-errors policy; for validation only, restore and build in the same PowerShell session with `'-p:WarningsNotAsErrors=NU1902%3BNU1903'` on each command. The audit advisories must remain visible; do not disable NuGet audit or change package versions as part of this recovery.
 
 ---
 
@@ -30,7 +31,7 @@
 
 - [ ] Check `git status --short`; preserve existing edits.
 - [ ] Confirm one `UseAuthentication()` and one `UseAuthorization()`, ordered after `UseRateLimiter()` and before mapped endpoints; confirm recipe image endpoint is mapped.
-- [ ] Build API: `dotnet build backend/src/CulinaryBlog.API/CulinaryBlog.API.csproj --no-restore`.
+- [ ] Restore and build API with the scoped audit-warning exception above; build: `dotnet build backend/src/CulinaryBlog.API/CulinaryBlog.API.csproj --no-restore '-p:WarningsNotAsErrors=NU1902%3BNU1903'`.
 - [ ] If build fails, diagnose the exact compiler error and add/fix only the regression test and code needed for its root cause.
 - [ ] Verify API build succeeds; do not make speculative middleware changes.
 

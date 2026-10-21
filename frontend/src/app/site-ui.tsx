@@ -2,13 +2,19 @@ import Link from "next/link";
 import { ChefHat } from "lucide-react";
 import styles from "./site-ui.module.css";
 
+export function BrandLink() {
+  return (
+    <Link className={styles.brand} href="/" aria-label="Culinary Blog, trang chủ">
+      <span className={styles.brandMark}><ChefHat size={18} aria-hidden="true" /></span>
+      <span>Culinary <strong>Blog</strong></span>
+    </Link>
+  );
+}
+
 export function SiteHeader() {
   return (
     <header className={styles.header}>
-      <Link className={styles.brand} href="/" aria-label="Culinary Table, trang chủ">
-        <span className={styles.brandMark}><ChefHat size={18} /></span>
-        <span>Culinary <strong>Table</strong></span>
-      </Link>
+      <BrandLink />
       <nav className={styles.nav} aria-label="Điều hướng chính">
         <Link href="/recipes">Công thức</Link>
         <Link href="/categories">Danh mục</Link>
@@ -19,21 +25,25 @@ export function SiteHeader() {
   );
 }
 
-export function SiteFooter() {
+export function SiteFooter({ message }: Readonly<{ message?: string }>) {
   return (
     <footer className={styles.footer}>
-      <span>CULINARY TABLE</span>
-      <span>Chia sẻ hương vị, kết nối đam mê.</span>
+      <span>CULINARY BLOG</span>
+      <span>{message ?? "Chia sẻ hương vị, kết nối đam mê."}</span>
     </footer>
   );
 }
 
-export function SitePage({ children }: Readonly<{ children: React.ReactNode }>) {
+export function SitePage({
+  children,
+  className,
+  footerMessage,
+}: Readonly<{ children: React.ReactNode; className?: string; footerMessage?: string }>) {
   return (
-    <div className={styles.page}>
+    <div className={[styles.page, className].filter(Boolean).join(" ")}>
       <SiteHeader />
       {children}
-      <SiteFooter />
+      <SiteFooter message={footerMessage} />
     </div>
   );
 }
@@ -62,6 +72,23 @@ export function ErrorNotice({ children }: Readonly<{ children: React.ReactNode }
 
 export function LoadingNotice() {
   return <p className={styles.notice} role="status">Đang tải dữ liệu...</p>;
+}
+
+export function LoadingSkeleton({ variant }: Readonly<{ variant: "cards" | "detail" | "form" }>) {
+  const labels = {
+    cards: "Đang tải danh sách công thức",
+    detail: "Đang tải nội dung công thức",
+    form: "Đang tải biểu mẫu",
+  };
+  const itemCount = variant === "form" ? 6 : variant === "detail" ? 4 : 3;
+
+  return (
+    <div className={`${styles.skeleton} ${styles[`skeleton-${variant}`]}`} role="status" aria-busy="true" aria-label={labels[variant]}>
+      {Array.from({ length: itemCount }, (_, index) => (
+        <span className={styles.skeletonItem} key={index} aria-hidden="true" />
+      ))}
+    </div>
+  );
 }
 
 export function Pagination({

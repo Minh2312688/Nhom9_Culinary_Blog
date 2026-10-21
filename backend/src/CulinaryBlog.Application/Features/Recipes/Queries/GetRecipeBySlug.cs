@@ -1,5 +1,6 @@
 using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Contracts;
+using CulinaryBlog.Application.Contracts.Authentication;
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Application.DTOs.Recipes;
 using CulinaryBlog.Domain.Entities;
@@ -21,19 +22,26 @@ public sealed class GetRecipeBySlugQueryHandler : IRequestHandler<GetRecipeBySlu
     private readonly IRecipeRepository recipes;
     private readonly ICurrentUserService currentUser;
     private readonly IRecipeCache cache;
+    private readonly IIdentityService identityService;
 
-    public GetRecipeBySlugQueryHandler(IRecipeRepository recipes, ICurrentUserService currentUser, IRecipeCache cache)
+    public GetRecipeBySlugQueryHandler(
+        IRecipeRepository recipes,
+        ICurrentUserService currentUser,
+        IRecipeCache cache,
+        IIdentityService identityService)
     {
         this.recipes = recipes;
         this.currentUser = currentUser;
         this.cache = cache;
+        this.identityService = identityService;
     }
 
     public async Task<RecipeDetailDto> Handle(GetRecipeBySlugQuery request, CancellationToken cancellationToken)
     {
         var cacheKey = $"recipes:slug:{request.Slug.ToLowerInvariant()}";
         var cached = await cache.GetAsync<RecipeDetailDto>(cacheKey, cancellationToken);
-        if (cached is not null && CanView(cached.Status, cached.AuthorId)) return cached;
+        if (cached is not null && CanView(cached.Status, cached.AuthorId))
+            return await IncludePublicAuthorAsync(cached with { Author = null }, cancellationToken);
 
         var recipe = await recipes.Query.AsNoTracking()
             .Include(x => x.Ingredients)
@@ -47,7 +55,21 @@ public sealed class GetRecipeBySlugQueryHandler : IRequestHandler<GetRecipeBySlu
 
         var result = recipe.ToDetail();
         await cache.SetAsync(cacheKey, result, TimeSpan.FromMinutes(5), cancellationToken);
-        return result;
+        return await IncludePublicAuthorAsync(result, cancellationToken);
+    }
+
+    private async Task<RecipeDetailDto> IncludePublicAuthorAsync(
+        RecipeDetailDto recipe,
+        CancellationToken cancellationToken)
+    {
+        var author = await identityService.GetUserProfileByIdAsync(recipe.AuthorId, cancellationToken);
+        if (author is not { Succeeded: true, IsActive: true, UserId: not null, DisplayName: not null })
+            return recipe;
+
+        return recipe with
+        {
+            Author = new RecipeAuthorDto(author.UserId, author.DisplayName, author.AvatarUrl)
+        };
     }
 
     private bool CanView(RecipeStatus status, string authorId) =>

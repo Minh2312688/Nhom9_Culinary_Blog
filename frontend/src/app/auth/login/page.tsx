@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { loginApi, googleLoginApi, ApiError } from "@/lib/api";
 import { Eye, EyeOff, Loader2, AlertCircle, ChefHat, CheckCircle2 } from "lucide-react";
+import { BrandLink } from "../../site-ui";
 
 const loginSchema = z.object({
   email: z.string().email("Địa chỉ email không hợp lệ."),
@@ -116,6 +117,7 @@ export default function LoginPage() {
       <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
       <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sm:p-8">
+        <div className="mb-5 flex justify-center"><BrandLink /></div>
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-100 text-orange-600 mb-4 shadow-sm">

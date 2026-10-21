@@ -19,12 +19,10 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CulinaryBlog.API.CurrentUserService>();
 
 // CORS for Frontend (Next.js) - SRS NFR-SEC-005: Configured origins only, never wildcard.
-// Development allows local defaults (3000/3001); Non-Development strictly requires configured origins.
 var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
-var allowedOrigins = configuredOrigins ??
-    (builder.Environment.IsDevelopment()
-        ? new[] { "http://localhost:3000", "http://localhost:3001" }
-        : Array.Empty<string>());
+var allowedOrigins = CulinaryBlog.Application.Common.Security.CorsPolicyValidator.ValidateAndFilterAllowedOrigins(
+    configuredOrigins,
+    builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing"));
 
 builder.Services.AddCors(options =>
 {
@@ -38,6 +36,16 @@ builder.Services.AddCors(options =>
         }
     });
 });
+
+// SRS NFR-SEC-006: Authorization Policies
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(CulinaryBlog.Domain.Constants.AppPolicies.AdminPolicy, policy =>
+        policy.RequireRole(CulinaryBlog.Domain.Constants.AppRoles.Admin));
+    options.AddPolicy(CulinaryBlog.Domain.Constants.AppPolicies.AuthorPolicy, policy =>
+        policy.RequireRole(CulinaryBlog.Domain.Constants.AppRoles.Author, CulinaryBlog.Domain.Constants.AppRoles.Admin));
+});
+
 
 // NFR-SEC-003: Rate Limiting
 builder.Services.AddRateLimiter(options =>

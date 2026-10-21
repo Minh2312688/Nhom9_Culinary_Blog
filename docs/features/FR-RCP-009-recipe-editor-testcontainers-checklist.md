@@ -123,6 +123,6 @@
   - [x] Toàn bộ unit/integration tests cũ và mới đều pass (không tính Docker tests khi không có Docker daemon).
 - [x] **Frontend Verification**:
   - [x] `npm run build` xuất build production thành công (warnings ESLint không phải lỗi).
-- [ ] **Tài liệu & Traceability**:
-  - [ ] Cập nhật trạng thái FR-RCP-009 từ `BLOCKED` / `CONFLICT` sang `DONE` trong `TEAM-REQUIREMENT-TRACEABILITY.md`.
-  - [ ] Cập nhật kết quả xác minh vào `docs/recipe-core-implementation-spec.md` và `README.md` (Mục 10.2).
+- [x] **Tài liệu & Traceability**:
+  - [x] Cập nhật trạng thái FR-RCP-009 từ `BLOCKED` / `CONFLICT` sang `DONE` trong `TEAM-REQUIREMENT-TRACEABILITY.md`.
+  - [x] Cập nhật kết quả xác minh vào `docs/recipe-core-implementation-spec.md` và `README.md` (Mục 10.2).

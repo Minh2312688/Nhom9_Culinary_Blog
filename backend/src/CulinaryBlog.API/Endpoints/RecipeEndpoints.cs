@@ -7,7 +7,6 @@ using CulinaryBlog.API.Contracts.Recipes;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 
 namespace CulinaryBlog.API.Endpoints;
@@ -21,23 +20,6 @@ public static class RecipeEndpoints
         group.MapGet("/", async ([AsParameters] GetRecipesQuery query, ISender sender, CancellationToken ct) =>
             Results.Ok(await sender.Send(query, ct)))
             .WithName("GetRecipes").Produces<PaginatedResult<RecipeSummaryDto>>(200);
-
-        group.MapGet("/search", async (
-            [FromQuery(Name = "q")] string? q,
-            [AsParameters] RecipeSearchRequest filters,
-            ISender sender,
-            CancellationToken ct) =>
-            Results.Ok(await sender.Send(new GetRecipesQuery(
-                Page: filters.Page,
-                PageSize: filters.PageSize,
-                CategoryId: filters.CategoryId,
-                Difficulty: filters.Difficulty,
-                MaxCookTime: filters.MaxCookTime,
-                MinServings: filters.MinServings,
-                SortBy: filters.SortBy,
-                SortOrder: filters.SortOrder,
-                Search: q), ct)))
-            .WithName("SearchRecipes").Produces<PaginatedResult<RecipeSummaryDto>>(200).ProducesProblem(400);
 
         group.MapGet("/{slug}", async (string slug, ISender sender, CancellationToken ct) =>
             Results.Ok(await sender.Send(new GetRecipeBySlugQuery(slug), ct)))
@@ -63,74 +45,10 @@ public static class RecipeEndpoints
         { await sender.Send(new DeleteRecipeCommand(id), ct); return Results.NoContent(); })
             .RequireAuthorization().WithName("DeleteRecipe").Produces(204).ProducesProblem(403).ProducesProblem(404);
 
-        group.MapPost("/{id:guid}/steps", async (
-            Guid id, AddRecipeStepRequest request, ISender sender, CancellationToken ct) =>
-        {
-            var result = await sender.Send(new AddRecipeStepCommand(
-                id, request.Title, request.Description, request.DurationMinutes, request.ImageUrl), ct);
-            return Results.Created($"/api/v1/recipes/{id}/steps/{result.Id}", result);
-        })
-            .RequireAuthorization().WithName("AddRecipeStep")
-            .Produces<RecipeStepDto>(201).ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
-
-        group.MapPut("/{id:guid}/steps/{stepId:guid}", async (
-            Guid id, Guid stepId, ReplaceRecipeStepRequest request, ISender sender, CancellationToken ct) =>
-        {
-            var result = await sender.Send(new UpdateRecipeStepCommand(
-                id, stepId, request.Title, request.Description, request.DurationMinutes, request.ImageUrl), ct);
-            return Results.Ok(result);
-        })
-            .RequireAuthorization().WithName("UpdateRecipeStep")
-            .Produces<RecipeStepDto>(200).ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
-
-        group.MapDelete("/{id:guid}/steps/{stepId:guid}", async (
-            Guid id, Guid stepId, ISender sender, CancellationToken ct) =>
-        {
-            await sender.Send(new DeleteRecipeStepCommand(id, stepId), ct);
-            return Results.NoContent();
-        })
-            .RequireAuthorization().WithName("DeleteRecipeStep")
-            .Produces(204).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
-
-        group.MapPost("/{id:guid}/ingredients", async (
-            Guid id, AddRecipeIngredientRequest request, ISender sender, CancellationToken ct) =>
-        {
-            var result = await sender.Send(new AddRecipeIngredientCommand(
-                id, request.Name, request.Quantity, request.Unit, request.Notes, request.OrderIndex), ct);
-            return Results.Created($"/api/v1/recipes/{id}/ingredients/{result.Id}", result);
-        })
-            .RequireAuthorization().WithName("AddRecipeIngredient")
-            .Produces<RecipeIngredientDto>(201).ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
-
-        group.MapPut("/{id:guid}/ingredients/{ingId:guid}", async (
-            Guid id, Guid ingId, ReplaceRecipeIngredientRequest request, ISender sender, CancellationToken ct) =>
-        {
-            var result = await sender.Send(new UpdateRecipeIngredientCommand(
-                id, ingId, request.Name, request.Quantity, request.Unit, request.Notes, request.OrderIndex), ct);
-            return Results.Ok(result);
-        })
-            .RequireAuthorization().WithName("UpdateRecipeIngredient")
-            .Produces<RecipeIngredientDto>(200).ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
-
-        group.MapDelete("/{id:guid}/ingredients/{ingId:guid}", async (
-            Guid id, Guid ingId, ISender sender, CancellationToken ct) =>
-        {
-            await sender.Send(new DeleteRecipeIngredientCommand(id, ingId), ct);
-            return Results.NoContent();
-        })
-            .RequireAuthorization().WithName("DeleteRecipeIngredient")
-            .Produces(204).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
+        endpoints.MapRecipeSearchEndpoints();
+        endpoints.MapRecipeStepEndpoints();
+        endpoints.MapRecipeIngredientEndpoints();
 
         return endpoints;
     }
 }
-
-public sealed record RecipeSearchRequest(
-    int Page = 1,
-    int PageSize = 12,
-    Guid? CategoryId = null,
-    string? Difficulty = null,
-    int? MaxCookTime = null,
-    int? MinServings = null,
-    string? SortBy = null,
-    string? SortOrder = null);

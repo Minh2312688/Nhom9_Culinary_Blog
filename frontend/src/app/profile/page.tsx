@@ -13,6 +13,12 @@ import {
   UpdateProfileRequest,
 } from "@/lib/auth-api";
 import {
+  getAccessToken,
+  getRefreshToken,
+  setAuthTokens,
+  clearAuthTokens,
+} from "@/lib/auth-store";
+import {
   ChefHat,
   LogOut,
   Mail,
@@ -51,8 +57,8 @@ export default function ProfilePage() {
 
     if (typeof window === "undefined") return;
 
-    const accessToken = sessionStorage.getItem("culinary_access_token");
-    const refreshToken = sessionStorage.getItem("culinary_refresh_token");
+    const accessToken = getAccessToken();
+    const refreshToken = getRefreshToken();
 
     if (!accessToken && !refreshToken) {
       router.push("/auth/login");
@@ -79,24 +85,26 @@ export default function ProfilePage() {
         setIsRefreshing(true);
         try {
           const newAuth = await refreshTokenApi(refreshToken);
-          sessionStorage.setItem("culinary_access_token", newAuth.accessToken);
-          sessionStorage.setItem("culinary_refresh_token", newAuth.refreshToken);
+          const saved = setAuthTokens(newAuth.accessToken, newAuth.refreshToken);
+          if (!saved) {
+            clearAuthTokens();
+            router.push("/auth/login");
+            return;
+          }
 
           const refreshedProfile = await getProfileApi(newAuth.accessToken);
           setProfile(refreshedProfile);
           setLoading(false);
           return;
         } catch {
-          sessionStorage.removeItem("culinary_access_token");
-          sessionStorage.removeItem("culinary_refresh_token");
+          clearAuthTokens();
           router.push("/auth/login");
           return;
         } finally {
           setIsRefreshing(false);
         }
       } else {
-        sessionStorage.removeItem("culinary_access_token");
-        sessionStorage.removeItem("culinary_refresh_token");
+        clearAuthTokens();
         router.push("/auth/login");
       }
     } catch (err) {
@@ -114,8 +122,8 @@ export default function ProfilePage() {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
 
-    const accessToken = sessionStorage.getItem("culinary_access_token") || "";
-    const refreshToken = sessionStorage.getItem("culinary_refresh_token") || "";
+    const accessToken = getAccessToken() || "";
+    const refreshToken = getRefreshToken() || "";
 
     try {
       if (accessToken && refreshToken) {
@@ -124,8 +132,7 @@ export default function ProfilePage() {
     } catch {
       // Ignore network / logout errors: proceed to clear client session
     } finally {
-      sessionStorage.removeItem("culinary_access_token");
-      sessionStorage.removeItem("culinary_refresh_token");
+      clearAuthTokens();
       router.push("/auth/login");
     }
   };
@@ -182,8 +189,8 @@ export default function ProfilePage() {
     };
 
     setIsSaving(true);
-    let token = sessionStorage.getItem("culinary_access_token") || "";
-    const refreshToken = sessionStorage.getItem("culinary_refresh_token") || "";
+    let token = getAccessToken() || "";
+    const refreshToken = getRefreshToken() || "";
 
     try {
       try {
@@ -197,8 +204,12 @@ export default function ProfilePage() {
         const apiErr = err as ApiError;
         if (apiErr.status === 401 && refreshToken) {
           const newAuth = await refreshTokenApi(refreshToken);
-          sessionStorage.setItem("culinary_access_token", newAuth.accessToken);
-          sessionStorage.setItem("culinary_refresh_token", newAuth.refreshToken);
+          const saved = setAuthTokens(newAuth.accessToken, newAuth.refreshToken);
+          if (!saved) {
+            clearAuthTokens();
+            router.push("/auth/login");
+            return;
+          }
           token = newAuth.accessToken;
 
           const updated = await updateProfileApi(token, payload);

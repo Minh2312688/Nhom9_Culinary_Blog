@@ -1,4 +1,23 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Route } from "@playwright/test";
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "http://localhost:3001",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+async function fulfillMock(route: Route, status: number, body?: object) {
+  if (route.request().method() === "OPTIONS") {
+    await route.fulfill({ status: 204, headers: CORS_HEADERS });
+    return;
+  }
+  await route.fulfill({
+    status,
+    headers: CORS_HEADERS,
+    contentType: body ? "application/json" : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
 
 test.describe("FR-AUTH-006 & FR-AUTH-005: Profile & Logout E2E", () => {
   test("should redirect unauthenticated user to /auth/login", async ({ page }) => {
@@ -10,21 +29,17 @@ test.describe("FR-AUTH-006 & FR-AUTH-005: Profile & Logout E2E", () => {
   });
 
   test("should render profile for authenticated user", async ({ page }) => {
-    // Intercept GET /api/v1/auth/me
+    // Intercept GET /api/v1/auth/me with CORS headers
     await page.route("**/api/v1/auth/me", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          id: "chef-123",
-          email: "chef@example.com",
-          displayName: "Master Chef Nam",
-          avatarUrl: null,
-          bio: "Passionate Vietnamese culinary artist",
-          emailConfirmed: true,
-          createdAt: "2026-01-15T00:00:00Z",
-          roles: ["Author"],
-        }),
+      await fulfillMock(route, 200, {
+        id: "chef-123",
+        email: "chef@example.com",
+        displayName: "Master Chef Nam",
+        avatarUrl: null,
+        bio: "Passionate Vietnamese culinary artist",
+        emailConfirmed: true,
+        createdAt: "2026-01-15T00:00:00Z",
+        roles: ["Author"],
       });
     });
 
@@ -48,45 +63,37 @@ test.describe("FR-AUTH-006 & FR-AUTH-005: Profile & Logout E2E", () => {
     let meCallCount = 0;
 
     await page.route("**/api/v1/auth/me", async (route) => {
+      if (route.request().method() === "OPTIONS") {
+        await fulfillMock(route, 204);
+        return;
+      }
       meCallCount++;
       if (meCallCount === 1) {
         // First attempt: token expired
-        await route.fulfill({
-          status: 401,
-          contentType: "application/json",
-          body: JSON.stringify({
-            title: "Unauthorized",
-            detail: "Token expired",
-          }),
+        await fulfillMock(route, 401, {
+          title: "Unauthorized",
+          detail: "Token expired",
         });
       } else {
         // Second attempt after refresh: success
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            id: "chef-123",
-            email: "chef@example.com",
-            displayName: "Master Chef Nam",
-            avatarUrl: null,
-            bio: "Refreshed session user",
-            emailConfirmed: true,
-            createdAt: "2026-01-15T00:00:00Z",
-            roles: ["Author"],
-          }),
+        await fulfillMock(route, 200, {
+          id: "chef-123",
+          email: "chef@example.com",
+          displayName: "Master Chef Nam",
+          avatarUrl: null,
+          bio: "Refreshed session user",
+          emailConfirmed: true,
+          createdAt: "2026-01-15T00:00:00Z",
+          roles: ["Author"],
         });
       }
     });
 
     await page.route("**/api/v1/auth/refresh", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          accessToken: "new_rotated_access_token",
-          refreshToken: "new_rotated_refresh_token",
-          expiresIn: 900,
-        }),
+      await fulfillMock(route, 200, {
+        accessToken: "new_rotated_access_token",
+        refreshToken: "new_rotated_refresh_token",
+        expiresIn: 900,
       });
     });
 
@@ -104,28 +111,22 @@ test.describe("FR-AUTH-006 & FR-AUTH-005: Profile & Logout E2E", () => {
 
   test("should logout and redirect to /auth/login", async ({ page }) => {
     await page.route("**/api/v1/auth/me", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          id: "chef-123",
-          email: "chef@example.com",
-          displayName: "Master Chef Nam",
-          avatarUrl: null,
-          bio: null,
-          emailConfirmed: true,
-          createdAt: "2026-01-15T00:00:00Z",
-          roles: ["Author"],
-        }),
+      await fulfillMock(route, 200, {
+        id: "chef-123",
+        email: "chef@example.com",
+        displayName: "Master Chef Nam",
+        avatarUrl: null,
+        bio: null,
+        emailConfirmed: true,
+        createdAt: "2026-01-15T00:00:00Z",
+        roles: ["Author"],
       });
     });
 
     let logoutCalled = false;
     await page.route("**/api/v1/auth/logout", async (route) => {
       logoutCalled = true;
-      await route.fulfill({
-        status: 204,
-      });
+      await fulfillMock(route, 204);
     });
 
     await page.addInitScript(() => {
@@ -162,12 +163,12 @@ test.describe("FR-AUTH-006 & FR-AUTH-005: Profile & Logout E2E", () => {
     };
 
     await page.route("**/api/v1/auth/me", async (route) => {
+      if (route.request().method() === "OPTIONS") {
+        await fulfillMock(route, 204);
+        return;
+      }
       if (route.request().method() === "GET") {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify(currentProfile),
-        });
+        await fulfillMock(route, 200, currentProfile);
       } else if (route.request().method() === "PATCH") {
         const payload = route.request().postDataJSON();
         currentProfile = {
@@ -176,11 +177,7 @@ test.describe("FR-AUTH-006 & FR-AUTH-005: Profile & Logout E2E", () => {
           avatarUrl: payload.avatarUrl !== undefined ? payload.avatarUrl : currentProfile.avatarUrl,
           bio: payload.bio !== undefined ? payload.bio : currentProfile.bio,
         };
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify(currentProfile),
-        });
+        await fulfillMock(route, 200, currentProfile);
       }
     });
 
@@ -217,19 +214,15 @@ test.describe("FR-AUTH-006 & FR-AUTH-005: Profile & Logout E2E", () => {
 
   test("should show validation error when invalid avatar URL is entered (FR-AUTH-007)", async ({ page }) => {
     await page.route("**/api/v1/auth/me", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          id: "chef-123",
-          email: "chef@example.com",
-          displayName: "Master Chef Nam",
-          avatarUrl: null,
-          bio: null,
-          emailConfirmed: true,
-          createdAt: "2026-01-15T00:00:00Z",
-          roles: ["Author"],
-        }),
+      await fulfillMock(route, 200, {
+        id: "chef-123",
+        email: "chef@example.com",
+        displayName: "Master Chef Nam",
+        avatarUrl: null,
+        bio: null,
+        emailConfirmed: true,
+        createdAt: "2026-01-15T00:00:00Z",
+        roles: ["Author"],
       });
     });
 
@@ -252,19 +245,15 @@ test.describe("FR-AUTH-006 & FR-AUTH-005: Profile & Logout E2E", () => {
 
   test("should cancel edit mode and retain original values without saving (FR-AUTH-007)", async ({ page }) => {
     await page.route("**/api/v1/auth/me", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          id: "chef-123",
-          email: "chef@example.com",
-          displayName: "Original Chef Name",
-          avatarUrl: null,
-          bio: "Original Bio",
-          emailConfirmed: true,
-          createdAt: "2026-01-15T00:00:00Z",
-          roles: ["Author"],
-        }),
+      await fulfillMock(route, 200, {
+        id: "chef-123",
+        email: "chef@example.com",
+        displayName: "Original Chef Name",
+        avatarUrl: null,
+        bio: "Original Bio",
+        emailConfirmed: true,
+        createdAt: "2026-01-15T00:00:00Z",
+        roles: ["Author"],
       });
     });
 

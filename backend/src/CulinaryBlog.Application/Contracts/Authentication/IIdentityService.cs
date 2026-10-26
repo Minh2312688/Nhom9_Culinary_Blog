@@ -38,6 +38,21 @@ public sealed record UserProfileResult(
     bool IsLockedOut,
     IList<string>? Roles);
 
+public sealed record ChangePasswordResult(
+    bool Succeeded,
+    string? ErrorMessage = null,
+    bool IsIncorrectCurrentPassword = false);
+
+public sealed record ForgotPasswordResult(
+    bool Succeeded,
+    string? ResetToken = null,
+    string? ErrorMessage = null);
+
+public sealed record ResetPasswordResult(
+    bool Succeeded,
+    string? ErrorMessage = null,
+    bool IsInvalidToken = false);
+
 public interface IIdentityService
 {
     Task<RegisterResult> RegisterUserAsync(
@@ -66,5 +81,21 @@ public interface IIdentityService
         string? displayName,
         string? avatarUrl,
         string? bio,
+        CancellationToken cancellationToken = default);
+
+    Task<ChangePasswordResult> ChangePasswordAsync(
+        string userId,
+        string currentPassword,
+        string newPassword,
+        CancellationToken cancellationToken = default);
+
+    Task<ForgotPasswordResult> GeneratePasswordResetTokenAsync(
+        string email,
+        CancellationToken cancellationToken = default);
+
+    Task<ResetPasswordResult> ResetPasswordAsync(
+        string email,
+        string token,
+        string newPassword,
         CancellationToken cancellationToken = default);
 }

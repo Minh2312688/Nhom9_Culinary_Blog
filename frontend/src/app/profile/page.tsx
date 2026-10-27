@@ -11,7 +11,14 @@ import {
   logoutApi,
   updateProfileApi,
   UpdateProfileRequest,
+  changePasswordApi,
 } from "@/lib/auth-api";
+import {
+  getAccessToken,
+  getRefreshToken,
+  setAuthTokens,
+  clearAuthTokens,
+} from "@/lib/auth-store";
 import {
   ChefHat,
   LogOut,
@@ -26,6 +33,8 @@ import {
   Pencil,
   Save,
   X,
+  KeyRound,
+  Lock,
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -45,14 +54,27 @@ export default function ProfilePage() {
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState<string | null>(null);
 
+  // Change Password States (Lab 7)
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+
+  // Logout Error State
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+
+
   const fetchProfileWithRetry = useCallback(async () => {
     setError(null);
     setLoading(true);
 
     if (typeof window === "undefined") return;
 
-    const accessToken = sessionStorage.getItem("culinary_access_token");
-    const refreshToken = sessionStorage.getItem("culinary_refresh_token");
+    const accessToken = getAccessToken();
+    const refreshToken = getRefreshToken();
 
     if (!accessToken && !refreshToken) {
       router.push("/auth/login");
@@ -79,24 +101,26 @@ export default function ProfilePage() {
         setIsRefreshing(true);
         try {
           const newAuth = await refreshTokenApi(refreshToken);
-          sessionStorage.setItem("culinary_access_token", newAuth.accessToken);
-          sessionStorage.setItem("culinary_refresh_token", newAuth.refreshToken);
+          const saved = setAuthTokens(newAuth.accessToken, newAuth.refreshToken);
+          if (!saved) {
+            clearAuthTokens();
+            router.push("/auth/login");
+            return;
+          }
 
           const refreshedProfile = await getProfileApi(newAuth.accessToken);
           setProfile(refreshedProfile);
           setLoading(false);
           return;
         } catch {
-          sessionStorage.removeItem("culinary_access_token");
-          sessionStorage.removeItem("culinary_refresh_token");
+          clearAuthTokens();
           router.push("/auth/login");
           return;
         } finally {
           setIsRefreshing(false);
         }
       } else {
-        sessionStorage.removeItem("culinary_access_token");
-        sessionStorage.removeItem("culinary_refresh_token");
+        clearAuthTokens();
         router.push("/auth/login");
       }
     } catch (err) {
@@ -113,21 +137,28 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
+    setLogoutError(null);
 
-    const accessToken = sessionStorage.getItem("culinary_access_token") || "";
-    const refreshToken = sessionStorage.getItem("culinary_refresh_token") || "";
+    const accessToken = getAccessToken() || "";
+    const refreshToken = getRefreshToken() || "";
 
     try {
       if (accessToken && refreshToken) {
         await logoutApi(accessToken, refreshToken);
       }
     } catch {
-      // Ignore network / logout errors: proceed to clear client session
-    } finally {
-      sessionStorage.removeItem("culinary_access_token");
-      sessionStorage.removeItem("culinary_refresh_token");
-      router.push("/auth/login");
+      // Network or API failure: do not block client session clearing,
+      // but also do not claim server revocation succeeded.
     }
+
+    const cleared = clearAuthTokens();
+    if (!cleared) {
+      setLogoutError("Không thể xóa phiên đăng nhập trên thiết bị. Vui lòng thử lại.");
+      setIsLoggingOut(false);
+      return;
+    }
+
+    router.push("/auth/login");
   };
 
   const handleStartEdit = () => {
@@ -138,12 +169,79 @@ export default function ProfilePage() {
     setEditError(null);
     setEditSuccess(null);
     setIsEditing(true);
+    setIsChangingPassword(false);
   };
 
   const handleCancelEdit = () => {
     setIsEditing(false);
     setEditError(null);
   };
+
+  const handleStartChangePassword = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordError(null);
+    setPasswordSuccess(null);
+    setIsChangingPassword(true);
+    setIsEditing(false);
+  };
+
+  const handleCancelChangePassword = () => {
+    setIsChangingPassword(false);
+    setPasswordError(null);
+  };
+
+  const handleSavePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSavingPassword) return;
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    if (!currentPassword) {
+      setPasswordError("Vui lòng nhập mật khẩu hiện tại.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordError("Mật khẩu mới phải có ít nhất 8 ký tự.");
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setPasswordError("Mật khẩu mới không được trùng với mật khẩu hiện tại.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Mật khẩu xác nhận không khớp.");
+      return;
+    }
+
+    setIsSavingPassword(true);
+    const token = getAccessToken() || "";
+
+    try {
+      const res = await changePasswordApi(token, {
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
+      setPasswordSuccess(res.message || "Đổi mật khẩu thành công!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setIsChangingPassword(false);
+    } catch (err) {
+      const apiErr = err as ApiError;
+      if (apiErr.errors) {
+        const detailList = Object.values(apiErr.errors).flat().join(" ");
+        setPasswordError(detailList || apiErr.detail || "Dữ liệu không hợp lệ.");
+      } else {
+        setPasswordError(apiErr.detail || "Không thể đổi mật khẩu. Vui lòng thử lại.");
+      }
+    } finally {
+      setIsSavingPassword(false);
+    }
+  };
+
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,8 +280,8 @@ export default function ProfilePage() {
     };
 
     setIsSaving(true);
-    let token = sessionStorage.getItem("culinary_access_token") || "";
-    const refreshToken = sessionStorage.getItem("culinary_refresh_token") || "";
+    let token = getAccessToken() || "";
+    const refreshToken = getRefreshToken() || "";
 
     try {
       try {
@@ -197,8 +295,12 @@ export default function ProfilePage() {
         const apiErr = err as ApiError;
         if (apiErr.status === 401 && refreshToken) {
           const newAuth = await refreshTokenApi(refreshToken);
-          sessionStorage.setItem("culinary_access_token", newAuth.accessToken);
-          sessionStorage.setItem("culinary_refresh_token", newAuth.refreshToken);
+          const saved = setAuthTokens(newAuth.accessToken, newAuth.refreshToken);
+          if (!saved) {
+            clearAuthTokens();
+            router.push("/auth/login");
+            return;
+          }
           token = newAuth.accessToken;
 
           const updated = await updateProfileApi(token, payload);
@@ -241,16 +343,17 @@ export default function ProfilePage() {
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-amber-50/50 via-white to-orange-50/40">
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         {/* Decorative Top Banner */}
-        <div className="h-28 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 relative flex items-end justify-between px-6 pb-3">
+        <div className="h-28 bg-gradient-to-r from-teal-800 via-teal-700 to-orange-700 relative flex items-end justify-between px-6 pb-3">
           <span className="text-xs font-semibold text-white/80 uppercase tracking-widest">
             Hồ sơ đầu bếp
           </span>
           <div className="flex items-center space-x-2">
             <Link
               href="/"
-              className="text-xs text-white/90 hover:text-white underline underline-offset-2 transition"
+              aria-label="Culinary Blog, trang chủ"
+              className="text-xs font-semibold text-white underline underline-offset-2 transition"
             >
-              Trang chủ
+              Culinary Blog
             </Link>
           </div>
         </div>
@@ -273,20 +376,33 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* Action Buttons: Edit & Logout */}
+            {/* Action Buttons: Edit, Change Password & Logout */}
             {!loading && (
               <div className="flex items-center gap-2">
-                {!isEditing && (
-                  <button
-                    type="button"
-                    id="edit-profile-button"
-                    onClick={handleStartEdit}
-                    aria-label="Chỉnh sửa thông tin hồ sơ"
-                    className="inline-flex items-center justify-center px-3.5 py-2.5 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 hover:border-orange-300 font-medium text-sm transition focus:outline-none focus:ring-2 focus:ring-orange-400 shadow-sm"
-                  >
-                    <Pencil className="w-4 h-4 mr-1.5" aria-hidden="true" />
-                    Chỉnh sửa
-                  </button>
+                {!isEditing && !isChangingPassword && (
+                  <>
+                    <button
+                      type="button"
+                      id="edit-profile-button"
+                      onClick={handleStartEdit}
+                      aria-label="Chỉnh sửa thông tin hồ sơ"
+                      className="inline-flex items-center justify-center px-3.5 py-2.5 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 hover:border-orange-300 font-medium text-sm transition focus:outline-none focus:ring-2 focus:ring-orange-400 shadow-sm"
+                    >
+                      <Pencil className="w-4 h-4 mr-1.5" aria-hidden="true" />
+                      Chỉnh sửa
+                    </button>
+
+                    <button
+                      type="button"
+                      id="change-password-button"
+                      onClick={handleStartChangePassword}
+                      aria-label="Đổi mật khẩu tài khoản"
+                      className="inline-flex items-center justify-center px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 hover:border-gray-300 font-medium text-sm transition focus:outline-none focus:ring-2 focus:ring-gray-400 shadow-sm"
+                    >
+                      <KeyRound className="w-4 h-4 mr-1.5" aria-hidden="true" />
+                      Đổi mật khẩu
+                    </button>
+                  </>
                 )}
 
                 <button
@@ -313,7 +429,7 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Success Feedback Alert */}
+          {/* Success Feedback Alerts */}
           {editSuccess && (
             <div
               className="mb-6 flex items-start gap-3 rounded-xl bg-green-50 border border-green-200 p-4 text-sm text-green-800"
@@ -321,6 +437,34 @@ export default function ProfilePage() {
             >
               <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" aria-hidden="true" />
               <div className="flex-1 font-medium">{editSuccess}</div>
+            </div>
+          )}
+
+          {passwordSuccess && (
+            <div
+              className="mb-6 flex items-start gap-3 rounded-xl bg-green-50 border border-green-200 p-4 text-sm text-green-800"
+              role="status"
+            >
+              <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex-1 font-medium">{passwordSuccess}</div>
+            </div>
+          )}
+
+          {logoutError && (
+            <div
+              className="mb-6 flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-800"
+              role="alert"
+            >
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex-1 font-medium">{logoutError}</div>
+              <button
+                type="button"
+                onClick={() => setLogoutError(null)}
+                className="text-red-500 hover:text-red-700 p-1 rounded-lg focus:outline-none"
+                aria-label="Đóng thông báo"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           )}
 
@@ -477,6 +621,114 @@ export default function ProfilePage() {
                     <>
                       <Save className="w-4 h-4 mr-1.5" aria-hidden="true" />
                       Lưu thay đổi
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          ) : profile && isChangingPassword ? (
+            /* CHANGE PASSWORD FORM (Lab 7) */
+            <form onSubmit={handleSavePassword} className="space-y-5">
+              <div className="border-b border-gray-100 pb-3">
+                <h2 className="text-lg font-bold text-gray-900">
+                  Đổi mật khẩu tài khoản
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Cập nhật mật khẩu mới cho tài khoản {profile.email}.
+                </p>
+              </div>
+
+              {passwordError && (
+                <div
+                  className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-800"
+                  role="alert"
+                >
+                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                  <div className="flex-1">{passwordError}</div>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="current-password"
+                  className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                >
+                  Mật khẩu hiện tại <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  id="current-password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Nhập mật khẩu hiện tại..."
+                  required
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="new-password"
+                  className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                >
+                  Mật khẩu mới <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  id="new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Tối thiểu 8 ký tự (hoa, thường, số, ký tự đặc biệt)..."
+                  required
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="confirm-password"
+                  className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                >
+                  Xác nhận mật khẩu mới <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  id="confirm-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Nhập lại mật khẩu mới..."
+                  required
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  id="cancel-password-button"
+                  onClick={handleCancelChangePassword}
+                  disabled={isSavingPassword}
+                  className="px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium text-sm transition focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-60"
+                >
+                  <X className="w-4 h-4 mr-1.5 inline" />
+                  Hủy
+                </button>
+
+                <button
+                  type="submit"
+                  id="save-password-button"
+                  disabled={isSavingPassword}
+                  className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-medium text-sm transition focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-60 shadow-sm"
+                >
+                  {isSavingPassword ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Đang lưu...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-1.5" />
+                      Cập nhật mật khẩu
                     </>
                   )}
                 </button>

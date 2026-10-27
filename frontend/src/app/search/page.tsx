@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, ArrowRight, ChefHat, Clock3, Search, SlidersHorizontal, Users, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock3, Search, SlidersHorizontal, Users, X } from "lucide-react";
 import { getRecipeCategories, searchRecipes, type PaginatedResult, type RecipeCategory, type RecipeSummary } from "@/lib/recipes-api";
+import { LoadingSkeleton, SitePage } from "../site-ui";
 import styles from "./search.module.css";
 
 interface SearchFilters {
@@ -63,6 +63,7 @@ export default function RecipeSearchPage() {
   const [filters, setFilters] = useState(emptyFilters);
   const [initialized, setInitialized] = useState(false);
   const [categories, setCategories] = useState<RecipeCategory[]>([]);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
   const [result, setResult] = useState<PaginatedResult<RecipeSummary> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,8 +75,11 @@ export default function RecipeSearchPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    getRecipeCategories(controller.signal).then(setCategories).catch(() => {
-      if (!controller.signal.aborted) setCategories([]);
+    getRecipeCategories(controller.signal).then(setCategories).catch((reason) => {
+      if (!controller.signal.aborted) {
+        setCategories([]);
+        setCategoryError(reason instanceof Error ? reason.message : "Không thể tải danh mục.");
+      }
     });
     return () => controller.abort();
   }, []);
@@ -122,15 +126,7 @@ export default function RecipeSearchPage() {
   );
 
   return (
-    <div className={styles.page}>
-      <header className={styles.topbar}>
-        <Link className={styles.brand} href="/" aria-label="Culinary Blog, trang chủ">
-          <span className={styles.brandMark}><ChefHat size={19} /></span>
-          <span>Culinary <strong>Table</strong></span>
-        </Link>
-        <span className={styles.topbarNote}>CÔNG THỨC ĐƯỢC CHIA SẺ BỞI CỘNG ĐỒNG</span>
-      </header>
-
+    <SitePage className={styles.page} footerMessage="Một công thức hay bắt đầu từ nguyên liệu đúng.">
       <main>
         <section className={styles.searchBand} aria-labelledby="page-title">
           <div className={styles.searchInner}>
@@ -213,6 +209,7 @@ export default function RecipeSearchPage() {
               </select>
             </label>
           </div>
+          {categoryError && <div className={styles.error} role="alert">{categoryError}</div>}
 
           <div className={styles.resultsHeader}>
             <div>
@@ -223,6 +220,7 @@ export default function RecipeSearchPage() {
           </div>
 
           {error && <div className={styles.error} role="alert">{error}</div>}
+          {loading && !result && <LoadingSkeleton variant="cards" />}
           {!error && !loading && result?.items.length === 0 && (
             <div className={styles.empty} role="status">
               <span className={styles.emptyMark}><Search size={22} /></span>
@@ -266,7 +264,6 @@ export default function RecipeSearchPage() {
           )}
         </section>
       </main>
-      <footer className={styles.footer}><span>CULINARY TABLE</span><span>Một công thức hay bắt đầu từ nguyên liệu đúng.</span></footer>
-    </div>
+    </SitePage>
   );
 }

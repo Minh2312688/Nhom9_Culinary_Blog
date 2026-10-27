@@ -1,10 +1,10 @@
 .page {
-  --ink: #172c26;
-  --muted: #64716a;
-  --line: #d9ded8;
-  --paper: #f4f5ef;
-  --forest: #173d31;
-  --tomato: #c6533c;
+  --ink: var(--color-ink);
+  --muted: var(--color-muted);
+  --line: var(--color-border);
+  --paper: var(--color-cream);
+  --forest: var(--color-teal);
+  --tomato: var(--color-coral);
   min-height: 100vh;
   color: var(--ink);
   background: var(--paper);
@@ -12,23 +12,23 @@
 
 .header {
   min-height: 66px;
-  padding: 0 max(6vw, 24px);
+  padding: 0 max(6vw, var(--space-6));
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
   border-bottom: 1px solid var(--line);
-  background: #f8f8f3;
+  background: var(--color-surface);
 }
 
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   color: var(--forest);
   text-decoration: none;
   white-space: nowrap;
-  font: 700 18px Georgia, serif;
+  font: 700 18px var(--font-display);
 }
 
 .brand strong { color: var(--tomato); }
@@ -38,12 +38,12 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  color: white;
+  color: var(--color-on-coral);
   background: var(--tomato);
 }
 
-.nav { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; }
-.nav a { color: #53645a; text-decoration: none; font: 600 12px "Trebuchet MS", sans-serif; }
+.nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-6); }
+.nav a { color: var(--color-muted); text-decoration: none; font: 600 12px var(--font-body); }
 .nav a:hover, .nav a:focus-visible { color: var(--tomato); }
 
 .footer {
@@ -52,30 +52,40 @@
   justify-content: space-between;
   align-items: center;
   gap: 14px;
-  padding: 12px max(6vw, 24px);
+  padding: var(--space-3) max(6vw, var(--space-6));
   border-top: 1px solid var(--line);
-  color: #7a867e;
-  background: #f8f8f3;
-  font: 11px "Trebuchet MS", sans-serif;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  font: 11px var(--font-body);
 }
 
 .footer span:first-child { color: var(--forest); font-weight: 700; letter-spacing: 1px; }
 .content { width: min(1120px, 100%); margin: 0 auto; padding: 44px 28px 64px; }
-.sectionTitle { margin-bottom: 25px; }
-.eyebrow { margin: 0 0 8px; color: var(--tomato); font: 700 10px "Trebuchet MS", sans-serif; letter-spacing: 1.4px; }
-.sectionTitle h1, .sectionTitle h2 { margin: 0; color: var(--forest); font: 500 clamp(30px, 5vw, 42px)/1.12 Georgia, serif; }
-.description { margin: 11px 0 0; color: var(--muted); font: 14px/1.6 "Trebuchet MS", sans-serif; }
+.sectionTitle { margin-bottom: var(--space-6); }
+.eyebrow { margin: 0 0 8px; color: var(--tomato); font: 700 10px var(--font-body); letter-spacing: 1.4px; }
+.sectionTitle h1, .sectionTitle h2 { margin: 0; color: var(--forest); font: 500 clamp(30px, 5vw, 42px)/1.12 var(--font-display); }
+.description { margin: 11px 0 0; color: var(--muted); font: 14px/1.6 var(--font-body); }
 .hero {
   padding: 72px max(8vw, 28px);
-  color: #fff;
+  color: var(--color-on-coral);
   background: var(--forest);
 }
 .heroInner { max-width: 1120px; margin: auto; }
-.hero .eyebrow { color: #c7d8be; }
-.hero h1 { max-width: 720px; margin: 0; font: 500 clamp(40px, 7vw, 68px)/1.04 Georgia, serif; }
-.heroText { max-width: 620px; margin: 18px 0 24px; color: #cfdbd3; font: 15px/1.7 "Trebuchet MS", sans-serif; }
+.hero .eyebrow { color: var(--color-turmeric); }
+.hero h1 { max-width: 720px; margin: 0; font: 500 clamp(40px, 7vw, 68px)/1.04 var(--font-display); }
+.heroText { max-width: 620px; margin: 18px 0 24px; color: var(--color-dark-muted); font: 15px/1.7 var(--font-body); }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.actions a, .actions button { padding: 5px 8px; border: 1px solid var(--line); color: var(--forest); background: white; text-decoration: none; cursor: pointer; font: 600 11px "Trebuchet MS", sans-serif; }
+.actions > a:not(.button):not(.buttonSecondary), .actions > button:not(.button):not(.buttonSecondary) {
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--forest);
+  background: var(--color-surface);
+  text-decoration: none;
+  cursor: pointer;
+  font: 600 12px var(--font-body);
+}
 .button, .buttonSecondary {
   min-height: 42px;
   display: inline-flex;
@@ -84,14 +94,16 @@
   gap: 7px;
   padding: 0 15px;
   border: 1px solid var(--tomato);
-  border-radius: 3px;
-  color: white;
+  border-radius: var(--radius-sm);
+  color: var(--color-on-coral);
   background: var(--tomato);
   text-decoration: none;
   cursor: pointer;
-  font: 700 12px "Trebuchet MS", sans-serif;
+  font: 700 12px var(--font-body);
 }
-.buttonSecondary { color: var(--forest); border-color: #b9c5bc; background: #fff; }
+.buttonSecondary { color: var(--forest); border-color: var(--line); background: var(--color-surface); }
+.button:hover, .button:focus-visible { background: var(--coral-700); border-color: var(--coral-700); }
+.buttonSecondary:hover, .buttonSecondary:focus-visible { border-color: var(--forest); background: var(--teal-50); }
 .button:disabled, .buttonSecondary:disabled { opacity: .55; cursor: wait; }
 .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 17px; }
 .card {
@@ -100,52 +112,73 @@
   min-height: 204px;
   padding: 19px;
   border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   color: var(--ink);
-  background: #fff;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
   text-decoration: none;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
 }
-.card:hover, .card:focus-visible { border-color: #aebbb1; transform: translateY(-2px); }
-.cardLabel { margin: 0 0 8px; color: var(--tomato); font: 700 10px "Trebuchet MS", sans-serif; letter-spacing: .8px; text-transform: uppercase; }
-.card h2 { margin: 0; color: var(--forest); font: 600 22px Georgia, serif; }
-.cardText { margin: 9px 0 14px; color: var(--muted); font: 13px/1.55 "Trebuchet MS", sans-serif; }
-.cardMeta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: auto; color: #53645a; font: 11px "Trebuchet MS", sans-serif; }
+.card:hover, .card:focus-visible { border-color: var(--tomato); box-shadow: 0 16px 36px rgb(36 49 46 / 12%); transform: translateY(-2px); }
+.cardLabel { margin: 0 0 8px; color: var(--tomato); font: 700 10px var(--font-body); letter-spacing: .8px; text-transform: uppercase; }
+.card h2 { margin: 0; color: var(--forest); font: 600 22px var(--font-display); }
+.cardText { margin: 9px 0 14px; color: var(--muted); font: 13px/1.55 var(--font-body); }
+.cardMeta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: auto; color: var(--color-muted); font: 11px var(--font-body); }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0 14px; }
-.toolbar h2 { margin: 0; color: var(--forest); font: 500 25px Georgia, serif; }
-.pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 22px; color: var(--muted); font: 600 12px "Trebuchet MS", sans-serif; }
-.notice, .error { padding: 14px 16px; border: 1px solid var(--line); color: var(--muted); background: #fff; font: 13px/1.5 "Trebuchet MS", sans-serif; }
-.error { border-left: 3px solid var(--tomato); color: #7b3022; background: #f8e4dd; }
+.toolbar h2 { margin: 0; color: var(--forest); font: 500 25px var(--font-display); }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 22px; color: var(--muted); font: 600 12px var(--font-body); }
+.notice, .error { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--muted); background: var(--color-surface); font: 13px/1.5 var(--font-body); }
+.error { border-left: 3px solid var(--tomato); color: var(--color-error); background: var(--color-error-surface); }
+.fieldError { color: var(--color-error); font: 12px/1.5 var(--font-body); }
+.toast { position: fixed; z-index: 50; right: 20px; bottom: 20px; max-width: min(440px, calc(100vw - 40px)); padding: 14px 16px; display: flex; align-items: center; gap: 16px; border-radius: var(--radius-sm); color: var(--color-ink); background: var(--color-surface); box-shadow: var(--shadow-card); font: 13px/1.5 var(--font-body); }
+.toastSuccess { border-left: 4px solid var(--color-teal); }
+.toastError { border-left: 4px solid var(--color-coral); color: var(--color-error); }
+.toastButton { flex: none; padding: 4px 7px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-teal); background: var(--color-surface); cursor: pointer; font: 600 11px var(--font-body); }
+.skeleton { display: grid; gap: 12px; padding: 16px 0; }
+.skeleton-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.skeleton-detail { width: min(860px, 100%); margin: 0 auto; }
+.skeleton-form { max-width: 760px; }
+.skeletonItem { min-height: 22px; border-radius: var(--radius-sm); background: linear-gradient(90deg, var(--teal-50), var(--color-surface), var(--teal-50)); background-size: 200% 100%; animation: skeleton-shimmer 1.2s ease-in-out infinite; }
+.skeleton-cards .skeletonItem { min-height: 150px; }
+.skeleton-detail .skeletonItem:first-child { min-height: 260px; }
+.skeleton-form .skeletonItem { min-height: 42px; }
+@keyframes skeleton-shimmer { to { background-position: -200% 0; } }
 .detail { width: min(860px, 100%); margin: 0 auto; padding: 42px 28px 64px; }
-.detail h1 { margin: 0 0 12px; color: var(--forest); font: 500 clamp(34px, 6vw, 52px)/1.08 Georgia, serif; }
-.detailLead { margin: 0 0 20px; color: var(--muted); font: 15px/1.7 "Trebuchet MS", sans-serif; }
+.detail h1 { margin: 0 0 12px; color: var(--forest); font: 500 clamp(34px, 6vw, 52px)/1.08 var(--font-display); }
+.detailLead { margin: 0 0 20px; color: var(--muted); font: 15px/1.7 var(--font-body); }
 .recipeImages { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 22px 0; }
-.recipeImage { width: 100%; max-height: 420px; aspect-ratio: 4 / 3; border-radius: 4px; object-fit: cover; background: #e6e9e2; }
+.recipeImage { width: 100%; max-height: 420px; aspect-ratio: 4 / 3; border-radius: var(--radius-sm); object-fit: cover; background: var(--teal-50); }
 .detailSection { margin-top: 29px; padding-top: 20px; border-top: 1px solid var(--line); }
-.detailSection h2 { margin: 0 0 14px; color: var(--forest); font: 500 25px Georgia, serif; }
-.ingredientList, .stepList { padding-left: 22px; color: #405449; font: 14px/1.8 "Trebuchet MS", sans-serif; }
+.detailSection h2 { margin: 0 0 14px; color: var(--forest); font: 500 25px var(--font-display); }
+.ingredientList, .stepList { padding-left: 22px; color: var(--color-muted); font: 14px/1.8 var(--font-body); }
 .stepList li { padding: 0 0 13px 4px; }
-.field { display: grid; gap: 6px; color: #526159; font: 600 12px "Trebuchet MS", sans-serif; }
+.field { display: grid; gap: 6px; color: var(--color-muted); font: 600 12px var(--font-body); }
 .field input, .field select, .field textarea {
   width: 100%;
   min-height: 42px;
   padding: 9px 11px;
-  border: 1px solid #cbd3cc;
-  border-radius: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   outline: none;
   color: var(--ink);
-  background: #fff;
-  font: 14px "Trebuchet MS", sans-serif;
+  background: var(--color-surface);
+  font: 14px var(--font-body);
 }
 .field textarea { min-height: 104px; resize: vertical; }
-.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--tomato); box-shadow: 0 0 0 2px #c6533c1c; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--tomato); box-shadow: var(--focus-ring); }
 .formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
 .formStack { display: grid; gap: 16px; }
-.table { width: 100%; border-collapse: collapse; background: white; font: 13px "Trebuchet MS", sans-serif; }
+.table { width: 100%; border-collapse: collapse; background: var(--color-surface); font: 13px var(--font-body); }
 .table th, .table td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: left; }
-.table th { color: var(--forest); background: #edf0e9; }
+.table th { color: var(--forest); background: var(--teal-50); }
 .table a { color: var(--forest); font-weight: 700; }
-.status { color: #53645a; font-size: 11px; }
+.status { color: var(--color-muted); font-size: 11px; }
 .inlineForm { display: flex; align-items: end; gap: 10px; margin-bottom: 20px; }
 .inlineForm .field { flex: 1; }
+
+.brand:focus-visible, .nav a:focus-visible, .card:focus-visible, .button:focus-visible, .buttonSecondary:focus-visible {
+  outline-offset: 4px;
+}
 
 @media (max-width: 740px) {
   .header { padding: 12px 18px; align-items: flex-start; flex-direction: column; gap: 12px; }
@@ -154,6 +187,7 @@
   .content { padding: 32px 20px 48px; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .detail { padding: 32px 20px 48px; }
+  .skeleton-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 520px) {
   .grid, .formGrid { grid-template-columns: 1fr; }
@@ -161,4 +195,10 @@
   .inlineForm { align-items: stretch; flex-direction: column; }
   .table { font-size: 11px; }
   .table th, .table td { padding: 9px 6px; }
+  .skeleton-cards { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card { transition: none; }
+  .skeletonItem { animation: none; }
 }

@@ -28,6 +28,32 @@ Khi API chạy trong `Development`, ứng dụng tự áp dụng migration của
 `ApplicationDbContext`. Seed mặc định tạo 20 danh mục và 100 công thức. Identity,
 refresh token và dữ liệu blog cùng nằm trong PostgreSQL này.
 
+Có thể áp dụng migration tường minh từ terminal backend khi PostgreSQL đã sẵn
+sàng. Với Compose, connection string `Postgres` phải trỏ tới `localhost:5433`;
+lấy database/user/password từ `.env` và không ghi secret vào shell history hoặc
+tài liệu:
+
+```powershell
+Set-Location backend
+$postgres = @{}
+Get-Content ..\.env | ForEach-Object {
+    if ($_ -match '^\s*(POSTGRES_DB|POSTGRES_USER|POSTGRES_PASSWORD)=(.*)$') {
+        $postgres[$matches[1]] = $matches[2].Trim().Trim('"').Trim("'")
+    }
+}
+if (-not $postgres.POSTGRES_DB -or -not $postgres.POSTGRES_USER -or -not $postgres.POSTGRES_PASSWORD) {
+    throw "Missing PostgreSQL settings in ..\.env"
+}
+$env:ConnectionStrings__Postgres = "Host=localhost;Port=5433;Database=$($postgres.POSTGRES_DB);Username=$($postgres.POSTGRES_USER);Password=$($postgres.POSTGRES_PASSWORD)"
+dotnet ef database update --project src\CulinaryBlog.Infrastructure --startup-project src\CulinaryBlog.API --context ApplicationDbContext
+Remove-Item Env:ConnectionStrings__Postgres
+```
+
+Migration `20261014123827_AddRecipePublishedAt` thêm `Recipes.PublishedAt`
+dưới dạng nullable. Recipe đã Published trước migration vẫn có `NULL`; không
+suy diễn ngày từ `CreatedAt`. Chỉ lần chuyển trạng thái thực sự sang Published
+mới ghi UTC publication time.
+
 ## 2. Chạy giao diện
 
 Mở terminal mới:
@@ -39,7 +65,18 @@ npm run dev
 ```
 
 Mở `http://localhost:3000`. Frontend dùng API tại `http://localhost:5000` theo
-mặc định. Để tạo tài khoản thử nghiệm, dùng chức năng đăng ký trên trang web.
+mặc định. Server Components dùng `API_INTERNAL_URL` để gọi API khi render; khi
+chạy frontend trực tiếp trên host, đặt biến này thành `http://localhost:5000`
+(Compose đặt nội bộ thành `http://api:8080`). Không chuyển giá trị server-only
+này xuống browser qua `NEXT_PUBLIC_API_URL`.
+
+Public author profile là `/authors/{id}`, được tải từ
+`GET /api/v1/authors/{id}?page=1&pageSize=12`. API chỉ trả display name, avatar,
+bio và danh sách recipe Published có phân trang; không trả email hoặc roles.
+Trang `/recipes/{slug}` render dữ liệu API ở server và thêm `author` /
+`datePublished` vào Recipe JSON-LD khi dữ liệu nguồn có sẵn; trường thiếu, kể cả
+ngày xuất bản lịch sử còn NULL, được bỏ qua. Để tạo tài khoản thử nghiệm, dùng
+chức năng đăng ký trên trang web.
 
 ## 3. Chạy thử Welcome Email
 

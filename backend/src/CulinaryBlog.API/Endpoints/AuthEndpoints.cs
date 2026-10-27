@@ -1,11 +1,14 @@
 using System.Security.Claims;
 using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.DTOs.Auth;
+using CulinaryBlog.Application.Features.Auth.ChangePassword;
+using CulinaryBlog.Application.Features.Auth.ForgotPassword;
 using CulinaryBlog.Application.Features.Auth.GoogleLogin;
 using CulinaryBlog.Application.Features.Auth.Login;
 using CulinaryBlog.Application.Features.Auth.Logout;
 using CulinaryBlog.Application.Features.Auth.Profile;
 using CulinaryBlog.Application.Features.Auth.Register;
+using CulinaryBlog.Application.Features.Auth.ResetPassword;
 using CulinaryBlog.Application.Features.Auth.TokenRefresh;
 using FluentValidation;
 using MediatR;
@@ -280,6 +283,101 @@ public static class AuthEndpoints
                     statusCode: StatusCodes.Status401Unauthorized);
             }
         }).RequireAuthorization();
+
+        // Lab 7: Change Password
+        authGroup.MapPost("/change-password", async (
+            ChangePasswordRequestDto request,
+            ClaimsPrincipal user,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? user.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Results.Problem(
+                    title: "Unauthorized",
+                    detail: "User is not authenticated.",
+                    statusCode: StatusCodes.Status401Unauthorized);
+            }
+
+            try
+            {
+                var command = new ChangePasswordCommand(
+                    userId,
+                    request.CurrentPassword,
+                    request.NewPassword,
+                    request.ConfirmPassword);
+
+                await sender.Send(command, cancellationToken);
+                return Results.Ok(new { message = "Đổi mật khẩu thành công." });
+            }
+            catch (ValidationException ex)
+            {
+                return Results.ValidationProblem(
+                    ex.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()),
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+            catch (UnauthorizedException ex)
+            {
+                return Results.Problem(
+                    title: "Unauthorized",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status401Unauthorized);
+            }
+        }).RequireAuthorization();
+
+        // Lab 7: Forgot Password
+        authGroup.MapPost("/forgot-password", async (
+            ForgotPasswordRequestDto request,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var command = new ForgotPasswordCommand(request.Email);
+                await sender.Send(command, cancellationToken);
+                return Results.Ok(new { message = "Nếu email tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu đã được gửi." });
+            }
+            catch (ValidationException ex)
+            {
+                return Results.ValidationProblem(
+                    ex.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()),
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+        });
+
+        // Lab 7: Reset Password
+        authGroup.MapPost("/reset-password", async (
+            ResetPasswordRequestDto request,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var command = new ResetPasswordCommand(
+                    request.Email,
+                    request.Token,
+                    request.NewPassword,
+                    request.ConfirmPassword);
+
+                await sender.Send(command, cancellationToken);
+                return Results.Ok(new { message = "Đặt lại mật khẩu thành công. Vui lòng đăng nhập với mật khẩu mới." });
+            }
+            catch (ValidationException ex)
+            {
+                return Results.ValidationProblem(
+                    ex.Errors
+                        .GroupBy(e => e.PropertyName)
+                        .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()),
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+        });
 
         return endpoints;
     }

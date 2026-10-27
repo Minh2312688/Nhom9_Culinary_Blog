@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { deleteRecipe, getRecipes, publishRecipe, type PaginatedResult, type RecipeSummary } from "@/lib/recipes-api";
-import { ErrorNotice, LoadingNotice, Pagination, SectionTitle, SitePage } from "../../site-ui";
+import { useFeedback } from "../../feedback";
+import { ErrorNotice, LoadingSkeleton, Pagination, SectionTitle } from "../../site-ui";
 import styles from "../../site-ui.module.css";
 
 export default function DashboardRecipesPage() {
   const router = useRouter();
+  const { showToast } = useFeedback();
   const [token, setToken] = useState("");
   const [result, setResult] = useState<PaginatedResult<RecipeSummary> | null>(null);
   const [page, setPage] = useState(1);
@@ -22,11 +24,13 @@ export default function DashboardRecipesPage() {
     try {
       setResult(await getRecipes(new AbortController().signal, 12, accessToken, requestedPage));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không thể tải công thức.");
+      const message = reason instanceof Error ? reason.message : "Không thể tải công thức.";
+      setError(message);
+      showToast(message, "error");
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, showToast]);
 
   useEffect(() => {
     const requestedPage = Number(new URLSearchParams(window.location.search).get("page"));
@@ -49,9 +53,12 @@ export default function DashboardRecipesPage() {
   async function handlePublish(id: string) {
     try {
       await publishRecipe(token, id);
+      showToast("Đã xuất bản công thức.", "success");
       await loadRecipes(token);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không thể xuất bản công thức.");
+      const message = reason instanceof Error ? reason.message : "Không thể xuất bản công thức.";
+      setError(message);
+      showToast(message, "error");
     }
   }
 
@@ -59,9 +66,12 @@ export default function DashboardRecipesPage() {
     if (!window.confirm("Bạn có chắc muốn xóa công thức này?")) return;
     try {
       await deleteRecipe(token, id);
+      showToast("Đã xóa công thức.", "success");
       await loadRecipes(token);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không thể xóa công thức.");
+      const message = reason instanceof Error ? reason.message : "Không thể xóa công thức.";
+      setError(message);
+      showToast(message, "error");
     }
   }
 
@@ -73,15 +83,14 @@ export default function DashboardRecipesPage() {
   }
 
   return (
-    <SitePage>
       <main className={styles.content}>
         <SectionTitle eyebrow="QUẢN LÝ NỘI DUNG" title="Công thức của tôi" description="Lưu bản nháp, cập nhật hoặc xuất bản nội dung." />
         <div className={styles.toolbar}>
           <h2>{result?.totalCount ?? 0} công thức</h2>
           <Link className={styles.button} href="/dashboard/recipes/new">Tạo công thức</Link>
         </div>
-        {loading && <LoadingNotice />}
-        {error && <ErrorNotice>{error}</ErrorNotice>}
+        {loading && <LoadingSkeleton variant="cards" />}
+        {error && <ErrorNotice><span data-error-summary>{error}</span></ErrorNotice>}
         {!loading && !error && result?.items.length === 0 && <p className={styles.notice}>Bạn chưa có công thức nào.</p>}
         {!!result?.items.length && <div style={{ overflowX: "auto" }}>
           <table className={styles.table}>
@@ -107,6 +116,5 @@ export default function DashboardRecipesPage() {
           hasNextPage={result.hasNextPage} hasPreviousPage={result.hasPreviousPage}
           onPageChange={setPage} label="Phân trang công thức của tôi" />}
       </main>
-    </SitePage>
   );
 }

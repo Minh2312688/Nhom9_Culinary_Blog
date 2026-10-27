@@ -75,6 +75,8 @@ test("all SRS screens have real routes", async ({ page }) => {
     "/recipes/pho-bo",
     "/categories",
     "/categories/mon-viet",
+    "/search",
+    "/authors/author-1",
     "/dashboard",
     "/dashboard/recipes",
     "/dashboard/recipes/new",
@@ -86,7 +88,42 @@ test("all SRS screens have real routes", async ({ page }) => {
     const response = await page.goto(route);
     expect(response?.status(), route).toBe(200);
     await expect(page.locator("main"), route).toBeVisible();
+    await expect(page.locator("main"), route).toHaveCount(1);
   }
+});
+
+test("public and dashboard routes use their shared navigation shells", async ({ page }) => {
+  for (const route of ["/", "/recipes", "/recipes/pho-bo", "/categories", "/categories/mon-viet", "/search", "/authors/author-1"]) {
+    await page.goto(route);
+    await expect(page.getByRole("navigation", { name: "Điều hướng chính" }), route).toBeVisible();
+    await expect(page.getByRole("contentinfo"), route).toBeVisible();
+    await expect(page.locator("main"), route).toHaveCount(1);
+    if (route === "/search") {
+      await expect(page.getByRole("contentinfo")).toContainText("Một công thức hay bắt đầu từ nguyên liệu đúng.");
+    }
+  }
+
+  for (const [route, activeLink] of [
+    ["/dashboard", "Tổng quan"],
+    ["/dashboard/recipes", "Công thức"],
+    ["/dashboard/recipes/new", "Công thức"],
+    ["/dashboard/recipes/00000000-0000-0000-0000-000000000001/edit", "Công thức"],
+    ["/dashboard/categories", "Danh mục"],
+  ]) {
+    await page.goto(route);
+    const dashboardNavigation = page.getByRole("navigation", { name: "Điều hướng bảng điều khiển" });
+    await expect(dashboardNavigation, route).toBeVisible();
+    await expect(dashboardNavigation.getByRole("link", { name: activeLink })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("link", { name: "Về trang chủ" })).toHaveAttribute("href", "/");
+    await expect(page.getByRole("navigation", { name: "Điều hướng chính" })).toHaveCount(0);
+    await expect(page.getByRole("contentinfo")).toHaveCount(0);
+    await expect(page.locator("main"), route).toHaveCount(1);
+  }
+
+  await page.goto("/dashboard");
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("link", { name: "Culinary Blog, trang chủ" })).toBeFocused();
+  await expect(page.getByRole("link", { name: "Culinary Blog, trang chủ" })).toHaveCSS("outline-style", "solid");
 });
 
 test("home renders recipes returned by the API", async ({ page }) => {

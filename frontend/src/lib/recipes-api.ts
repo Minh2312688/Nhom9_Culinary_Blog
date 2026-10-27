@@ -21,6 +21,7 @@ export interface RecipeSummary {
   status: string | number;
   categoryId: string;
   authorId: string;
+  publishedAt: string | null;
   rowVersion: string;
 }
 
@@ -63,6 +64,19 @@ export interface RecipeDetail extends RecipeSummary {
     fiber: number;
     sodium: number;
   } | null;
+  author: {
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+  } | null;
+}
+
+export interface AuthorProfilePage {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  recipes: PaginatedResult<RecipeSummary>;
 }
 
 export interface RecipeCategory {
@@ -75,6 +89,15 @@ export interface RecipeCategory {
   recipeCount?: number;
 }
 
+export interface RecipeNutritionInput {
+  calories: number;
+  protein: number;
+  carbohydrates: number;
+  fat: number;
+  fiber: number;
+  sodium: number;
+}
+
 export interface RecipeInput {
   title: string;
   description: string | null;
@@ -85,16 +108,59 @@ export interface RecipeInput {
   difficulty: string;
   ingredients: RecipeIngredient[];
   steps: RecipeStep[];
+  nutrition?: RecipeNutritionInput | null;
+}
+
+export interface ApiProblemDetails {
+  title?: string;
+  detail?: string;
+  errors?: Record<string, string[]>;
+}
+
+export class ApiRequestError extends Error {
+  constructor(
+    readonly status: number,
+    readonly problem: ApiProblemDetails | undefined,
+    fallbackMessage: string,
+  ) {
+    const validationMessages = Object.values(problem?.errors ?? {}).flat();
+    super(problem?.detail || problem?.title || validationMessages.join(" ") || fallbackMessage);
+    this.name = "ApiRequestError";
+  }
+}
+
+function parseProblemDetails(value: unknown): ApiProblemDetails | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+
+  const source = value as Record<string, unknown>;
+  const errors = source.errors;
+  const parsedErrors = errors && typeof errors === "object" && !Array.isArray(errors)
+    ? Object.fromEntries(
+      Object.entries(errors).flatMap(([key, messages]) => {
+        const values = Array.isArray(messages) ? messages : [messages];
+        const strings = values.filter((message): message is string => typeof message === "string");
+        return strings.length ? [[key, strings]] : [];
+      }),
+    )
+    : undefined;
+
+  return {
+    ...(typeof source.title === "string" ? { title: source.title } : {}),
+    ...(typeof source.detail === "string" ? { detail: source.detail } : {}),
+    ...(parsedErrors ? { errors: parsedErrors } : {}),
+  };
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, init);
   if (!response.ok) {
-    const problem = await response.json().catch(() => null);
-    const validationMessages = problem?.errors
-      ? Object.values(problem.errors).flat().join(" ")
-      : "";
-    throw new Error(validationMessages || problem?.detail || problem?.title || "Yêu cầu không thành công.");
+    let problemBody: unknown;
+    try {
+      problemBody = await response.json();
+    } catch {
+      problemBody = undefined;
+    }
+    throw new ApiRequestError(response.status, parseProblemDetails(problemBody), response.statusText || `Yêu cầu thất bại (${response.status}).`);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
@@ -205,6 +271,99 @@ export async function updateCategory(
 
 export async function deleteCategory(token: string, id: string): Promise<void> {
   return request(`/api/v1/categories/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+}
+
+export interface RecipeIngredientPayload {
+  name: string;
+  quantity?: number | null;
+  unit?: string | null;
+  notes?: string | null;
+  orderIndex: number;
+}
+
+export async function addRecipeIngredient(
+  token: string,
+  recipeId: string,
+  payload: RecipeIngredientPayload,
+): Promise<{ id: string }> {
+  return request(`/api/v1/recipes/${recipeId}/ingredients`, {
+    method: "POST",
+    headers: authHeaders(token, true),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateRecipeIngredient(
+  token: string,
+  recipeId: string,
+  ingredientId: string,
+  payload: RecipeIngredientPayload,
+): Promise<void> {
+  return request(`/api/v1/recipes/${recipeId}/ingredients/${ingredientId}`, {
+    method: "PUT",
+    headers: authHeaders(token, true),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteRecipeIngredient(
+  token: string,
+  recipeId: string,
+  ingredientId: string,
+): Promise<void> {
+  return request(`/api/v1/recipes/${recipeId}/ingredients/${ingredientId}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+}
+
+export interface RecipeImageUploadResult {
+  imageId: string;
+  originalUrl: string;
+  thumbnailUrl: string | null;
+  mediumUrl: string | null;
+  altText: string | null;
+  isPrimary: boolean;
+}
+
+export async function uploadRecipeImage(
+  token: string,
+  recipeId: string,
+  file: File,
+  isPrimary = false,
+  altText?: string,
+): Promise<RecipeImageUploadResult> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("isPrimary", String(isPrimary));
+  if (altText) form.append("altText", altText);
+  return request(`/api/v1/recipes/${recipeId}/images/`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: form,
+  });
+}
+
+export async function setPrimaryRecipeImage(
+  token: string,
+  recipeId: string,
+  imageId: string,
+): Promise<void> {
+  return request(`/api/v1/recipes/${recipeId}/images/${imageId}/primary`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+  });
+}
+
+export async function deleteRecipeImage(
+  token: string,
+  recipeId: string,
+  imageId: string,
+): Promise<void> {
+  return request(`/api/v1/recipes/${recipeId}/images/${imageId}`, {
     method: "DELETE",
     headers: authHeaders(token),
   });

@@ -7,7 +7,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { loginApi, googleLoginApi, ApiError } from "@/lib/api";
+import { setAuthTokens } from "@/lib/auth-store";
 import { Eye, EyeOff, Loader2, AlertCircle, ChefHat, CheckCircle2 } from "lucide-react";
+import { BrandLink } from "../../site-ui";
 
 const loginSchema = z.object({
   email: z.string().email("Địa chỉ email không hợp lệ."),
@@ -41,9 +43,10 @@ export default function LoginPage() {
         password: data.password,
       });
 
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem("culinary_access_token", response.accessToken);
-        sessionStorage.setItem("culinary_refresh_token", response.refreshToken);
+      const saved = setAuthTokens(response.accessToken, response.refreshToken);
+      if (!saved) {
+        setServerError("Không thể lưu phiên đăng nhập vào trình duyệt (sessionStorage bị tắt hoặc đầy bộ nhớ).");
+        return;
       }
 
       setLoginSuccess(true);
@@ -71,9 +74,10 @@ export default function LoginPage() {
             setIsGoogleSubmitting(true);
             try {
               const authResult = await googleLoginApi(response.credential);
-              if (typeof window !== "undefined") {
-                sessionStorage.setItem("culinary_access_token", authResult.accessToken);
-                sessionStorage.setItem("culinary_refresh_token", authResult.refreshToken);
+              const saved = setAuthTokens(authResult.accessToken, authResult.refreshToken);
+              if (!saved) {
+                setServerError("Không thể lưu phiên đăng nhập vào trình duyệt (sessionStorage bị tắt hoặc đầy bộ nhớ).");
+                return;
               }
               setLoginSuccess(true);
             } catch (err) {
@@ -116,6 +120,7 @@ export default function LoginPage() {
       <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
       <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-6 sm:p-8">
+        <div className="mb-5 flex justify-center"><BrandLink /></div>
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-100 text-orange-600 mb-4 shadow-sm">
@@ -186,12 +191,20 @@ export default function LoginPage() {
 
               {/* Password */}
               <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Mật khẩu <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Mật khẩu <span className="text-red-500">*</span>
+                  </label>
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-xs text-orange-600 hover:text-orange-700 font-medium transition"
+                  >
+                    Quên mật khẩu?
+                  </Link>
+                </div>
                 <div className="relative">
                   <input
                     id="password"

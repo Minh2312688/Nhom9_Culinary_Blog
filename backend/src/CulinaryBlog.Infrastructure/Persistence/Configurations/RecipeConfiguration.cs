@@ -26,6 +26,10 @@ public class RecipeConfiguration : IEntityTypeConfiguration<Recipe>
             .HasConversion<string>()
             .HasMaxLength(20);
 
+        builder.Property(r => r.PublishedAt)
+            .HasColumnType("timestamp with time zone")
+            .IsRequired(false);
+
         builder.HasIndex(r => r.Slug)
             .IsUnique();
 

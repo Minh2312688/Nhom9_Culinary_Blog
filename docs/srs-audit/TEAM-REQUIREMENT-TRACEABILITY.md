@@ -1,4 +1,4 @@
-﻿# CulinaryBlog Team Requirement Traceability Matrix
+# CulinaryBlog Team Requirement Traceability Matrix
 
 > **BẢN QUYỀN TÀI LIỆU:**
 > ĐÂY LÀ TÀI LIỆU MA TRẬN TRUY VẾT YÊU CẦU TOÀN DIỆN CHO CẢ 4 THÀNH VIÊN (TV1, TV2, TV3, TV4).
@@ -69,7 +69,7 @@ Quy ước trạng thái:
 | **FR-RCP-006** | | **X** | X | | **TV2** | Backend archive implemented; Dashboard UI (TV3) | None | **IN_PROGRESS** |
 | **FR-RCP-007** | | **X** | X | X | **TV2** | Backend soft delete implemented; Hangfire image cleanup (TV4), UI (TV3) | None (conflict decided; see audit) | **IN_PROGRESS** |
 | **FR-RCP-008** | | **X** | X | X | **TV2** | Recipe image API, MinIO/unavailable storage adapter và owner/Admin guard đã triển khai; Hangfire thumbnail (TV4) còn thiếu | FR-JOB-002, TECH-RISK-011 | **IN_PROGRESS** |
-| **FR-RCP-009** | | **X** | X | | **TV2** | Ingredient form UI (TV3) | CONFLICT-004, CONFLICT-005 | **BLOCKED** |
+| **FR-RCP-009** | | **X** | X | | **TV2** | Backend: 3 ingredient sub-resource endpoints (POST/PUT/DELETE) + CQRS handlers; Frontend: dynamic ingredient/step list, 6 nutrition fields, image gallery upload/setPrimary/delete; Optimistic concurrency (409 banner) | CONFLICT-004 ✓, CONFLICT-005 ✓ đã chốt. Commit: `feat(backend): implement recipe ingredient sub-resource endpoints for FR-RCP-009` | **DONE** |
 | **FR-RCP-010** | | **X** | X | | **TV2** | Step form UI (TV3), PostgreSQL/Testcontainers concurrency verification | TECH-RISK-012 (concurrent renumbering) | **IN_PROGRESS** |
 | **FR-SRCH-001** | | **X** | X | | **TV2** | FTS/API/PostgreSQL, route §8.3, popularity cache và regression fallback đã kiểm tra; verifier Draft/Archived author/Admin seed/rollback thành công | TECH-RISK-004; smoke-test Redis thực chưa chạy do môi trường | **DONE** |
 | **FR-SRCH-002** | | **X** | X | | **TV2** | Bộ lọc API/UI; AND filter và visibility Draft/Archived guest/author/Admin đã xác minh trên PostgreSQL bằng transaction tạm | Rollback migration cần DB riêng | **DONE** |
@@ -109,7 +109,7 @@ Quy ước trạng thái:
 | **NFR-SCALE-001**| **X** | | | X | **TV1 / TV4** | Stateless Backend, JWT, Redis Distributed Cache | CONFLICT-020 | **BLOCKED** |
 | **NFR-SCALE-002**| | **X** | | | **TV2** | Npgsql Connection Pooling, B-tree/GIN indexes | None | **NOT_STARTED** |
 | **NFR-SCALE-003**| X | X | X | **X** | **Toàn đội** | Docker Multi-container setup, Nginx reverse proxy | None | **DONE** (Docker Compose base) |
-| **NFR-SEO-001** | | | **X** | | **TV3** | JSON-LD Schema.org Recipe structured data | None | **NOT_STARTED** |
+| **NFR-SEO-001** | | | **X** | | **TV3** | SSR Recipe JSON-LD; author/datePublished có điều kiện, NULL lịch sử được bỏ qua; 5/5 unit cases gồm hostile-content escaping | None | **DONE** |
 | **NFR-SEO-002** | | | **X** | | **TV3** | Open Graph, Twitter Cards, dynamic meta tags | None | **NOT_STARTED** |
 | **NFR-SEO-003** | | | X | **X** | **TV4** | Sitemap.xml generation (FR-JOB-003), robots.txt | None | **NOT_STARTED** |
 | **NFR-SEO-004** | | X | **X** | | **TV2 / TV3** | Slug-based URLs (/recipes/{slug}), 301 redirects | TECH-RISK-003 | **NOT_STARTED** |
@@ -166,11 +166,11 @@ Quy ước trạng thái:
 - **Test Expectations:** Unit tests cho Recipe handlers, EF Core in-memory/sqlite tests cho CRUD, Integration tests cho FTS PostgreSQL, Concurrency conflict tests.
 
 ### 3.3. TV3 Traceability (Frontend Platform & UI/UX)
-- **Phạm vi (Scope):** Toàn bộ giao diện người dùng trên nền Next.js App Router (13 màn hình/routes), State management, Form validation UX, Tối ưu SEO và Core Web Vitals.
+- **Phạm vi (Scope):** Toàn bộ giao diện người dùng trên nền Next.js App Router (15 màn hình/routes), State management, Form validation UX, Tối ưu SEO và Core Web Vitals.
 - **FR Supported:** Toàn bộ giao diện tương ứng 34 FRs (Auth screens, Category pages, Recipe browsing/detail/wizard, Search UI, Author dashboard).
 - **NFR Owned:** `NFR-PERF-005` (Core Web Vitals), `NFR-USE-001` (Responsive), `NFR-USE-002` (Accessibility a11y), `NFR-USE-003` (Error UX), `NFR-USE-004` (Loading states), `NFR-SEO-001` (JSON-LD), `NFR-SEO-002` (Meta / Open Graph).
 - **CONS Affected:** `CONS-003` (Next.js App Router, không Pages Router).
-- **Routes Managed:** `/`, `/recipes`, `/recipes/[slug]`, `/categories`, `/categories/[slug]`, `/auth/login`, `/auth/register`, `/dashboard`, `/dashboard/recipes`, `/dashboard/recipes/new`, `/dashboard/recipes/[id]/edit`, `/profile`, `/search`.
+- **Routes Managed:** `/`, `/recipes`, `/recipes/[slug]`, `/authors/[id]`, `/categories`, `/categories/[slug]`, `/auth/login`, `/auth/register`, `/dashboard`, `/dashboard/recipes`, `/dashboard/recipes/new`, `/dashboard/recipes/[id]/edit`, `/dashboard/categories`, `/profile`, `/search`.
 - **Dependencies:** TV1 (API Contracts Auth & Tokens), TV2 (API Contracts Recipes & Search), TV4 (API Contracts Categories & Image URLs).
 - **Conflicts liên quan:** `CONFLICT-003` (Sorting query string), `CONFLICT-009` (Display name), `CONFLICT-010` (Register redirect vs auto-login), `CONFLICT-012` (Pagination data shape), `CONFLICT-013` (Google OAuth login flow), `CONFLICT-022` (Browser version matrix).
 - **Technical Risks:** `TECH-RISK-010` (Next.js standalone build & runtime environment variables).

@@ -1,4 +1,4 @@
-﻿# CulinaryBlog Team Requirement Traceability Matrix
+# CulinaryBlog Team Requirement Traceability Matrix
 
 > **BẢN QUYỀN TÀI LIỆU:**
 > ĐÂY LÀ TÀI LIỆU MA TRẬN TRUY VẾT YÊU CẦU TOÀN DIỆN CHO CẢ 4 THÀNH VIÊN (TV1, TV2, TV3, TV4).
@@ -69,7 +69,7 @@ Quy ước trạng thái:
 | **FR-RCP-006** | | **X** | X | | **TV2** | Backend archive implemented; Dashboard UI (TV3) | None | **IN_PROGRESS** |
 | **FR-RCP-007** | | **X** | X | X | **TV2** | Backend soft delete implemented; Hangfire image cleanup (TV4), UI (TV3) | None (conflict decided; see audit) | **IN_PROGRESS** |
 | **FR-RCP-008** | | **X** | X | X | **TV2** | Recipe image API, MinIO/unavailable storage adapter và owner/Admin guard đã triển khai; Hangfire thumbnail (TV4) còn thiếu | FR-JOB-002, TECH-RISK-011 | **IN_PROGRESS** |
-| **FR-RCP-009** | | **X** | X | | **TV2** | Ingredient form UI (TV3) | CONFLICT-004, CONFLICT-005 | **BLOCKED** |
+| **FR-RCP-009** | | **X** | X | | **TV2** | Backend: 3 ingredient sub-resource endpoints (POST/PUT/DELETE) + CQRS handlers; Frontend: dynamic ingredient/step list, 6 nutrition fields, image gallery upload/setPrimary/delete; Optimistic concurrency (409 banner) | CONFLICT-004 ✓, CONFLICT-005 ✓ đã chốt. Commit: `feat(backend): implement recipe ingredient sub-resource endpoints for FR-RCP-009` | **DONE** |
 | **FR-RCP-010** | | **X** | X | | **TV2** | Step form UI (TV3), PostgreSQL/Testcontainers concurrency verification | TECH-RISK-012 (concurrent renumbering) | **IN_PROGRESS** |
 | **FR-SRCH-001** | | **X** | X | | **TV2** | FTS/API/PostgreSQL, route §8.3, popularity cache và regression fallback đã kiểm tra; verifier Draft/Archived author/Admin seed/rollback thành công | TECH-RISK-004; smoke-test Redis thực chưa chạy do môi trường | **DONE** |
 | **FR-SRCH-002** | | **X** | X | | **TV2** | Bộ lọc API/UI; AND filter và visibility Draft/Archived guest/author/Admin đã xác minh trên PostgreSQL bằng transaction tạm | Rollback migration cần DB riêng | **DONE** |

@@ -89,6 +89,15 @@ export interface RecipeCategory {
   recipeCount?: number;
 }
 
+export interface RecipeNutritionInput {
+  calories: number;
+  protein: number;
+  carbohydrates: number;
+  fat: number;
+  fiber: number;
+  sodium: number;
+}
+
 export interface RecipeInput {
   title: string;
   description: string | null;
@@ -99,6 +108,7 @@ export interface RecipeInput {
   difficulty: string;
   ingredients: RecipeIngredient[];
   steps: RecipeStep[];
+  nutrition?: RecipeNutritionInput | null;
 }
 
 export interface ApiProblemDetails {
@@ -261,6 +271,99 @@ export async function updateCategory(
 
 export async function deleteCategory(token: string, id: string): Promise<void> {
   return request(`/api/v1/categories/${id}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+}
+
+export interface RecipeIngredientPayload {
+  name: string;
+  quantity?: number | null;
+  unit?: string | null;
+  notes?: string | null;
+  orderIndex: number;
+}
+
+export async function addRecipeIngredient(
+  token: string,
+  recipeId: string,
+  payload: RecipeIngredientPayload,
+): Promise<{ id: string }> {
+  return request(`/api/v1/recipes/${recipeId}/ingredients`, {
+    method: "POST",
+    headers: authHeaders(token, true),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateRecipeIngredient(
+  token: string,
+  recipeId: string,
+  ingredientId: string,
+  payload: RecipeIngredientPayload,
+): Promise<void> {
+  return request(`/api/v1/recipes/${recipeId}/ingredients/${ingredientId}`, {
+    method: "PUT",
+    headers: authHeaders(token, true),
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteRecipeIngredient(
+  token: string,
+  recipeId: string,
+  ingredientId: string,
+): Promise<void> {
+  return request(`/api/v1/recipes/${recipeId}/ingredients/${ingredientId}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+}
+
+export interface RecipeImageUploadResult {
+  imageId: string;
+  originalUrl: string;
+  thumbnailUrl: string | null;
+  mediumUrl: string | null;
+  altText: string | null;
+  isPrimary: boolean;
+}
+
+export async function uploadRecipeImage(
+  token: string,
+  recipeId: string,
+  file: File,
+  isPrimary = false,
+  altText?: string,
+): Promise<RecipeImageUploadResult> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("isPrimary", String(isPrimary));
+  if (altText) form.append("altText", altText);
+  return request(`/api/v1/recipes/${recipeId}/images/`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: form,
+  });
+}
+
+export async function setPrimaryRecipeImage(
+  token: string,
+  recipeId: string,
+  imageId: string,
+): Promise<void> {
+  return request(`/api/v1/recipes/${recipeId}/images/${imageId}/primary`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+  });
+}
+
+export async function deleteRecipeImage(
+  token: string,
+  recipeId: string,
+  imageId: string,
+): Promise<void> {
+  return request(`/api/v1/recipes/${recipeId}/images/${imageId}`, {
     method: "DELETE",
     headers: authHeaders(token),
   });

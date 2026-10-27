@@ -1,6 +1,7 @@
 using System.Threading.RateLimiting;
 using CulinaryBlog.API.Endpoints;
 using CulinaryBlog.API.Middleware;
+using CulinaryBlog.API.Observability;
 using CulinaryBlog.Application;
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Infrastructure;
@@ -8,13 +9,17 @@ using CulinaryBlog.Infrastructure.Notifications;
 using Hangfire;
 using Hangfire.Dashboard;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
+using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
+builder.AddObservabilitySerilog();
+
 // Đăng ký các service của các layer
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
+builder.Services.AddObservabilityHealthChecks(builder.Configuration);
+builder.Services.AddObservabilityOpenTelemetry(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CulinaryBlog.API.CurrentUserService>();
 
@@ -113,10 +118,42 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
+	app.UseSerilogRequestLogging(options =>
+	{
+	    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+	    {
+	        diagnosticContext.Set("HttpMethod", httpContext.Request.Method);
+	        var userService = httpContext.RequestServices.GetRequiredService<ICurrentUserService>();
+	        if (!string.IsNullOrEmpty(userService.UserId))
+	        {
+	            diagnosticContext.Set("UserId", userService.UserId);
+	        }
+	    };
+
+	    options.GetLevel = (httpContext, _, exception) =>
+	    {
+	        if (exception is not null || httpContext.Response.StatusCode >= StatusCodes.Status500InternalServerError)
+	        {
+	            return LogEventLevel.Error;
+	        }
+
+	        if (httpContext.Request.Path.StartsWithSegments("/health"))
+	        {
+	            return LogEventLevel.Debug;
+	        }
+
+	        return LogEventLevel.Information;
+	    };
+	});
+
 app.UseMiddleware<ApiExceptionMiddleware>();
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
+// CONS-010: request-scoped log context (RequestPath, HttpMethod, UserId). Must run
+// after authentication so UserId can be resolved. S-08's CorrelationId middleware
+// is TV1-owned and stays outside TV4's registration.
+app.UseMiddleware<RequestLogContextMiddleware>();
 app.UseAuthorization();
 
 app.MapGet("/", () => Results.Ok(new

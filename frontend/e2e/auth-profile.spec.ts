@@ -1,7 +1,7 @@
 import { test, expect, Route } from "@playwright/test";
 
 const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "http://localhost:3001",
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
@@ -148,6 +148,48 @@ test.describe("FR-AUTH-006 & FR-AUTH-005: Profile & Logout E2E", () => {
     // Verify tokens were cleared from sessionStorage
     const token = await page.evaluate(() => sessionStorage.getItem("culinary_access_token"));
     expect(token).toBeNull();
+  });
+
+  test("should display error and not redirect when clearAuthTokens fails during logout", async ({ page }) => {
+    await page.route("**/api/v1/auth/me", async (route) => {
+      await fulfillMock(route, 200, {
+        id: "chef-123",
+        email: "chef@example.com",
+        displayName: "Master Chef Nam",
+        avatarUrl: null,
+        bio: null,
+        emailConfirmed: true,
+        createdAt: "2026-01-15T00:00:00Z",
+        roles: ["Author"],
+      });
+    });
+
+    await page.route("**/api/v1/auth/logout", async (route) => {
+      await fulfillMock(route, 204);
+    });
+
+    await page.addInitScript(() => {
+      sessionStorage.setItem("culinary_access_token", "mock_access_token");
+      sessionStorage.setItem("culinary_refresh_token", "mock_refresh_token");
+      Storage.prototype.removeItem = () => {
+        throw new Error("SecurityError: Access is denied for this document");
+      };
+    });
+
+    await page.goto("/profile");
+
+    const logoutBtn = page.getByRole("button", { name: "Đăng xuất" });
+    await expect(logoutBtn).toBeVisible();
+    await logoutBtn.click();
+
+    // Verify NOT redirected to login
+    await expect(page).not.toHaveURL(/.*\/auth\/login/);
+
+    // Verify error message is displayed
+    await expect(page.getByText("Không thể xóa phiên đăng nhập trên thiết bị. Vui lòng thử lại.")).toBeVisible();
+
+    // Verify logout button is re-enabled for retry
+    await expect(logoutBtn).toBeEnabled();
   });
 
   test("should allow editing profile and save changes successfully (FR-AUTH-007)", async ({ page }) => {

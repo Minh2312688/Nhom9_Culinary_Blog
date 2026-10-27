@@ -150,3 +150,129 @@ export async function updateProfileApi(
 
   return await response.json();
 }
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export async function changePasswordApi(
+  accessToken: string,
+  request: ChangePasswordRequest
+): Promise<{ message: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/change-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    let errorData: any = {};
+    try {
+      errorData = await response.json();
+    } catch {
+      // Non-JSON response
+    }
+
+    const error: ApiError = {
+      status: response.status,
+      title: errorData.title || "Change Password Error",
+      detail:
+        errorData.detail ||
+        (response.status === 401
+          ? "Phiên làm việc đã hết hạn hoặc mật khẩu hiện tại không đúng."
+          : response.status === 400
+          ? "Dữ liệu mật khẩu không hợp lệ."
+          : "Không thể đổi mật khẩu. Vui lòng thử lại."),
+      errors: errorData.errors,
+    };
+    throw error;
+  }
+
+  return await response.json();
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export async function forgotPasswordApi(
+  request: ForgotPasswordRequest
+): Promise<{ message: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    let errorData: any = {};
+    try {
+      errorData = await response.json();
+    } catch {
+      // Non-JSON response
+    }
+
+    const error: ApiError = {
+      status: response.status,
+      title: errorData.title || "Forgot Password Error",
+      detail:
+        errorData.detail ||
+        (response.status === 400
+          ? "Địa chỉ email không hợp lệ."
+          : "Không thể xử lý yêu cầu quên mật khẩu."),
+      errors: errorData.errors,
+    };
+    throw error;
+  }
+
+  return await response.json();
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  token: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export async function resetPasswordApi(
+  request: ResetPasswordRequest
+): Promise<{ message: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/auth/reset-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    let errorData: any = {};
+    try {
+      errorData = await response.json();
+    } catch {
+      // Non-JSON response
+    }
+
+    const error: ApiError = {
+      status: response.status,
+      title: errorData.title || "Reset Password Error",
+      detail:
+        errorData.detail ||
+        (response.status === 400
+          ? "Mã xác thực không hợp lệ hoặc mật khẩu mới không đúng quy định."
+          : "Không thể đặt lại mật khẩu. Vui lòng thử lại."),
+      errors: errorData.errors,
+    };
+    throw error;
+  }
+
+  return await response.json();
+}

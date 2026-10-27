@@ -191,12 +191,20 @@ export default function LoginPage() {
 
               {/* Password */}
               <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Mật khẩu <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Mật khẩu <span className="text-red-500">*</span>
+                  </label>
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-xs text-orange-600 hover:text-orange-700 font-medium transition"
+                  >
+                    Quên mật khẩu?
+                  </Link>
+                </div>
                 <div className="relative">
                   <input
                     id="password"

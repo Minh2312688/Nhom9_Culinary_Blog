@@ -272,4 +272,64 @@ public class IdentityService : IIdentityService
             IsActive: user.IsActive,
             IsLockedOut: isLocked);
     }
+
+    public async Task<ChangePasswordResult> ChangePasswordAsync(
+        string userId,
+        string currentPassword,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null || !user.IsActive)
+        {
+            return new ChangePasswordResult(false, "User not found or inactive.");
+        }
+
+        var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+        if (!result.Succeeded)
+        {
+            var isIncorrect = result.Errors.Any(e => e.Code == "PasswordMismatch");
+            var errorMsg = string.Join("; ", result.Errors.Select(e => e.Description));
+            return new ChangePasswordResult(false, errorMsg, isIncorrect);
+        }
+
+        return new ChangePasswordResult(true);
+    }
+
+    public async Task<ForgotPasswordResult> GeneratePasswordResetTokenAsync(
+        string email,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null || !user.IsActive)
+        {
+            return new ForgotPasswordResult(true, null);
+        }
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        return new ForgotPasswordResult(true, token);
+    }
+
+    public async Task<ResetPasswordResult> ResetPasswordAsync(
+        string email,
+        string token,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null || !user.IsActive)
+        {
+            return new ResetPasswordResult(false, "Mã xác thực không hợp lệ hoặc tài khoản không tồn tại.", IsInvalidToken: true);
+        }
+
+        var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+        if (!result.Succeeded)
+        {
+            var isInvalidToken = result.Errors.Any(e => e.Code == "InvalidToken");
+            var errorMsg = string.Join("; ", result.Errors.Select(e => e.Description));
+            return new ResetPasswordResult(false, errorMsg, isInvalidToken);
+        }
+
+        return new ResetPasswordResult(true);
+    }
 }

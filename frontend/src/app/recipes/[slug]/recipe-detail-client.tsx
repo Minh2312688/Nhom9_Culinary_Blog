@@ -76,12 +76,62 @@ export function RecipeDetailClient({ recipe }: Readonly<{ recipe: RecipeDetail }
         <section className={styles.detailSection}>
           <h2>Cách thực hiện</h2>
           {steps.length ? <ol className={styles.stepList}>
-            {steps.map((step, index) => <li key={step.id ?? index}>
-              <strong>{step.title || `Bước ${step.stepNumber ?? index + 1}`}</strong>
-              <div>{step.description}</div>
-            </li>)}
+            {steps.map((step, index) => (
+              <li key={step.id ?? index} data-testid={`recipe-step-${step.stepNumber ?? index + 1}`}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap" }}>
+                  <strong>{step.title ? `Bước ${step.stepNumber ?? index + 1}: ${step.title}` : `Bước ${step.stepNumber ?? index + 1}`}</strong>
+                  {step.durationMinutes && (
+                    <span style={{ fontSize: "12px", color: "var(--color-muted)", background: "var(--color-surface)", padding: "1px 6px", borderRadius: "4px", border: "1px solid var(--line)" }}>
+                      ⏱ {step.durationMinutes} phút
+                    </span>
+                  )}
+                </div>
+                <div style={{ marginTop: "4px" }}>{step.description}</div>
+                {step.imageUrl && (
+                  <div style={{ marginTop: "8px" }}>
+                    <img
+                      src={step.imageUrl}
+                      alt={step.title ?? `Hình minh họa bước ${step.stepNumber ?? index + 1}`}
+                      style={{ maxWidth: "320px", maxHeight: "200px", borderRadius: "6px", objectFit: "cover", border: "1px solid var(--line)" }}
+                      loading="lazy"
+                    />
+                  </div>
+                )}
+              </li>
+            ))}
           </ol> : <p className={styles.notice}>Chưa có hướng dẫn chế biến.</p>}
         </section>
+        {recipe.nutrition && (
+          <section className={styles.detailSection} data-testid="recipe-nutrition">
+            <h2>Thông tin dinh dưỡng (mỗi khẩu phần)</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: "10px", marginTop: "8px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "8px 12px", background: "var(--color-surface)", borderRadius: "6px", border: "1px solid var(--line)" }}>
+                <span style={{ fontSize: "11px", color: "var(--color-muted)" }}>Calories</span>
+                <strong style={{ fontSize: "15px" }}>{recipe.nutrition.calories} kcal</strong>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "8px 12px", background: "var(--color-surface)", borderRadius: "6px", border: "1px solid var(--line)" }}>
+                <span style={{ fontSize: "11px", color: "var(--color-muted)" }}>Protein</span>
+                <strong style={{ fontSize: "15px" }}>{recipe.nutrition.protein} g</strong>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "8px 12px", background: "var(--color-surface)", borderRadius: "6px", border: "1px solid var(--line)" }}>
+                <span style={{ fontSize: "11px", color: "var(--color-muted)" }}>Carbs</span>
+                <strong style={{ fontSize: "15px" }}>{recipe.nutrition.carbohydrates} g</strong>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "8px 12px", background: "var(--color-surface)", borderRadius: "6px", border: "1px solid var(--line)" }}>
+                <span style={{ fontSize: "11px", color: "var(--color-muted)" }}>Chất béo</span>
+                <strong style={{ fontSize: "15px" }}>{recipe.nutrition.fat} g</strong>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "8px 12px", background: "var(--color-surface)", borderRadius: "6px", border: "1px solid var(--line)" }}>
+                <span style={{ fontSize: "11px", color: "var(--color-muted)" }}>Chất xơ</span>
+                <strong style={{ fontSize: "15px" }}>{recipe.nutrition.fiber} g</strong>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "8px 12px", background: "var(--color-surface)", borderRadius: "6px", border: "1px solid var(--line)" }}>
+                <span style={{ fontSize: "11px", color: "var(--color-muted)" }}>Natri</span>
+                <strong style={{ fontSize: "15px" }}>{recipe.nutrition.sodium} mg</strong>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
     </SitePage>
   );

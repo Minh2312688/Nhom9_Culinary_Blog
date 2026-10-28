@@ -27,7 +27,7 @@ internal static class RecipeStepCommandHelpers
 
     public static async Task InvalidateAsync(IRecipeCache cache, string slug, CancellationToken cancellationToken)
     {
-        await cache.RemoveAsync($"recipes:slug:{slug}", cancellationToken);
+        await cache.RemoveAsync($"recipes:slug:{slug.ToLowerInvariant()}", cancellationToken);
         await cache.RemoveByPrefixAsync("recipes:", cancellationToken);
     }
 

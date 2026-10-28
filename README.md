@@ -498,6 +498,14 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 | 1 | Dương Văn Minh | chốt hợp đồng FR-RCP-009 (nguyên liệu quản lý qua payload tạo/sửa hay endpoint riêng). Xây dựng UI Editor công thức căn bản: upload/xem trước/chọn ảnh chính, nhập và sửa 6 trường dinh dưỡng.Bổ sung kiểm thử PostgreSQL/Testcontainers cho migration và cập nhật bước đồng thời.|
 | 2 | Nguyễn Phạm Phú Nam | Hoàn tất xác minh Google Login với Client ID môi trường kiểm thử. Kiểm tra luồng đăng ký – refresh – logout – profile.Rà soát toàn bộ các tiêu chuẩn bảo mật NFR-SEC-005..007. Kiểm thử bảo mật nâng cao (token expiration, CORS, header security)|
 | 3 | Mai Quý Phước |Hoàn thiện/xác minh job thumbnail ảnh và cleanup khi xóa recipe.Kiểm thử retry/thất bại Welcome Email và phân quyền truy cập Hangfire Dashboard.Phối hợp Nam kiểm tra Welcome Email (không dùng MailHog làm cấu hình production). | 
+### Tuần 8
+
+| STT | Thành viên | Công việc được giao |
+|---:|---|---|
+| 1 | Dương Văn Minh | Cải thiện form bước nấu (nếu SRS yêu cầu dữ liệu có cấu trúc). Xác minh cache Redis và luồng xóa ảnh phối hợp với job cleanup. Kiểm thử E2E hoàn chỉnh luồng tạo/sửa công thức. E2E tạo/sửa công thức kiểm tra ảnh, nguyên liệu, bước và dinh dưỡng lưu & hiển thị đúng. Kiểm thử thành công cho quyền truy cập, thứ tự bước và cache/xóa ảnh.|
+| 2 | Nguyễn Phạm Phú Nam | Chuẩn bị tài liệu hướng dẫn cấu hình môi trường Production.|
+| 3 | Mai Quý Phước |Bổ sung Open Graph/Twitter metadata tích hợp với Sitemap và Robots.txt. Bổ sung readiness kiểm tra phụ thuộc (DB, Redis) và tracing/metrics. Đo chỉ số Lighthouse / Core Web Vitals và tối ưu responsive/accessibility.  | 
+-
 ---
 
 ## 10. Theo dõi tiến độ thực tế theo từng thành viên

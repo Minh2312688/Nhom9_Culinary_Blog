@@ -502,10 +502,10 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 
 | STT | Thành viên | Công việc được giao |
 |---:|---|---|
-| 1 | Dương Văn Minh | Cải thiện form bước nấu (nếu SRS yêu cầu dữ liệu có cấu trúc). Xác minh cache Redis và luồng xóa ảnh phối hợp với job cleanup. Kiểm thử E2E hoàn chỉnh luồng tạo/sửa công thức. E2E tạo/sửa công thức kiểm tra ảnh, nguyên liệu, bước và dinh dưỡng lưu & hiển thị đúng. Kiểm thử thành công cho quyền truy cập, thứ tự bước và cache/xóa ảnh.|
-| 2 | Nguyễn Phạm Phú Nam | Chuẩn bị tài liệu hướng dẫn cấu hình môi trường Production.|
-| 3 | Mai Quý Phước |Bổ sung Open Graph/Twitter metadata tích hợp với Sitemap và Robots.txt. Bổ sung readiness kiểm tra phụ thuộc (DB, Redis) và tracing/metrics. Đo chỉ số Lighthouse / Core Web Vitals và tối ưu responsive/accessibility.  | 
--
+| 1 | Dương Văn Minh | Cải thiện form bước nấu (nếu SRS yêu cầu dữ liệu có cấu trúc). Xác minh cache Redis và luồng xóa ảnh phối hợp với job cleanup. Kiểm thử E2E hoàn chỉnh luồng tạo/sửa công thức. E2E tạo/sửa công thức kiểm tra ảnh, nguyên liệu, bước và dinh dưỡng lưu & hiển thị đúng. Kiểm thử thành công cho quyền truy cập, thứ tự bước và cache/xóa ảnh. |
+| 2 | Nguyễn Phạm Phú Nam | Chuẩn bị tài liệu hướng dẫn cấu hình môi trường Production. |
+| 3 | Mai Quý Phước | Triển khai hoàn thiện tính năng Structured Logging (FR-OBS-002, CONS-010) và Audit Trail Logging (NFR-SEC-006): cấu hình Serilog (Console, Daily Rolling File, Seq service trên Docker Compose), xây dựng CorrelationIdMiddleware (X-Correlation-ID), kích hoạt & hoàn thiện MediatR LoggingBehavior (cảnh báo thực thi > 500ms), triển khai AuditLoggingBehavior cho các thao tác ghi dữ liệu (write operations); thực hiện độc lập trên branch riêng trong tuần này không gây ảnh hưởng đến các module nghiệp vụ khác. Bổ sung Open Graph/Twitter metadata tích hợp với Sitemap và Robots.txt. Bổ sung readiness kiểm tra phụ thuộc (DB, Redis) và tracing/metrics. Đo chỉ số Lighthouse / Core Web Vitals và tối ưu responsive/accessibility. |
+
 ---
 
 ## 10. Theo dõi tiến độ thực tế theo từng thành viên

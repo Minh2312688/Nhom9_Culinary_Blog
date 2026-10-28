@@ -1,3 +1,6 @@
+using CulinaryBlog.Application.Common.Models;
+using CulinaryBlog.Application.DTOs.Users;
+
 namespace CulinaryBlog.Application.Contracts.Authentication;
 
 public sealed record RegisterResult(
@@ -97,5 +100,11 @@ public interface IIdentityService
         string email,
         string token,
         string newPassword,
+        CancellationToken cancellationToken = default);
+    Task<PaginatedResult<UserListItemDto>> GetUsersAsync(
+        int page,
+        int pageSize,
+        string? role = null,
+        string? searchTerm = null,
         CancellationToken cancellationToken = default);
 }

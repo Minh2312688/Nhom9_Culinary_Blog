@@ -1,3 +1,6 @@
+using CulinaryBlog.Application.Common.Models;
+using CulinaryBlog.Application.DTOs.Users;
+using Microsoft.EntityFrameworkCore;
 using CulinaryBlog.Application.Contracts.Authentication;
 using CulinaryBlog.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Identity;
@@ -331,5 +334,74 @@ public class IdentityService : IIdentityService
         }
 
         return new ResetPasswordResult(true);
+    }
+
+    public async Task<PaginatedResult<UserListItemDto>> GetUsersAsync(
+        int page,
+        int pageSize,
+        string? role = null,
+        string? searchTerm = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _userManager.Users.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim().ToLower();
+            query = query.Where(u =>
+                (u.Email != null && u.Email.ToLower().Contains(term)) ||
+                (u.DisplayName != null && u.DisplayName.ToLower().Contains(term)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            var roleNormalized = role.Trim();
+            var usersInRole = await _userManager.GetUsersInRoleAsync(roleNormalized);
+            var userIdsInRole = usersInRole.Select(u => u.Id).ToHashSet();
+            query = query.Where(u => userIdsInRole.Contains(u.Id));
+        }
+
+        int totalCount;
+        List<ApplicationUser> users;
+        try
+        {
+            totalCount = await query.CountAsync(cancellationToken);
+            users = await query
+                .OrderByDescending(u => u.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+        }
+        catch (InvalidOperationException)
+        {
+            totalCount = query.Count();
+            users = query
+                .OrderByDescending(u => u.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+        }
+
+        var items = new List<UserListItemDto>(users.Count);
+        foreach (var user in users)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            var isLockedOut = await _userManager.IsLockedOutAsync(user);
+
+            items.Add(new UserListItemDto(
+                Id: user.Id,
+                Email: user.Email,
+                DisplayName: user.DisplayName ?? user.Email ?? string.Empty,
+                AvatarUrl: user.AvatarUrl,
+                Bio: user.Bio,
+                EmailConfirmed: user.EmailConfirmed,
+                CreatedAt: user.CreatedAt,
+                IsActive: user.IsActive,
+                IsLockedOut: isLockedOut,
+                LockoutEnd: user.LockoutEnd,
+                Roles: roles));
+        }
+
+        return new PaginatedResult<UserListItemDto>(items, totalCount, page, pageSize);
     }
 }

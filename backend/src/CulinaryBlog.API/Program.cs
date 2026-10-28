@@ -19,7 +19,7 @@ builder.AddObservabilitySerilog();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddObservabilityHealthChecks(builder.Configuration);
-builder.Services.AddObservabilityOpenTelemetry(builder.Configuration);
+builder.Services.AddObservabilityOpenTelemetry();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CulinaryBlog.API.CurrentUserService>();
 

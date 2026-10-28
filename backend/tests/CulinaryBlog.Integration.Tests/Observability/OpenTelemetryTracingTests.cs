@@ -63,34 +63,43 @@ public sealed class OpenTelemetryTracingTests : IAsyncLifetime
         return Task.CompletedTask;
     }
 
+    private static HttpRequestMessage CreateTracedRequest(HttpMethod method, string uri, out ActivityTraceId traceId)
+    {
+        traceId = ActivityTraceId.CreateRandom();
+        var parentSpanId = ActivitySpanId.CreateRandom();
+        var request = new HttpRequestMessage(method, uri);
+        request.Headers.TryAddWithoutValidation(
+            "traceparent",
+            $"00-{traceId.ToHexString()}-{parentSpanId.ToHexString()}-01");
+        return request;
+    }
+
     [Fact]
     public async Task Tracing_PublicEndpoint_RecordsActivityWithMethodAndStatus()
     {
         using var client = _factory.CreateClient();
-        var response = await client.GetAsync("/?q=SENTINEL-QUERY-123");
+        using var request = CreateTracedRequest(HttpMethod.Get, "/?q=SENTINEL-QUERY-123", out var traceId);
+        var response = await client.SendAsync(request);
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
 
         await Task.Delay(3000);
 
-        var serverActivities = _activities.Where(a => a.Kind == ActivityKind.Server).ToList();
-        // Assert exactly one server activity
+        var serverActivities = _activities
+            .Where(a => a.Kind == ActivityKind.Server && a.TraceId == traceId)
+            .ToList();
         Assert.Single(serverActivities);
 
         var activity = serverActivities.First();
 
-        // Observed tag name: http.request.method = GET (confirmed by observation)
-        // http.response.status_code is NOT present as a tag in OT 1.20.0 ASP.NET Core instrumentation
         var methodTag = activity.Tags.FirstOrDefault(t => t.Key == "http.request.method");
         Assert.NotNull(methodTag.Value);
         Assert.Equal("GET", methodTag.Value?.ToString());
 
-        // http.response.status_code added via EnrichWithHttpResponse callback in OpenTelemetrySetup
         var statusTag = activity.Tags.FirstOrDefault(t => t.Key == "http.response.status_code");
         Assert.NotNull(statusTag.Value);
         Assert.Equal("200", statusTag.Value?.ToString());
 
-        // Verify no tag value contains sentinel (all activities)
-        foreach (var act in _activities)
+        foreach (var act in _activities.Where(a => a.TraceId == traceId))
         {
             foreach (var tag in act.Tags)
             {
@@ -117,29 +126,22 @@ public sealed class OpenTelemetryTracingTests : IAsyncLifetime
     {
         _activities.Clear();
         using var client = _factory.CreateClient();
-        var response = await client.GetAsync("/health/live");
+        using var request = CreateTracedRequest(HttpMethod.Get, "/health/live", out var traceId);
+        var response = await client.SendAsync(request);
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
 
         await Task.Delay(3000);
 
-        // Check ALL server activities recorded by collector (do not filter by path tag)
-        var allServerActivities = _activities.Where(a => a.Kind == ActivityKind.Server).ToList();
+        var healthActivities = _activities
+            .Where(a => a.Kind == ActivityKind.Server && a.TraceId == traceId)
+            .ToList();
 
-        // If any activity exists, assert IsAllDataRequested == false for each
-        foreach (var act in allServerActivities)
+        foreach (var act in healthActivities)
         {
             Assert.False(act.IsAllDataRequested,
                 $"Health activity should not be fully recorded. Activity: {act.DisplayName}");
         }
 
-        // Assert no server activity was recorded for /health/live
-        // Check both path tag and DisplayName for "health"
-        var healthActivities = allServerActivities.Where(a =>
-        {
-            var pathTag = a.Tags.FirstOrDefault(t => t.Key == "url.path" || t.Key == "http.route");
-            var path = pathTag.Value?.ToString() ?? a.DisplayName;
-            return path.Contains("health", StringComparison.OrdinalIgnoreCase);
-        }).ToList();
         Assert.Empty(healthActivities);
     }
 
@@ -149,24 +151,20 @@ public sealed class OpenTelemetryTracingTests : IAsyncLifetime
         _activities.Clear();
         _sink.Clear();
         using var client = _factory.CreateClient();
-        var response = await client.GetAsync("/?q=trace-test");
+        using var request = CreateTracedRequest(HttpMethod.Get, "/?q=trace-test", out var traceId);
+        var response = await client.SendAsync(request);
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
 
         await Task.Delay(3000);
 
-        var serverActivity = _activities.FirstOrDefault(a => a.Kind == ActivityKind.Server);
+        var serverActivity = _activities.FirstOrDefault(
+            a => a.Kind == ActivityKind.Server && a.TraceId == traceId);
         Assert.NotNull(serverActivity);
 
-        var logEvents = _sink.Events;
-        Assert.NotEmpty(logEvents);
-
-        // Verify top-level TraceId/SpanId of log event match activity
-        var matchingLog = logEvents.FirstOrDefault(e =>
-            e.TraceId == serverActivity.TraceId);
+        var matchingLog = _sink.Events.FirstOrDefault(e => e.TraceId == traceId);
         Assert.NotNull(matchingLog);
         Assert.Equal(serverActivity.TraceId, matchingLog.TraceId);
         Assert.Equal(serverActivity.SpanId, matchingLog.SpanId);
 
-        // CorrelationId part deferred (S-08 WAITING)
     }
 }

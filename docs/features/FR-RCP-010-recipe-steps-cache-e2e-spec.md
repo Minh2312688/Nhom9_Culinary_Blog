@@ -1,9 +1,9 @@
-# Đặc Tả Kỹ Thuật: Cải Thiện Bước Nấu Có Cấu Trúc, Cache Redis, Xóa Ảnh & Kiểm Thử E2E
+﻿# Đặc Tả Kỹ Thuật: Cải Thiện Bước Nấu Có Cấu Trúc, Cache Redis, Xóa Ảnh & Kiểm Thử E2E
 
 > **Tính năng:** FR-RCP-010 (Quản lý các bước nấu), FR-RCP-007 / FR-RCP-008 (Xóa công thức & quản lý ảnh), NFR-PERF-001 (Redis Cache)  
 > **Người thực hiện:** Dương Văn Minh (TV2 – MSSV: 2312688)  
 > **Ngày lập:** 28/10/2026  
-> **Trạng thái:** Triển khai (In Implementation)
+> **Trạng thái:** [x] Đã hoàn thành (Completed - Verified with 7/7 E2E tests passing, 138/138 integration tests passing)
 
 ---
 
@@ -103,3 +103,4 @@ Trên giao diện `recipe-editor.tsx`:
 5. **Test Case 5: Phân quyền truy cập (Access Control)**:
    - Chưa đăng nhập truy cập `/dashboard/recipes/new` -> redirect về login hoặc chặn truy cập.
    - Không phải chủ sở hữu hoặc admin -> nhận HTTP 403 / thông báo không có quyền chỉnh sửa.
+

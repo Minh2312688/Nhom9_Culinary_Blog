@@ -1,4 +1,4 @@
-# Kế Hoạch Triển Khai: Bước Nấu Có Cấu Trúc, Cache Redis, Xóa Ảnh & E2E Testing
+﻿# Kế Hoạch Triển Khai: Bước Nấu Có Cấu Trúc, Cache Redis, Xóa Ảnh & E2E Testing
 
 > **Phụ trách:** Dương Văn Minh (TV2 – MSSV: 2312688)  
 > **Thời gian:** Tuần 8 (28/10/2026)  
@@ -56,3 +56,4 @@
 - [ ] Cập nhật `docs/srs-audit/TEAM-REQUIREMENT-TRACEABILITY.md` nâng trạng thái `FR-RCP-010`, `FR-RCP-007`, `FR-RCP-008` sang `DONE`.
 - [ ] Cập nhật `docs/features/FR-RCP-010-recipe-steps-cache-e2e-checklist.md` đánh dấu hoàn thành toàn bộ hạng mục kèm bằng chứng.
 - [ ] Commit: `docs: update traceability, readme, and implementation checklist for completed week 8 tasks`
+

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry;
+using OpenTelemetry.Trace;
 using Xunit;
 
 namespace CulinaryBlog.Integration.Tests.Observability;
@@ -46,19 +47,8 @@ public sealed class OtlpExporterResilienceTests : IAsyncLifetime
         });
         using var client = factory.CreateClient();
         var resp = await client.GetAsync("/api/v1/categories");
-        await Task.Delay(1000);
-        try
-        {
-            var tp = factory.Services.GetService(typeof(OpenTelemetry.Trace.TracerProvider));
-            var m = tp?.GetType().GetMethod("ForceFlush", new[] { typeof(int) });
-            if (m != null) m.Invoke(tp, new object[] { 5000 });
-            else
-            {
-                var m2 = tp?.GetType().GetMethod("ForceFlush", new[] { typeof(TimeSpan) });
-                if (m2 != null) m2.Invoke(tp, new object[] { TimeSpan.FromSeconds(5) });
-            }
-        }
-        catch { }
+        var tracerProvider = factory.Services.GetRequiredService<OpenTelemetry.Trace.TracerProvider>();
+        tracerProvider.ForceFlush(5000).Should().BeTrue();
         await Task.Delay(1000);
         receiver.Requests.Should().NotBeEmpty();
         receiver.Requests[0].Path.Should().Contain("traces");
@@ -100,6 +90,8 @@ public sealed class OtlpExporterResilienceTests : IAsyncLifetime
         });
         using var client = factory.CreateClient();
         var resp = await client.GetAsync("/api/v1/categories");
+        var tracerProvider = factory.Services.GetRequiredService<OpenTelemetry.Trace.TracerProvider>();
+        tracerProvider.ForceFlush(5000).Should().BeTrue();
         await Task.Delay(2000);
         await Task.Delay(1500);
         receiver.Requests.Should().NotBeEmpty();

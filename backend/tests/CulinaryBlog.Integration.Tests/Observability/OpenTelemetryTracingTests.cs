@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -13,7 +14,7 @@ using Xunit;
 
 namespace CulinaryBlog.Integration.Tests.Observability;
 
-[Collection("OpenTelemetryTracing")]
+[Collection("SerilogSinks")]
 public sealed class OpenTelemetryTracingTests : IAsyncLifetime
 {
     private WebApplicationFactory<Program> _factory = null!;
@@ -43,6 +44,7 @@ public sealed class OpenTelemetryTracingTests : IAsyncLifetime
             b.ConfigureServices(services =>
             {
                 services.RemoveAll<Microsoft.EntityFrameworkCore.DbContextOptions<CulinaryBlog.Infrastructure.Persistence.ApplicationDbContext>>();
+                services.RemoveAll<IDbContextOptionsConfiguration<CulinaryBlog.Infrastructure.Persistence.ApplicationDbContext>>();
                 services.RemoveAll<CulinaryBlog.Infrastructure.Persistence.ApplicationDbContext>();
                 services.AddDbContext<CulinaryBlog.Infrastructure.Persistence.ApplicationDbContext>(options =>
                     options.UseInMemoryDatabase("OT01Db"));

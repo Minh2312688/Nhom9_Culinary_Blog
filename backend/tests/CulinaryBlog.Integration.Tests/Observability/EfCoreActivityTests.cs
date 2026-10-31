@@ -16,7 +16,7 @@ namespace CulinaryBlog.Integration.Tests.Observability;
 /// <summary>
 /// OT-02: EF Core activity test on SQLite.
 /// </summary>
-[Collection("OpenTelemetryTracing")]
+[Collection("SerilogSinks")]
 public sealed class EfCoreActivityTests : IAsyncLifetime
 {
     private WebApplicationFactory<Program> _factory = null!;

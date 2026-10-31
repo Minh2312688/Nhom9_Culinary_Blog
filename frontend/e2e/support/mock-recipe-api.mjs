@@ -63,6 +63,48 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (request.method === "GET" && (url.pathname === "/api/v1/recipes" || url.pathname === "/api/v1/recipes/")) {
+    sendJson(response, 200, {
+      items: [
+        {
+          id: "recipe-1",
+          title: "Roasted tomato soup",
+          slug: "recipe-with-author",
+          description: "A simple soup.",
+          difficulty: "Easy",
+          cookTimeMinutes: 30,
+          servings: 4,
+          status: "Published",
+          categoryId: "category-1",
+          authorId: "author-1",
+          publishedAt: "2026-10-01T09:30:00Z",
+          rowVersion: "v1",
+        },
+        {
+          id: "recipe-3",
+          title: "Citrus lentil salad",
+          slug: "citrus-lentil-salad",
+          description: "Bright and filling.",
+          difficulty: "Easy",
+          cookTimeMinutes: 25,
+          servings: 3,
+          status: "Published",
+          categoryId: "category-1",
+          authorId: "author-1",
+          publishedAt: "2026-09-20T12:00:00Z",
+          rowVersion: "v1",
+        },
+      ],
+      totalCount: 2,
+      page: 1,
+      pageSize: 50,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    });
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/v1/recipes/recipe-with-author") {
     sendJson(response, 200, recipe());
     return;

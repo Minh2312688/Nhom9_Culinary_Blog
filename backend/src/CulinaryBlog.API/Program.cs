@@ -126,6 +126,8 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
+app.UseMiddleware<CorrelationIdMiddleware>();
+
 	app.UseSerilogRequestLogging(options =>
 	{
 	    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>

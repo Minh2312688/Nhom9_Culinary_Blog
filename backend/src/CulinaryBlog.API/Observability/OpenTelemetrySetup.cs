@@ -116,12 +116,20 @@ public static class OpenTelemetrySetup
             {
                 var options = sp.GetService<IOptionsMonitor<OtlpExporterOptions>>();
                 var exporterOptions = options?.Get("default") ?? new OtlpExporterOptions();
-                exporterOptions.Endpoint = new Uri(endpoint);
+                var baseUri = new Uri(endpoint.EndsWith('/') ? endpoint : endpoint + "/");
+                exporterOptions.Endpoint = endpoint.TrimEnd('/').EndsWith("v1/traces", StringComparison.OrdinalIgnoreCase)
+                    ? new Uri(endpoint)
+                    : new Uri(baseUri, "v1/traces");
                 exporterOptions.Protocol = OtlpExportProtocol.HttpProtobuf;
                 exporterOptions.TimeoutMilliseconds = 1000;
                 var processorOptions = new BatchExportActivityProcessorOptions { MaxQueueSize = maxQueueSize };
                 var exporter = new OtlpTraceExporter(exporterOptions);
-                var processor = new BatchActivityExportProcessor(exporter, processorOptions.MaxExportBatchSize, processorOptions.ScheduledDelayMilliseconds, processorOptions.ExporterTimeoutMilliseconds, processorOptions.MaxQueueSize);
+                var processor = new BatchActivityExportProcessor(
+                    exporter,
+                    maxQueueSize: processorOptions.MaxQueueSize,
+                    scheduledDelayMilliseconds: processorOptions.ScheduledDelayMilliseconds,
+                    exporterTimeoutMilliseconds: processorOptions.ExporterTimeoutMilliseconds,
+                    maxExportBatchSize: Math.Min(processorOptions.MaxExportBatchSize, processorOptions.MaxQueueSize));
                 tracing.AddProcessor(processor);
             }
             catch

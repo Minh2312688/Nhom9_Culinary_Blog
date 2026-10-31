@@ -25,6 +25,8 @@ services:
       Smtp__UseSsl: "false"
       Smtp__Username: ""
       Smtp__Password: ""
+      # Seq logging/ingestion
+      Seq__ServerUrl: http://seq:5341
     ports:
       - "5000:8080"
     depends_on:
@@ -128,10 +130,26 @@ services:
     networks:
       - culinaryblog-network
 
+  seq:
+    image: datalust/seq:2026.1.17473
+    container_name: culinaryblog-seq
+    restart: unless-stopped
+    # chỉ dev
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "true"
+    ports:
+      - "127.0.0.1:5341:80"
+    volumes:
+      - seqdata:/data
+    networks:
+      - culinaryblog-network
+
 volumes:
   pgdata:
   redisdata:
   miniodata:
+  seqdata:
 
 networks:
   culinaryblog-network:

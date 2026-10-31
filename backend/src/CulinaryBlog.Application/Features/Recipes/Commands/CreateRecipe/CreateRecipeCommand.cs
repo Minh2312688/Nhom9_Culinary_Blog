@@ -1,3 +1,4 @@
+using CulinaryBlog.Application.Common.Contracts;
 using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Persistence;
@@ -18,7 +19,14 @@ public sealed record CreateRecipeCommand(
     string Difficulty,
     IReadOnlyList<RecipeIngredientInput>? Ingredients = null,
     IReadOnlyList<RecipeStepInput>? Steps = null,
-    RecipeNutritionInput? Nutrition = null) : IRequest<RecipeDetailDto>;
+    RecipeNutritionInput? Nutrition = null) : IRequest<RecipeDetailDto>, IAuditCommand
+{
+    // Explicit interface implementation: không đổi tham số record.
+    // EntityId lấy từ response (RecipeDetailDto.Id) bằng reflection trong AuditLoggingBehavior.
+    string IAuditCommand.AuditAction => "Recipe.Create";
+    string IAuditCommand.EntityType => "Recipe";
+    Guid? IAuditCommand.EntityId => null;
+};
 
 public sealed class CreateRecipeCommandHandler : IRequestHandler<CreateRecipeCommand, RecipeDetailDto>
 {

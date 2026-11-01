@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { forgotPasswordApi } from "@/lib/auth-api";
 import { ApiError } from "@/lib/api";
-import { Mail, Loader2, AlertCircle, CheckCircle2, ArrowLeft, KeyRound } from "lucide-react";
+import { Mail, Loader2, AlertCircle, CheckCircle2, ArrowLeft, KeyRound, RotateCcw, Inbox } from "lucide-react";
 import { BrandLink } from "../../site-ui";
 
 const forgotPasswordSchema = z.object({
@@ -19,10 +19,12 @@ type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 export default function ForgotPasswordPage() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [submittedEmail, setSubmittedEmail] = useState<string>("");
 
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -34,6 +36,7 @@ export default function ForgotPasswordPage() {
     setSuccessMessage(null);
     try {
       const response = await forgotPasswordApi({ email: data.email });
+      setSubmittedEmail(data.email);
       setSuccessMessage(
         response.message ||
           "Nếu email tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu đã được gửi đến hộp thư của bạn."
@@ -42,6 +45,12 @@ export default function ForgotPasswordPage() {
       const apiErr = err as ApiError;
       setServerError(apiErr.detail || "Không thể gửi yêu cầu đặt lại mật khẩu. Vui lòng thử lại sau.");
     }
+  };
+
+  const handleResetForm = () => {
+    setSuccessMessage(null);
+    setServerError(null);
+    reset();
   };
 
   return (
@@ -58,34 +67,51 @@ export default function ForgotPasswordPage() {
             Quên mật khẩu?
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Nhập email tài khoản của bạn để nhận mã xác nhận đặt lại mật khẩu.
+            Nhập email tài khoản của bạn để nhận liên kết xác thực đặt lại mật khẩu.
           </p>
         </div>
 
-        {/* Success Alert */}
+        {/* Success Alert & Instructions */}
         {successMessage ? (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div
-              className="flex items-start gap-3 rounded-xl bg-green-50 border border-green-200 p-4 text-sm text-green-800"
+              className="flex items-start gap-3 rounded-xl bg-green-50 border border-green-200 p-4 text-sm text-green-900"
               role="status"
             >
               <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold">Đã gửi yêu cầu thành công!</p>
-                <p className="mt-1 text-green-700">{successMessage}</p>
+                <p className="font-semibold text-green-950">Đã tiếp nhận yêu cầu đặt lại mật khẩu</p>
+                <p className="mt-1 text-green-800 leading-relaxed text-xs sm:text-sm">
+                  {successMessage}
+                </p>
               </div>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <Link
-                href="/auth/reset-password"
-                className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl text-white font-medium bg-orange-600 hover:bg-orange-700 transition shadow-sm text-sm"
+            {/* Clear instructions on next steps */}
+            <div className="rounded-xl bg-orange-50/70 border border-orange-200/80 p-4 text-xs text-orange-950 space-y-2">
+              <div className="flex items-center gap-2 font-semibold text-orange-900">
+                <Inbox className="w-4 h-4 text-orange-600 shrink-0" />
+                <span>Các bước tiếp theo:</span>
+              </div>
+              <ol className="list-decimal list-inside space-y-1 text-orange-900/90 pl-1 leading-relaxed">
+                <li>Mở hộp thư email của bạn (kiểm tra cả thư mục <strong>Hộp thư đến</strong> và <strong>Spam / Rác</strong>).</li>
+                <li>Nhấn vào nút <strong>&quot;Đặt lại mật khẩu&quot;</strong> trong email nhận được.</li>
+                <li>Hệ thống sẽ tự động xác thực token và mở trang để bạn nhập mật khẩu mới.</li>
+              </ol>
+            </div>
+
+            <div className="flex flex-col gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={handleResetForm}
+                className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl text-gray-700 font-medium border border-gray-300 hover:bg-gray-50 transition text-sm"
               >
-                Nhập mã đặt lại mật khẩu
-              </Link>
+                <RotateCcw className="w-4 h-4 mr-1.5" />
+                Gửi lại yêu cầu với email khác
+              </button>
               <Link
                 href="/auth/login"
-                className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl text-gray-700 font-medium border border-gray-300 hover:bg-gray-50 transition text-sm"
+                className="w-full flex items-center justify-center py-2.5 px-4 rounded-xl text-orange-600 hover:text-orange-700 font-medium text-sm transition"
               >
                 <ArrowLeft className="w-4 h-4 mr-1.5" />
                 Quay lại đăng nhập
@@ -105,7 +131,7 @@ export default function ForgotPasswordPage() {
               </div>
             )}
 
-            {/* Email Input */}
+            {/* Email Field */}
             <div>
               <label
                 htmlFor="email"
@@ -119,8 +145,7 @@ export default function ForgotPasswordPage() {
                   type="email"
                   autoComplete="email"
                   disabled={isSubmitting}
-                  aria-invalid={errors.email ? "true" : "false"}
-                  className={`w-full px-4 py-2.5 pl-10 rounded-xl border bg-gray-50/50 text-gray-900 text-sm transition focus:bg-white focus:outline-none focus:ring-2 ${
+                  className={`w-full px-4 py-2.5 pl-11 rounded-xl border bg-gray-50/50 text-gray-900 text-sm transition focus:bg-white focus:outline-none focus:ring-2 ${
                     errors.email
                       ? "border-red-400 focus:ring-red-500"
                       : "border-gray-200 focus:ring-orange-500 focus:border-orange-500"
@@ -128,12 +153,10 @@ export default function ForgotPasswordPage() {
                   placeholder="chef@example.com"
                   {...register("email")}
                 />
-                <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" />
+                <Mail className="w-5 h-5 text-gray-400 absolute left-3.5 top-3 pointer-events-none" />
               </div>
               {errors.email && (
-                <p className="mt-1.5 text-xs text-red-600" role="alert">
-                  {errors.email.message}
-                </p>
+                <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
               )}
             </div>
 
@@ -146,14 +169,14 @@ export default function ForgotPasswordPage() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Đang xử lý...
+                  Đang gửi yêu cầu...
                 </>
               ) : (
-                "Gửi mã đặt lại mật khẩu"
+                "Gửi liên kết đặt lại mật khẩu"
               )}
             </button>
 
-            {/* Back Link */}
+            {/* Back to Login */}
             <div className="text-center pt-2">
               <Link
                 href="/auth/login"

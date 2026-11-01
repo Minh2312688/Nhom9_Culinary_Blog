@@ -44,9 +44,7 @@ public sealed class SmtpEmailSender : IEmailSender
         try
         {
             using var client = new SmtpClient();
-            var socketOptions = _options.UseSsl
-                ? SecureSocketOptions.SslOnConnect
-                : SecureSocketOptions.StartTlsWhenAvailable;
+            var socketOptions = ResolveSocketOptions(_options);
 
             await client.ConnectAsync(_options.Host, _options.Port, socketOptions, cancellationToken);
 
@@ -68,5 +66,25 @@ public sealed class SmtpEmailSender : IEmailSender
                 message.To);
             throw;
         }
+    }
+
+    private static SecureSocketOptions ResolveSocketOptions(SmtpOptions options)
+    {
+        if (options.Port == 465)
+        {
+            return SecureSocketOptions.SslOnConnect;
+        }
+
+        if (options.Port == 587)
+        {
+            return SecureSocketOptions.StartTls;
+        }
+
+        if (options.UseSsl)
+        {
+            return SecureSocketOptions.SslOnConnect;
+        }
+
+        return SecureSocketOptions.StartTlsWhenAvailable;
     }
 }

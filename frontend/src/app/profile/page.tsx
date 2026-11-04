@@ -18,6 +18,7 @@ import {
   getRefreshToken,
   setAuthTokens,
   clearAuthTokens,
+  setStoredUser,
 } from "@/lib/auth-store";
 import {
   ChefHat,
@@ -35,6 +36,7 @@ import {
   X,
   KeyRound,
   Lock,
+  ArrowLeft,
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -66,7 +68,6 @@ export default function ProfilePage() {
   // Logout Error State
   const [logoutError, setLogoutError] = useState<string | null>(null);
 
-
   const fetchProfileWithRetry = useCallback(async () => {
     setError(null);
     setLoading(true);
@@ -86,6 +87,11 @@ export default function ProfilePage() {
         try {
           const data = await getProfileApi(accessToken);
           setProfile(data);
+          setStoredUser({
+            displayName: data.displayName,
+            email: data.email,
+            avatarUrl: data.avatarUrl,
+          });
           setLoading(false);
           return;
         } catch (err) {
@@ -108,25 +114,30 @@ export default function ProfilePage() {
             return;
           }
 
-          const refreshedProfile = await getProfileApi(newAuth.accessToken);
-          setProfile(refreshedProfile);
+          const retryData = await getProfileApi(newAuth.accessToken);
+          setProfile(retryData);
+          setStoredUser({
+            displayName: retryData.displayName,
+            email: retryData.email,
+            avatarUrl: retryData.avatarUrl,
+          });
           setLoading(false);
+          setIsRefreshing(false);
           return;
         } catch {
           clearAuthTokens();
           router.push("/auth/login");
           return;
-        } finally {
-          setIsRefreshing(false);
         }
-      } else {
-        clearAuthTokens();
-        router.push("/auth/login");
       }
+
+      clearAuthTokens();
+      router.push("/auth/login");
     } catch (err) {
       const apiErr = err as ApiError;
       setError(apiErr.detail || "Không thể tải thông tin hồ sơ. Vui lòng thử lại.");
       setLoading(false);
+      setIsRefreshing(false);
     }
   }, [router]);
 
@@ -134,33 +145,36 @@ export default function ProfilePage() {
     fetchProfileWithRetry();
   }, [fetchProfileWithRetry]);
 
+  // Handle Logout
   const handleLogout = async () => {
-    if (isLoggingOut) return;
-    setIsLoggingOut(true);
     setLogoutError(null);
+    setIsLoggingOut(true);
 
-    const accessToken = getAccessToken() || "";
-    const refreshToken = getRefreshToken() || "";
+    const accessToken = getAccessToken();
+    const refreshToken = getRefreshToken();
 
     try {
       if (accessToken && refreshToken) {
-        await logoutApi(accessToken, refreshToken);
+        try {
+          await logoutApi(accessToken, refreshToken);
+        } catch (apiErr) {
+          console.warn("Backend logout notification warning:", apiErr);
+        }
       }
-    } catch {
-      // Network or API failure: do not block client session clearing,
-      // but also do not claim server revocation succeeded.
-    }
-
-    const cleared = clearAuthTokens();
-    if (!cleared) {
-      setLogoutError("Không thể xóa phiên đăng nhập trên thiết bị. Vui lòng thử lại.");
+    } finally {
+      const cleared = clearAuthTokens();
       setIsLoggingOut(false);
-      return;
+      if (cleared) {
+        router.push("/auth/login");
+      } else {
+        setLogoutError(
+          "Không thể xóa phiên đăng nhập trên thiết bị. Vui lòng thử lại."
+        );
+      }
     }
-
-    router.push("/auth/login");
   };
 
+  // Start Editing Profile
   const handleStartEdit = () => {
     if (!profile) return;
     setEditDisplayName(profile.displayName || "");
@@ -177,6 +191,7 @@ export default function ProfilePage() {
     setEditError(null);
   };
 
+  // Start Change Password
   const handleStartChangePassword = () => {
     setCurrentPassword("");
     setNewPassword("");
@@ -192,9 +207,9 @@ export default function ProfilePage() {
     setPasswordError(null);
   };
 
+  // Save Change Password
   const handleSavePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSavingPassword) return;
     setPasswordError(null);
     setPasswordSuccess(null);
 
@@ -202,50 +217,81 @@ export default function ProfilePage() {
       setPasswordError("Vui lòng nhập mật khẩu hiện tại.");
       return;
     }
+
     if (newPassword.length < 8) {
       setPasswordError("Mật khẩu mới phải có ít nhất 8 ký tự.");
       return;
     }
-    if (newPassword === currentPassword) {
-      setPasswordError("Mật khẩu mới không được trùng với mật khẩu hiện tại.");
-      return;
-    }
+
     if (newPassword !== confirmPassword) {
       setPasswordError("Mật khẩu xác nhận không khớp.");
       return;
     }
 
+    let token = getAccessToken();
+    const refreshToken = getRefreshToken();
+
+    if (!token && !refreshToken) {
+      clearAuthTokens();
+      router.push("/auth/login");
+      return;
+    }
+
     setIsSavingPassword(true);
-    const token = getAccessToken() || "";
 
     try {
-      const res = await changePasswordApi(token, {
-        currentPassword,
-        newPassword,
-        confirmPassword,
-      });
-      setPasswordSuccess(res.message || "Đổi mật khẩu thành công!");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setIsChangingPassword(false);
+      if (token) {
+        try {
+          await changePasswordApi(token, {
+            currentPassword,
+            newPassword,
+            confirmPassword,
+          });
+          setPasswordSuccess("Đổi mật khẩu thành công!");
+          setIsChangingPassword(false);
+          setIsSavingPassword(false);
+          return;
+        } catch (err) {
+          const apiErr = err as ApiError;
+          if (apiErr.status === 401 && refreshToken) {
+            // Attempt token rotation
+            const newAuth = await refreshTokenApi(refreshToken);
+            const saved = setAuthTokens(newAuth.accessToken, newAuth.refreshToken);
+            if (!saved) {
+              clearAuthTokens();
+              router.push("/auth/login");
+              return;
+            }
+            token = newAuth.accessToken;
+
+            await changePasswordApi(token, {
+              currentPassword,
+              newPassword,
+              confirmPassword,
+            });
+            setPasswordSuccess("Đổi mật khẩu thành công!");
+            setIsChangingPassword(false);
+            setIsSavingPassword(false);
+            return;
+          }
+          throw apiErr;
+        }
+      }
     } catch (err) {
       const apiErr = err as ApiError;
       if (apiErr.errors) {
         const detailList = Object.values(apiErr.errors).flat().join(" ");
-        setPasswordError(detailList || apiErr.detail || "Dữ liệu không hợp lệ.");
+        setPasswordError(detailList || apiErr.detail || "Không thể đổi mật khẩu.");
       } else {
-        setPasswordError(apiErr.detail || "Không thể đổi mật khẩu. Vui lòng thử lại.");
+        setPasswordError(apiErr.detail || "Không thể đổi mật khẩu. Vui lòng kiểm tra lại mật khẩu hiện tại.");
       }
-    } finally {
       setIsSavingPassword(false);
     }
   };
 
-
+  // Save Profile Edit
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSaving) return;
     setEditError(null);
     setEditSuccess(null);
 
@@ -254,63 +300,81 @@ export default function ProfilePage() {
       setEditError("Tên hiển thị không được để trống.");
       return;
     }
-    if (trimmedName.length < 2 || trimmedName.length > 100) {
-      setEditError("Tên hiển thị phải từ 2 đến 100 ký tự.");
+
+    if (trimmedName.length > 100) {
+      setEditError("Tên hiển thị không được vượt quá 100 ký tự.");
       return;
     }
 
     const trimmedAvatar = editAvatarUrl.trim();
-    if (trimmedAvatar) {
-      try {
-        const parsedUrl = new URL(trimmedAvatar);
-        if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-          setEditError("URL ảnh đại diện phải có giao thức http:// hoặc https://");
-          return;
-        }
-      } catch {
-        setEditError("URL ảnh đại diện không hợp lệ.");
-        return;
-      }
+    if (trimmedAvatar && !trimmedAvatar.startsWith("http://") && !trimmedAvatar.startsWith("https://")) {
+      setEditError("URL ảnh đại diện phải có giao thức http:// hoặc https://");
+      return;
+    }
+
+    const trimmedBio = editBio.trim();
+    if (trimmedBio.length > 500) {
+      setEditError("Tiểu sử không được vượt quá 500 ký tự.");
+      return;
     }
 
     const payload: UpdateProfileRequest = {
       displayName: trimmedName,
       avatarUrl: trimmedAvatar || null,
-      bio: editBio.trim() || null,
+      bio: trimmedBio || null,
     };
 
+    let token = getAccessToken();
+    const refreshToken = getRefreshToken();
+
+    if (!token && !refreshToken) {
+      clearAuthTokens();
+      router.push("/auth/login");
+      return;
+    }
+
     setIsSaving(true);
-    let token = getAccessToken() || "";
-    const refreshToken = getRefreshToken() || "";
 
     try {
-      try {
-        const updated = await updateProfileApi(token, payload);
-        setProfile(updated);
-        setIsEditing(false);
-        setEditSuccess("Cập nhật hồ sơ thành công!");
-        setIsSaving(false);
-        return;
-      } catch (err) {
-        const apiErr = err as ApiError;
-        if (apiErr.status === 401 && refreshToken) {
-          const newAuth = await refreshTokenApi(refreshToken);
-          const saved = setAuthTokens(newAuth.accessToken, newAuth.refreshToken);
-          if (!saved) {
-            clearAuthTokens();
-            router.push("/auth/login");
-            return;
-          }
-          token = newAuth.accessToken;
-
+      if (token) {
+        try {
           const updated = await updateProfileApi(token, payload);
           setProfile(updated);
+          setStoredUser({
+            displayName: updated.displayName,
+            email: updated.email,
+            avatarUrl: updated.avatarUrl,
+          });
           setIsEditing(false);
           setEditSuccess("Cập nhật hồ sơ thành công!");
           setIsSaving(false);
           return;
+        } catch (err) {
+          const apiErr = err as ApiError;
+          if (apiErr.status === 401 && refreshToken) {
+            const newAuth = await refreshTokenApi(refreshToken);
+            const saved = setAuthTokens(newAuth.accessToken, newAuth.refreshToken);
+            if (!saved) {
+              clearAuthTokens();
+              router.push("/auth/login");
+              return;
+            }
+            token = newAuth.accessToken;
+
+            const updated = await updateProfileApi(token, payload);
+            setProfile(updated);
+            setStoredUser({
+              displayName: updated.displayName,
+              email: updated.email,
+              avatarUrl: updated.avatarUrl,
+            });
+            setIsEditing(false);
+            setEditSuccess("Cập nhật hồ sơ thành công!");
+            setIsSaving(false);
+            return;
+          }
+          throw apiErr;
         }
-        throw apiErr;
       }
     } catch (err) {
       const apiErr = err as ApiError;
@@ -324,7 +388,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Helper formatting for registration date
   const formatDate = (dateString?: string) => {
     if (!dateString) return "Không xác định";
     try {
@@ -341,44 +404,44 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-amber-50/50 via-white to-orange-50/40">
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-        {/* Decorative Top Banner */}
-        <div className="h-28 bg-gradient-to-r from-teal-800 via-teal-700 to-orange-700 relative flex items-end justify-between px-6 pb-3">
-          <span className="text-xs font-semibold text-white/80 uppercase tracking-widest">
-            Hồ sơ đầu bếp
-          </span>
-          <div className="flex items-center space-x-2">
-            <Link
-              href="/"
-              aria-label="Culinary Blog, trang chủ"
-              className="text-xs font-semibold text-white underline underline-offset-2 transition"
-            >
-              Culinary Blog
-            </Link>
+      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+        {/* Top Decorative Banner */}
+        <div className="h-32 sm:h-40 bg-gradient-to-r from-teal-800 via-teal-700 to-orange-600 relative p-4 sm:p-6 flex items-start justify-between">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/20 backdrop-blur-sm text-xs font-medium text-white/90">
+            <ChefHat className="w-3.5 h-3.5 text-orange-300" />
+            <span>Hồ sơ thành viên</span>
           </div>
+          <Link
+            href="/"
+            className="text-xs font-semibold text-white/90 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full transition"
+          >
+            Về trang chủ
+          </Link>
         </div>
 
-        <div className="px-6 sm:px-8 pb-8 pt-0 relative">
-          {/* Avatar and Top Actions */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between -mt-14 mb-6 gap-4">
-            <div className="relative">
+        {/* Content Container */}
+        <div className="px-5 sm:px-8 pb-8 pt-0 relative">
+          {/* Avatar and Action Header Row */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between -mt-12 sm:-mt-16 mb-6 gap-4">
+            {/* Avatar */}
+            <div className="relative shrink-0">
               {profile?.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={profile.avatarUrl}
                   alt={profile.displayName || "Avatar"}
-                  className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-md bg-white"
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-white shadow-lg bg-white ring-1 ring-gray-100"
                 />
               ) : (
-                <div className="w-24 h-24 rounded-2xl bg-orange-100 border-4 border-white shadow-md flex items-center justify-center text-orange-600">
-                  <ChefHat className="w-12 h-12" aria-hidden="true" />
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 border-4 border-white shadow-lg flex items-center justify-center text-orange-600 ring-1 ring-gray-100">
+                  <ChefHat className="w-12 h-12 sm:w-14 sm:h-14" aria-hidden="true" />
                 </div>
               )}
             </div>
 
-            {/* Action Buttons: Edit, Change Password & Logout */}
+            {/* Action Buttons */}
             {!loading && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 w-full sm:w-auto pt-2 sm:pt-0">
                 {!isEditing && !isChangingPassword && (
                   <>
                     <button
@@ -386,9 +449,9 @@ export default function ProfilePage() {
                       id="edit-profile-button"
                       onClick={handleStartEdit}
                       aria-label="Chỉnh sửa thông tin hồ sơ"
-                      className="inline-flex items-center justify-center px-3.5 py-2.5 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 hover:border-orange-300 font-medium text-sm transition focus:outline-none focus:ring-2 focus:ring-orange-400 shadow-sm"
+                      className="inline-flex items-center justify-center px-3.5 py-2 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 hover:border-orange-300 font-medium text-xs sm:text-sm transition focus:outline-none focus:ring-2 focus:ring-orange-400 shadow-sm"
                     >
-                      <Pencil className="w-4 h-4 mr-1.5" aria-hidden="true" />
+                      <Pencil className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
                       Chỉnh sửa
                     </button>
 
@@ -397,9 +460,9 @@ export default function ProfilePage() {
                       id="change-password-button"
                       onClick={handleStartChangePassword}
                       aria-label="Đổi mật khẩu tài khoản"
-                      className="inline-flex items-center justify-center px-3.5 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 hover:border-gray-300 font-medium text-sm transition focus:outline-none focus:ring-2 focus:ring-gray-400 shadow-sm"
+                      className="inline-flex items-center justify-center px-3.5 py-2 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 hover:border-gray-300 font-medium text-xs sm:text-sm transition focus:outline-none focus:ring-2 focus:ring-gray-400 shadow-sm"
                     >
-                      <KeyRound className="w-4 h-4 mr-1.5" aria-hidden="true" />
+                      <KeyRound className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
                       Đổi mật khẩu
                     </button>
                   </>
@@ -411,16 +474,16 @@ export default function ProfilePage() {
                   onClick={handleLogout}
                   disabled={isLoggingOut}
                   aria-label="Đăng xuất khỏi hệ thống"
-                  className="inline-flex items-center justify-center px-3.5 py-2.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 font-medium text-sm transition focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
+                  className="inline-flex items-center justify-center px-3.5 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 font-medium text-xs sm:text-sm transition focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
                 >
                   {isLoggingOut ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" aria-hidden="true" />
+                      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" aria-hidden="true" />
                       Đang đăng xuất...
                     </>
                   ) : (
                     <>
-                      <LogOut className="w-4 h-4 mr-1.5" aria-hidden="true" />
+                      <LogOut className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
                       Đăng xuất
                     </>
                   )}
@@ -429,10 +492,10 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Success Feedback Alerts */}
+          {/* Feedback Alerts */}
           {editSuccess && (
             <div
-              className="mb-6 flex items-start gap-3 rounded-xl bg-green-50 border border-green-200 p-4 text-sm text-green-800"
+              className="mb-5 flex items-start gap-3 rounded-xl bg-green-50 border border-green-200 p-3.5 text-sm text-green-800"
               role="status"
             >
               <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" aria-hidden="true" />
@@ -442,7 +505,7 @@ export default function ProfilePage() {
 
           {passwordSuccess && (
             <div
-              className="mb-6 flex items-start gap-3 rounded-xl bg-green-50 border border-green-200 p-4 text-sm text-green-800"
+              className="mb-5 flex items-start gap-3 rounded-xl bg-green-50 border border-green-200 p-3.5 text-sm text-green-800"
               role="status"
             >
               <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0 mt-0.5" aria-hidden="true" />
@@ -452,7 +515,7 @@ export default function ProfilePage() {
 
           {logoutError && (
             <div
-              className="mb-6 flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-800"
+              className="mb-5 flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-800"
               role="alert"
             >
               <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" aria-hidden="true" />
@@ -468,17 +531,16 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* Loading State */}
+          {/* Body Content */}
           {loading ? (
-            <div className="py-12 flex flex-col items-center justify-center space-y-4" role="status">
-              <Loader2 className="w-10 h-10 text-orange-600 animate-spin" />
+            <div className="py-12 flex flex-col items-center justify-center space-y-3" role="status">
+              <Loader2 className="w-8 h-8 text-orange-600 animate-spin" />
               <p className="text-sm text-gray-500 font-medium">
                 {isRefreshing ? "Đang làm mới phiên làm việc..." : "Đang tải thông tin hồ sơ..."}
               </p>
             </div>
           ) : error ? (
-            /* Error State */
-            <div className="space-y-6">
+            <div className="space-y-5 py-4">
               <div
                 className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-800"
                 role="alert"
@@ -486,7 +548,6 @@ export default function ProfilePage() {
                 <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" aria-hidden="true" />
                 <div className="flex-1">{error}</div>
               </div>
-
               <div className="flex justify-center">
                 <button
                   type="button"
@@ -499,30 +560,28 @@ export default function ProfilePage() {
               </div>
             </div>
           ) : profile && isEditing ? (
-            /* EDIT PROFILE FORM (FR-AUTH-007) */
-            <form onSubmit={handleSaveProfile} className="space-y-5">
+            /* EDIT PROFILE FORM */
+            <form onSubmit={handleSaveProfile} className="space-y-4 pt-2">
               <div className="border-b border-gray-100 pb-3">
                 <h2 className="text-lg font-bold text-gray-900">
                   Chỉnh sửa hồ sơ cá nhân
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Cập nhật các thông tin hiển thị của bạn trên Culinary Blog.
+                  Cập nhật thông tin hiển thị của bạn trên Culinary Blog.
                 </p>
               </div>
 
-              {/* Edit Error Alert */}
               {editError && (
                 <div
-                  className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-800"
+                  className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-800"
                   role="alert"
                 >
-                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" aria-hidden="true" />
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" aria-hidden="true" />
                   <div className="flex-1">{editError}</div>
                 </div>
               )}
 
-              {/* Display Name Input */}
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label
                   htmlFor="edit-display-name"
                   className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
@@ -538,17 +597,16 @@ export default function ProfilePage() {
                   placeholder="Nhập tên hiển thị..."
                   maxLength={100}
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm"
+                  className="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm"
                 />
               </div>
 
-              {/* Avatar URL Input */}
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label
                   htmlFor="edit-avatar-url"
                   className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
                 >
-                  URL Ảnh đại diện
+                  Avatar URL (Liên kết ảnh)
                 </label>
                 <input
                   type="url"
@@ -557,69 +615,53 @@ export default function ProfilePage() {
                   value={editAvatarUrl}
                   onChange={(e) => setEditAvatarUrl(e.target.value)}
                   placeholder="https://example.com/avatar.jpg"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm"
+                  className="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm"
                 />
-                <p className="text-xs text-gray-400">
-                  Đường dẫn ảnh định dạng HTTP/HTTPS hợp lệ.
-                </p>
               </div>
 
-              {/* Bio Input */}
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label
                   htmlFor="edit-bio"
                   className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
                 >
-                  Tiểu sử (Bio)
+                  Tiểu sử cá nhân
                 </label>
                 <textarea
                   id="edit-bio"
                   name="bio"
-                  rows={3}
                   value={editBio}
                   onChange={(e) => setEditBio(e.target.value)}
-                  placeholder="Mô tả đôi nét về phong cách ẩm thực của bạn..."
+                  placeholder="Chia sẻ một chút về niềm đam mê ẩm thực của bạn..."
+                  rows={3}
                   maxLength={500}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm resize-none"
+                  className="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm"
                 />
-                <div className="text-right text-xs text-gray-400">
-                  {editBio.length} / 500 ký tự
-                </div>
               </div>
 
-              {/* Readonly Email Notice */}
-              <div className="rounded-xl bg-gray-50 border border-gray-200/80 p-3 text-xs text-gray-500 flex items-center justify-between">
-                <span>Email tài khoản: <strong>{profile.email}</strong></span>
-                <span className="italic text-gray-400">Không thể thay đổi</span>
-              </div>
-
-              {/* Form Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
                 <button
                   type="button"
                   id="cancel-edit-button"
                   onClick={handleCancelEdit}
                   disabled={isSaving}
-                  className="px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium text-sm transition focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-60"
+                  className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium text-xs sm:text-sm transition focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-60"
                 >
-                  <X className="w-4 h-4 mr-1.5 inline" aria-hidden="true" />
                   Hủy
                 </button>
-
                 <button
                   type="submit"
                   id="save-profile-button"
                   disabled={isSaving}
-                  className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-medium text-sm transition focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-60 shadow-sm"
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-medium text-xs sm:text-sm transition focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-60 shadow-sm"
                 >
                   {isSaving ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" aria-hidden="true" />
+                      <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
                       Đang lưu...
                     </>
                   ) : (
                     <>
-                      <Save className="w-4 h-4 mr-1.5" aria-hidden="true" />
+                      <Save className="w-4 h-4 mr-1.5" />
                       Lưu thay đổi
                     </>
                   )}
@@ -627,28 +669,28 @@ export default function ProfilePage() {
               </div>
             </form>
           ) : profile && isChangingPassword ? (
-            /* CHANGE PASSWORD FORM (Lab 7) */
-            <form onSubmit={handleSavePassword} className="space-y-5">
+            /* CHANGE PASSWORD FORM */
+            <form onSubmit={handleSavePassword} className="space-y-4 pt-2">
               <div className="border-b border-gray-100 pb-3">
                 <h2 className="text-lg font-bold text-gray-900">
                   Đổi mật khẩu tài khoản
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Cập nhật mật khẩu mới cho tài khoản {profile.email}.
+                  Áp dụng cho tài khoản sử dụng mật khẩu hệ thống (Local).
                 </p>
               </div>
 
               {passwordError && (
                 <div
-                  className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-800"
+                  className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-800"
                   role="alert"
                 >
-                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" aria-hidden="true" />
                   <div className="flex-1">{passwordError}</div>
                 </div>
               )}
 
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label
                   htmlFor="current-password"
                   className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
@@ -662,11 +704,11 @@ export default function ProfilePage() {
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="Nhập mật khẩu hiện tại..."
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm"
+                  className="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm"
                 />
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label
                   htmlFor="new-password"
                   className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
@@ -678,13 +720,13 @@ export default function ProfilePage() {
                   id="new-password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Tối thiểu 8 ký tự (hoa, thường, số, ký tự đặc biệt)..."
+                  placeholder="Tối thiểu 8 ký tự..."
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm"
+                  className="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm"
                 />
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label
                   htmlFor="confirm-password"
                   className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
@@ -698,31 +740,29 @@ export default function ProfilePage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Nhập lại mật khẩu mới..."
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm"
+                  className="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition shadow-sm"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
                 <button
                   type="button"
                   id="cancel-password-button"
                   onClick={handleCancelChangePassword}
                   disabled={isSavingPassword}
-                  className="px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium text-sm transition focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-60"
+                  className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium text-xs sm:text-sm transition focus:outline-none focus:ring-2 focus:ring-gray-300 disabled:opacity-60"
                 >
-                  <X className="w-4 h-4 mr-1.5 inline" />
                   Hủy
                 </button>
-
                 <button
                   type="submit"
                   id="save-password-button"
                   disabled={isSavingPassword}
-                  className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-medium text-sm transition focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-60 shadow-sm"
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-medium text-xs sm:text-sm transition focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-60 shadow-sm"
                 >
                   {isSavingPassword ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
                       Đang lưu...
                     </>
                   ) : (
@@ -735,12 +775,12 @@ export default function ProfilePage() {
               </div>
             </form>
           ) : profile ? (
-            /* VIEW PROFILE CONTENT */
-            <div className="space-y-6">
+            /* VIEW PROFILE DETAILS */
+            <div className="space-y-5">
               {/* Name & Roles */}
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <span>{profile.displayName}</span>
+              <div className="text-center sm:text-left">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+                  {profile.displayName}
                 </h1>
                 {profile.bio && (
                   <p className="text-sm text-gray-600 mt-1 italic">
@@ -748,34 +788,34 @@ export default function ProfilePage() {
                   </p>
                 )}
                 {/* Roles Badges */}
-                <div className="flex flex-wrap gap-2 mt-3">
+                <div className="flex flex-wrap justify-center sm:justify-start gap-1.5 mt-3">
                   {profile.roles && profile.roles.length > 0 ? (
                     profile.roles.map((role) => (
                       <span
                         key={role}
-                        className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200"
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200"
                       >
                         <Shield className="w-3 h-3 mr-1" />
                         {role}
                       </span>
                     ))
                   ) : (
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700">
                       Thành viên
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Details Card */}
-              <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 space-y-3.5">
-                {/* Email */}
-                <div className="flex items-center justify-between text-sm">
+              {/* Information Cards */}
+              <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 space-y-3">
+                {/* Email Item */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-sm gap-1 sm:gap-2">
                   <div className="flex items-center text-gray-500">
-                    <Mail className="w-4 h-4 mr-2.5 text-gray-400" />
-                    <span>Email</span>
+                    <Mail className="w-4 h-4 mr-2 text-gray-400 shrink-0" />
+                    <span>Địa chỉ Email</span>
                   </div>
-                  <div className="flex items-center gap-2 font-medium text-gray-800">
+                  <div className="flex items-center gap-1.5 font-medium text-gray-800 break-all">
                     <span>{profile.email}</span>
                     {profile.emailConfirmed ? (
                       <span title="Email đã xác thực" className="inline-flex items-center text-green-600">
@@ -789,24 +829,16 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Member Since */}
-                <div className="flex items-center justify-between text-sm">
+                {/* Member Since Item */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-sm gap-1 sm:gap-2 pt-2 border-t border-gray-200/60">
                   <div className="flex items-center text-gray-500">
-                    <Calendar className="w-4 h-4 mr-2.5 text-gray-400" />
-                    <span>Tham gia từ</span>
+                    <Calendar className="w-4 h-4 mr-2 text-gray-400 shrink-0" />
+                    <span>Ngày tham gia</span>
                   </div>
                   <span className="font-medium text-gray-800">
                     {formatDate(profile.createdAt)}
                   </span>
                 </div>
-              </div>
-
-              {/* Security Notice Note */}
-              <div className="rounded-xl bg-orange-50/70 border border-orange-100 p-3.5 text-xs text-orange-800 flex items-start gap-2.5">
-                <ChefHat className="w-4 h-4 text-orange-600 shrink-0 mt-0.5" />
-                <p>
-                  Phiên đăng nhập được bảo mật bởi JWT Access Token và Refresh Token Rotation tự động.
-                </p>
               </div>
             </div>
           ) : null}

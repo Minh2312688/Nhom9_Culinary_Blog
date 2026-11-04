@@ -1,5 +1,10 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChefHat } from "lucide-react";
+import { useAuth, setStoredUser } from "@/lib/auth-store";
+import { getProfileApi } from "@/lib/auth-api";
 import styles from "./site-ui.module.css";
 
 export function BrandLink() {
@@ -12,6 +17,43 @@ export function BrandLink() {
 }
 
 export function SiteHeader() {
+  const { isAuthenticated, accessToken, user } = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Tự động tải profile đầy đủ (tên thật, avatar) từ API nếu đã đăng nhập
+  useEffect(() => {
+    if (!mounted || !isAuthenticated || !accessToken) return;
+
+    // Nếu đã có displayName đầy đủ (không phải chỉ email username), không cần fetch lại liên tục
+    if (user?.displayName && user.displayName !== user.email?.split("@")[0]) return;
+
+    let cancelled = false;
+    getProfileApi(accessToken)
+      .then((data) => {
+        if (!cancelled && data) {
+          setStoredUser({
+            displayName: data.displayName,
+            email: data.email,
+            avatarUrl: data.avatarUrl,
+          });
+        }
+      })
+      .catch(() => {
+        // Fallback: giữ thông tin từ JWT / state hiện tại
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mounted, isAuthenticated, accessToken, user?.displayName, user?.email]);
+
+  const loggedIn = mounted && isAuthenticated;
+  const displayName = user?.displayName || user?.email || "Tài khoản";
+
   return (
     <header className={styles.header}>
       <BrandLink />
@@ -19,7 +61,34 @@ export function SiteHeader() {
         <Link href="/recipes">Công thức</Link>
         <Link href="/categories">Danh mục</Link>
         <Link href="/search">Tìm kiếm</Link>
-        <Link href="/profile">Tài khoản</Link>
+        {loggedIn ? (
+          <Link
+            href="/profile"
+            data-testid="nav-profile"
+            className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full bg-orange-50/80 hover:bg-orange-100/90 border border-orange-200/60 transition group max-w-[200px]"
+            title={`Tài khoản: ${displayName}`}
+          >
+            {user?.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={user.avatarUrl}
+                alt=""
+                className="w-5 h-5 rounded-full object-cover shrink-0 border border-orange-300"
+              />
+            ) : (
+              <span className="w-5 h-5 rounded-full bg-orange-200 text-orange-800 flex items-center justify-center text-[10px] font-bold shrink-0">
+                {displayName.charAt(0).toUpperCase()}
+              </span>
+            )}
+            <span className="truncate max-w-[120px] font-medium text-gray-800 group-hover:text-orange-700 text-xs">
+              {displayName}
+            </span>
+          </Link>
+        ) : (
+          <Link href="/auth/login" data-testid="nav-login">
+            Đăng nhập
+          </Link>
+        )}
       </nav>
     </header>
   );

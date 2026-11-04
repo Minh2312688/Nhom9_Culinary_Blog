@@ -8,6 +8,10 @@ namespace CulinaryBlog.Infrastructure.Persistence;
 
 public sealed class DistributedRecipeCache : IRecipeCache
 {
+    private const string GenerationKey = "recipes:generation";
+    private const string InitialGeneration = "0";
+    private static readonly TimeSpan GenerationTtl = TimeSpan.FromHours(24);
+
     private readonly IDistributedCache cache;
     private readonly ILogger<DistributedRecipeCache> logger;
 
@@ -21,7 +25,8 @@ public sealed class DistributedRecipeCache : IRecipeCache
     {
         try
         {
-            var value = await cache.GetStringAsync(key, cancellationToken);
+            var resolvedKey = await ResolveKeyAsync(key, cancellationToken);
+            var value = await cache.GetStringAsync(resolvedKey, cancellationToken);
             return value is null ? default : JsonSerializer.Deserialize<T>(value);
         }
         catch (Exception exception) when (exception is RedisConnectionException or TimeoutException or JsonException)
@@ -35,7 +40,8 @@ public sealed class DistributedRecipeCache : IRecipeCache
     {
         try
         {
-            await cache.SetStringAsync(key, JsonSerializer.Serialize(value), new DistributedCacheEntryOptions
+            var resolvedKey = await ResolveKeyAsync(key, cancellationToken);
+            await cache.SetStringAsync(resolvedKey, JsonSerializer.Serialize(value), new DistributedCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = ttl
             }, cancellationToken);
@@ -50,7 +56,8 @@ public sealed class DistributedRecipeCache : IRecipeCache
     {
         try
         {
-            await cache.RemoveAsync(key, cancellationToken);
+            var normalized = NormalizeKey(key);
+            await cache.RemoveAsync(normalized, cancellationToken);
         }
         catch (Exception exception) when (exception is RedisConnectionException or TimeoutException)
         {
@@ -58,7 +65,36 @@ public sealed class DistributedRecipeCache : IRecipeCache
         }
     }
 
-    // IDistributedCache has no portable key scan. List queries are deliberately not cached,
-    // so invalidation only needs to remove known detail keys at this stage.
-    public Task RemoveByPrefixAsync(string prefix, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public async Task RemoveByPrefixAsync(string prefix, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var newGeneration = Guid.NewGuid().ToString("N");
+            await cache.SetStringAsync(
+                GenerationKey,
+                newGeneration,
+                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = GenerationTtl },
+                cancellationToken);
+            logger.LogInformation("Recipe cache prefix {Prefix} invalidated with new generation {Generation}.", prefix, newGeneration);
+        }
+        catch (Exception exception) when (exception is RedisConnectionException or TimeoutException)
+        {
+            logger.LogWarning(exception, "Recipe cache prefix removal failed for {Prefix}; continuing.", prefix);
+        }
+    }
+
+    private async Task<string> ResolveKeyAsync(string key, CancellationToken cancellationToken)
+    {
+        var normalized = NormalizeKey(key);
+        // Prefix-invalidated search result keys incorporate generation
+        if (normalized.StartsWith("recipes:search:", StringComparison.OrdinalIgnoreCase))
+        {
+            var generation = await cache.GetStringAsync(GenerationKey, cancellationToken);
+            return $"{normalized}:g{generation ?? InitialGeneration}";
+        }
+
+        return normalized;
+    }
+
+    private static string NormalizeKey(string key) => key.Trim().ToLowerInvariant();
 }

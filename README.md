@@ -1,4 +1,4 @@
-# Nhom9_Culinary_Blog
+﻿# Nhom9_Culinary_Blog
 
 Docker guide: [docs/docker-guide.md](docs/docker-guide.md).
 
@@ -603,10 +603,11 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 
 | Hạng mục | Trạng thái | Đã hoàn thành | Còn lại / Phụ thuộc |
 |---|---|---|---|
-| FR-RCP-001 → FR-RCP-007 | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
-| Database chung & Migration | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
-| FR-SRCH-001 → FR-SRCH-004 | `Đã triển khai; kiểm thử đạt` | Search/filter/sort/pagination có backend và UI; Application 472, Integration 81/81 khi bật MinIO live (6/6), Architecture 3, Playwright 8/8, frontend build đạt; người dùng xác nhận list/search đọc được dữ liệu PostgreSQL | Probe độc lập sau đó API offline; lần kiểm tra trước đó trên môi trường Testing gặp list 500/search timeout |
-| Redis Caching | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
+| FR-RCP-001 → FR-RCP-007 | Xong | Backend Recipe CRUD, Step, Ingredient, Status, CQRS handlers | Đã nghiệm thu |
+| Database chung & Migration | Xong | ApplicationDbContext, PostgreSQL Migrations, sửa lỗi FK testcontainers (138/138 integration tests pass) | Đã nghiệm thu |
+| FR-SRCH-001 → FR-SRCH-004 | Xong | Search/filter/sort/pagination có backend và UI; Application 725/725, Integration 138/138; Playwright pass | Đã nghiệm thu |
+| Redis Caching & File Cleanup | Xong | Generation key pattern cho RemoveByPrefixAsync, chuẩn hóa lowercase cache keys; eager load & xóa file ảnh MinIO khi xóa công thức (TECH-RISK-004) | Đã nghiệm thu |
+| FR-RCP-008 → FR-RCP-010 (Tuần 8) | Xong | Form bước nấu có cấu trúc (title, duration, description, image), sắp xếp thứ tự bước (move up/down), bảng dinh dưỡng 6 chỉ số; bộ kiểm thử E2E Playwright hoàn chỉnh 7/7 pass 100% | Đã nghiệm thu |
 
 ---
 

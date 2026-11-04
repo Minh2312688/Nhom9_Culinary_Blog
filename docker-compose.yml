@@ -1,3 +1,5 @@
+# DEV/DEMO ONLY: this file uses MailHog (Smtp__Host=mailhog) to capture test emails.
+# Do NOT use it for Production. Production must set real Smtp__Host/Port/Username/Password/FromAddress (see .env.example).
 services:
   api:
     build:

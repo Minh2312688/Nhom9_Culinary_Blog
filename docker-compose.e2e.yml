@@ -1,3 +1,4 @@
+# E2E test environment only: SMTP is MailHog (fake). Do NOT use for Production.
 # TV4 E2E override for FR-JOB-001 verification runs only (isolated from the
 # default project). Usage:
 #   docker compose -p <unique-project> -f docker-compose.yml -f docker-compose.e2e.yml --env-file .env.example up --build -d api

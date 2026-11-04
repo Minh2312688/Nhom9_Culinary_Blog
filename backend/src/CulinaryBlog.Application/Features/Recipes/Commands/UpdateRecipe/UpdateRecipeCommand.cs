@@ -73,9 +73,9 @@ public sealed class UpdateRecipeCommandHandler : IRequestHandler<UpdateRecipeCom
         }
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateConcurrencyException) { throw new ConcurrencyException(); }
-        await cache.RemoveAsync($"recipes:slug:{previousSlug}", cancellationToken);
+        await cache.RemoveAsync($"recipes:slug:{previousSlug.ToLowerInvariant()}", cancellationToken);
         if (!string.Equals(previousSlug, recipe.Slug, StringComparison.OrdinalIgnoreCase))
-            await cache.RemoveAsync($"recipes:slug:{recipe.Slug}", cancellationToken);
+            await cache.RemoveAsync($"recipes:slug:{recipe.Slug.ToLowerInvariant()}", cancellationToken);
         await cache.RemoveByPrefixAsync("recipes:", cancellationToken);
         return recipe.ToDetail();
     }

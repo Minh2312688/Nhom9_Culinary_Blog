@@ -182,14 +182,20 @@ public static class DependencyInjection
             "Testing",
             StringComparison.OrdinalIgnoreCase);
 
+        var isProduction = string.Equals(
+            environment?.EnvironmentName,
+            "Production",
+            StringComparison.OrdinalIgnoreCase);
+
         if (!isTestingEnvironment)
         {
             // SMTP options: bound from "Smtp" section (appsettings/environment).
-            // SmtpEmailSender validates at send time; empty section is allowed
-            // here so the app can boot before SMTP is configured, but sending
-            // will throw a clear error instead of fake success.
-            services.AddOptions<SmtpOptions>()
-                .Bind(configuration.GetSection(SmtpOptions.SectionName));
+            // Production additionally registers SmtpProductionOptionsValidator
+            // and ValidateOnStart() so the host fails fast at startup before
+            // any email is sent. Development/Testing/e2e keep the old behavior:
+            // bind only, SmtpEmailSender validates at send time (MailHog has no
+            // credentials and no TLS, so it must NOT be rejected at startup).
+            services.AddSmtpConfiguration(configuration, isProduction);
 
             services.AddScoped<IEmailSender, SmtpEmailSender>();
             services.AddScoped<WelcomeEmailJob>();

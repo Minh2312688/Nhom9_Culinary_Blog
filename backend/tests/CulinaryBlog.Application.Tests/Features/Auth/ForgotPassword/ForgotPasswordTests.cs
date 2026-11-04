@@ -2,6 +2,7 @@ using CulinaryBlog.Application.Contracts.Authentication;
 using CulinaryBlog.Application.Contracts.Notifications;
 using CulinaryBlog.Application.Features.Auth.ForgotPassword;
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -60,9 +61,47 @@ public class ForgotPasswordTests
 
         _emailSenderMock.Verify(
             x => x.SendAsync(
-                It.Is<EmailMessage>(m => m.To == "chef@example.com" && m.HtmlBody.Contains("sample-reset-token-123")),
+                It.Is<EmailMessage>(m => m.To == "chef@example.com"
+                    && m.HtmlBody.Contains("sample-reset-token-123")
+                    && m.HtmlBody.Contains("/auth/reset-password?email=chef%40example.com&amp;token=sample-reset-token-123")),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WithCustomFrontendBaseUrl_ShouldIncludeCustomDomainInLink()
+    {
+        var inMemoryConfig = new Dictionary<string, string?>
+        {
+            ["Frontend:BaseUrl"] = "https://culinaryblog.com"
+        };
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(inMemoryConfig)
+            .Build();
+
+        var handler = new ForgotPasswordCommandHandler(
+            _identityServiceMock.Object,
+            _emailSenderMock.Object,
+            _loggerMock.Object,
+            configuration);
+
+        var command = new ForgotPasswordCommand("chef@example.com");
+
+        _identityServiceMock
+            .Setup(x => x.GeneratePasswordResetTokenAsync("chef@example.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ForgotPasswordResult(true, "token+with/special==chars"));
+
+        EmailMessage? captured = null;
+        _emailSenderMock
+            .Setup(x => x.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailMessage, CancellationToken>((msg, _) => captured = msg)
+            .Returns(Task.CompletedTask);
+
+        await handler.Handle(command, CancellationToken.None);
+
+        captured.Should().NotBeNull();
+        captured!.HtmlBody.Should().Contain("https://culinaryblog.com/auth/reset-password?email=chef%40example.com&amp;token=token%2Bwith%2Fspecial%3D%3Dchars");
+        captured.TextBody.Should().Contain("https://culinaryblog.com/auth/reset-password?email=chef%40example.com&token=token%2Bwith%2Fspecial%3D%3Dchars");
     }
 
     [Fact]

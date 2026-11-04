@@ -17,13 +17,18 @@ import { useSyncExternalStore } from "react";
  * - LƯU Ý BẢO MẬT (theo OWASP Session Management Cheat Sheet): sessionStorage
  *   KHÔNG ngăn chặn được tấn công XSS (Cross-Site Scripting). Nếu ứng dụng bị dính XSS,
  *   mã độc chạy trên cùng origin vẫn có thể đọc toàn bộ sessionStorage.
- *   Lưu ý: HttpOnly Cookie bảo vệ cookie khỏi bị JavaScript đọc trực tiếp nhưng không loại bỏ
- *   hoàn toàn mọi tác động của XSS (kẻ tấn công vẫn có thể mượn quyền gửi request).
  * - Sử dụng mô hình Observer Pub-Sub + React useSyncExternalStore tương thích SSR Next.js 15 / React 19.
  */
 
 const ACCESS_TOKEN_KEY = "culinary_access_token";
 const REFRESH_TOKEN_KEY = "culinary_refresh_token";
+const USER_PROFILE_KEY = "culinary_user_profile";
+
+export interface StoredUserProfile {
+  displayName?: string;
+  email?: string;
+  avatarUrl?: string | null;
+}
 
 export interface AuthTokens {
   accessToken: string | null;
@@ -32,6 +37,7 @@ export interface AuthTokens {
 
 export interface AuthState extends AuthTokens {
   isAuthenticated: boolean;
+  user: StoredUserProfile | null;
 }
 
 const listeners = new Set<() => void>();
@@ -71,17 +77,81 @@ export function getRefreshToken(): string | null {
 }
 
 /**
+ * Lấy thông tin user cache từ sessionStorage (SSR-safe).
+ */
+export function getStoredUser(): StoredUserProfile | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(USER_PROFILE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Lưu hoặc cập nhật thông tin user trong sessionStorage.
+ */
+export function setStoredUser(user: StoredUserProfile | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (user) {
+      sessionStorage.setItem(USER_PROFILE_KEY, JSON.stringify(user));
+    } else {
+      sessionStorage.removeItem(USER_PROFILE_KEY);
+    }
+    emitChange();
+  } catch (err) {
+    console.error("Failed to save user profile to sessionStorage", err);
+  }
+}
+
+/**
+ * Giải mã nhanh email / displayName cơ bản từ JWT payload (SSR-safe, không dùng external lib).
+ */
+function parseJwtUser(token: string | null): StoredUserProfile | null {
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    const payload = JSON.parse(json);
+    const email = payload.email || payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"];
+    const name = payload.displayName || payload.name || (email ? email.split("@")[0] : null);
+    if (!email && !name) return null;
+    return {
+      email: email ?? undefined,
+      displayName: name ?? undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Lưu cặp Token vào sessionStorage sau khi đăng nhập hoặc refresh thành công.
- * Cơ chế Rollback Atomic (All-or-Nothing):
- * Nếu một trong hai token ghi thất bại (ví dụ: QuotaExceededError hoặc SecurityError),
- * hệ thống sẽ xóa sạch cả hai token để tránh trạng thái nửa vời (Access Token mới đi cùng Refresh Token cũ),
- * đồng thời thông báo tới các subscriber và trả về false.
+ * Cơ chế Rollback Atomic (All-or-Nothing).
  */
 export function setAuthTokens(accessToken: string, refreshToken: string): boolean {
   if (typeof window === "undefined") return false;
   try {
     sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
     sessionStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+
+    // Trích xuất thông tin cơ bản từ JWT nếu chưa có profile cache
+    if (!sessionStorage.getItem(USER_PROFILE_KEY)) {
+      const jwtUser = parseJwtUser(accessToken);
+      if (jwtUser) {
+        sessionStorage.setItem(USER_PROFILE_KEY, JSON.stringify(jwtUser));
+      }
+    }
+
     emitChange();
     return true;
   } catch (error) {
@@ -89,6 +159,7 @@ export function setAuthTokens(accessToken: string, refreshToken: string): boolea
     try {
       sessionStorage.removeItem(ACCESS_TOKEN_KEY);
       sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+      sessionStorage.removeItem(USER_PROFILE_KEY);
     } catch {
       // Ignore cleanup error
     }
@@ -99,8 +170,6 @@ export function setAuthTokens(accessToken: string, refreshToken: string): boolea
 
 /**
  * Xóa sạch phiên đăng nhập khi Logout hoặc Token hết hạn/bị hủy.
- * Cố gắng xóa cả hai token ngay cả khi một thao tác gặp lỗi.
- * Trả về true nếu cả hai được xóa thành công, false nếu có lỗi xảy ra.
  */
 export function clearAuthTokens(): boolean {
   if (typeof window === "undefined") return false;
@@ -117,6 +186,11 @@ export function clearAuthTokens(): boolean {
     console.error("Failed to remove refresh token from sessionStorage", error);
     success = false;
   }
+  try {
+    sessionStorage.removeItem(USER_PROFILE_KEY);
+  } catch (error) {
+    console.error("Failed to remove user profile from sessionStorage", error);
+  }
   emitChange();
   return success;
 }
@@ -132,22 +206,28 @@ let cachedState: AuthState = {
   accessToken: null,
   refreshToken: null,
   isAuthenticated: false,
+  user: null,
 };
 
 function getSnapshot(): AuthState {
   const accessToken = getAccessToken();
   const refreshToken = getRefreshToken();
   const isAuth = Boolean(accessToken);
+  const user = getStoredUser() || parseJwtUser(accessToken);
+
+  const userChanged = JSON.stringify(cachedState.user) !== JSON.stringify(user);
 
   if (
     cachedState.accessToken !== accessToken ||
     cachedState.refreshToken !== refreshToken ||
-    cachedState.isAuthenticated !== isAuth
+    cachedState.isAuthenticated !== isAuth ||
+    userChanged
   ) {
     cachedState = {
       accessToken,
       refreshToken,
       isAuthenticated: isAuth,
+      user,
     };
   }
 
@@ -158,6 +238,7 @@ const SERVER_SNAPSHOT: AuthState = {
   accessToken: null,
   refreshToken: null,
   isAuthenticated: false,
+  user: null,
 };
 
 function getServerSnapshot(): AuthState {
@@ -167,9 +248,12 @@ function getServerSnapshot(): AuthState {
 function subscribe(callback: () => void): () => void {
   listeners.add(callback);
 
-  // Lắng nghe sự kiện storage trên window nếu có đồng bộ tab
   const handleStorage = (e: StorageEvent) => {
-    if (e.key === ACCESS_TOKEN_KEY || e.key === REFRESH_TOKEN_KEY) {
+    if (
+      e.key === ACCESS_TOKEN_KEY ||
+      e.key === REFRESH_TOKEN_KEY ||
+      e.key === USER_PROFILE_KEY
+    ) {
       callback();
     }
   };

@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { loginApi, googleLoginApi, ApiError } from "@/lib/api";
-import { setAuthTokens } from "@/lib/auth-store";
+import { setAuthTokens, getAccessToken } from "@/lib/auth-store";
 import { Eye, EyeOff, Loader2, AlertCircle, ChefHat, CheckCircle2 } from "lucide-react";
 import { BrandLink } from "../../site-ui";
 
@@ -19,12 +20,19 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
-  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim();
+
+  useEffect(() => {
+    if (getAccessToken()) {
+      router.replace("/");
+    }
+  }, [router]);
 
   const {
     register,
@@ -50,6 +58,7 @@ export default function LoginPage() {
       }
 
       setLoginSuccess(true);
+      router.replace("/");
     } catch (err) {
       const apiErr = err as ApiError;
       setServerError(apiErr.detail || "Đăng nhập không thành công.");
@@ -80,6 +89,7 @@ export default function LoginPage() {
                 return;
               }
               setLoginSuccess(true);
+              router.replace("/");
             } catch (err) {
               const apiErr = err as ApiError;
               setServerError(apiErr.detail || "Xác thực với Google không thành công.");
@@ -113,7 +123,7 @@ export default function LoginPage() {
       }, 300);
       return () => clearInterval(timer);
     }
-  }, [googleClientId]);
+  }, [googleClientId, router]);
 
   return (
     <>
@@ -143,7 +153,7 @@ export default function LoginPage() {
             <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto" />
             <h2 className="text-lg font-semibold text-green-900">Đăng nhập thành công!</h2>
             <p className="text-sm text-green-700">
-              Bạn đã đăng nhập thành công vào hệ thống Culinary Blog.
+              Đang chuyển hướng về trang chủ...
             </p>
           </div>
         ) : (

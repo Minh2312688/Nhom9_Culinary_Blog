@@ -16,6 +16,7 @@ import {
   type RecipeDetail,
   type RecipeInput,
   type RecipeNutritionInput,
+  type RecipeStep,
   ApiRequestError,
 } from "@/lib/recipes-api";
 import { getFormErrorDetails, useFeedback } from "../feedback";
@@ -29,8 +30,13 @@ interface StructuredIngredient {
   notes: string;
 }
 
-interface StructuredStep {
+export interface StructuredStep {
+  id?: string;
+  stepNumber?: number;
+  title: string;
   description: string;
+  durationMinutes: number | null;
+  imageUrl: string | null;
 }
 
 function parseIngredientsText(text: string): StructuredIngredient[] {
@@ -62,11 +68,13 @@ function parseStepsText(text: string): StructuredStep[] {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((description) => ({ description }));
-}
-
-function serializeSteps(items: StructuredStep[]): string {
-  return items.map((item) => item.description.trim()).filter(Boolean).join("\n");
+    .map((description, idx) => ({
+      stepNumber: idx + 1,
+      title: "",
+      description,
+      durationMinutes: null,
+      imageUrl: null,
+    }));
 }
 
 interface ImageEntry {
@@ -101,11 +109,17 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   const [difficulty, setDifficulty] = useState("Easy");
   const [ingredients, setIngredients] = useState("");
   const [steps, setSteps] = useState("");
+  const [structuredSteps, setStructuredSteps] = useState<StructuredStep[]>([]);
 
   // Nutrition state
   const [includeNutrition, setIncludeNutrition] = useState(false);
   const [nutrition, setNutrition] = useState<RecipeNutritionInput>({
-    calories: 0, protein: 0, carbohydrates: 0, fat: 0, fiber: 0, sodium: 0,
+    calories: 0,
+    protein: 0,
+    carbohydrates: 0,
+    fat: 0,
+    fiber: 0,
+    sodium: 0,
   });
 
   // Image state
@@ -116,7 +130,6 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const structuredIngredients = parseIngredientsText(ingredients);
-  const structuredSteps = parseStepsText(steps);
 
   async function loadRecipeData(accessToken: string, signal?: AbortSignal) {
     const categoryItems = await getRecipeCategories(signal ?? new AbortController().signal);
@@ -141,7 +154,27 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
           )
           .join("\n"),
       );
-      setSteps(detail.steps.map((item) => item.description).join("\n"));
+
+      if (detail.steps && detail.steps.length > 0) {
+        const sorted = detail.steps
+          .slice()
+          .sort((a, b) => (a.stepNumber ?? 0) - (b.stepNumber ?? 0));
+        setStructuredSteps(
+          sorted.map((st, idx) => ({
+            id: st.id,
+            stepNumber: st.stepNumber ?? idx + 1,
+            title: st.title ?? "",
+            description: st.description ?? "",
+            durationMinutes: st.durationMinutes ?? null,
+            imageUrl: st.imageUrl ?? null,
+          })),
+        );
+        setSteps(sorted.map((item) => item.description).join("\n"));
+      } else {
+        setStructuredSteps([]);
+        setSteps("");
+      }
+
       if (detail.nutrition) {
         setIncludeNutrition(true);
         setNutrition({
@@ -153,14 +186,16 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
           sodium: detail.nutrition.sodium,
         });
       }
-      setImages(detail.images.map((img) => ({
-        id: img.id,
-        originalUrl: img.originalUrl,
-        thumbnailUrl: img.thumbnailUrl,
-        altText: img.altText,
-        isPrimary: img.isPrimary,
-        orderIndex: img.orderIndex,
-      })));
+      setImages(
+        detail.images.map((img) => ({
+          id: img.id,
+          originalUrl: img.originalUrl,
+          thumbnailUrl: img.thumbnailUrl,
+          altText: img.altText,
+          isPrimary: img.isPrimary,
+          orderIndex: img.orderIndex,
+        })),
+      );
     } else if (categoryItems.length) {
       setCategoryId(categoryItems[0].id);
     }
@@ -239,24 +274,62 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     clearFieldError("ingredients");
   }
 
-  function updateStepRow(index: number, descriptionText: string) {
-    const list = [...structuredSteps];
-    if (!list[index]) return;
-    list[index] = { description: descriptionText };
-    setSteps(serializeSteps(list));
-    clearFieldError("steps");
-  }
-
+  // Structured Steps Handlers
   function addStepRow() {
-    const newStepsText = steps ? `${steps}\nBước mới` : "Bước mới";
-    setSteps(newStepsText);
+    setStructuredSteps((prev) => [
+      ...prev,
+      {
+        stepNumber: prev.length + 1,
+        title: "",
+        description: "",
+        durationMinutes: null,
+        imageUrl: null,
+      },
+    ]);
     clearFieldError("steps");
   }
 
   function removeStepRow(index: number) {
-    const list = structuredSteps.filter((_, i) => i !== index);
-    setSteps(serializeSteps(list));
+    setStructuredSteps((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.map((st, i) => ({ ...st, stepNumber: i + 1 }));
+    });
     clearFieldError("steps");
+  }
+
+  function updateStepField<K extends keyof StructuredStep>(
+    index: number,
+    field: K,
+    value: StructuredStep[K],
+  ) {
+    setStructuredSteps((prev) => {
+      const next = [...prev];
+      if (!next[index]) return prev;
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+    clearFieldError("steps");
+  }
+
+  function moveStep(index: number, direction: -1 | 1) {
+    setStructuredSteps((prev) => {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const next = [...prev];
+      const temp = next[index];
+      next[index] = next[targetIndex];
+      next[targetIndex] = temp;
+      return next.map((st, i) => ({ ...st, stepNumber: i + 1 }));
+    });
+    clearFieldError("steps");
+  }
+
+  function syncStepsFromText() {
+    if (!steps.trim()) return;
+    const parsed = parseStepsText(steps);
+    setStructuredSteps(parsed);
+    clearFieldError("steps");
+    showToast("Đã đồng bộ các bước từ văn bản.", "success");
   }
 
   async function handleImageUpload(file: File) {
@@ -274,7 +347,13 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     }
     setUploadingImage(true);
     try {
-      const result = await uploadRecipeImage(token, recipeId, file, imageSetPrimary, imageAltText || undefined);
+      const result = await uploadRecipeImage(
+        token,
+        recipeId,
+        file,
+        imageSetPrimary,
+        imageAltText || undefined,
+      );
       const newImg: ImageEntry = {
         id: result.imageId,
         originalUrl: result.originalUrl,
@@ -283,9 +362,11 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
         isPrimary: result.isPrimary,
         orderIndex: images.length,
       };
-      setImages((prev) => imageSetPrimary
-        ? prev.map((img) => ({ ...img, isPrimary: false })).concat(newImg)
-        : [...prev, newImg]);
+      setImages((prev) =>
+        imageSetPrimary
+          ? prev.map((img) => ({ ...img, isPrimary: false })).concat(newImg)
+          : [...prev, newImg],
+      );
       setImageAltText("");
       setImageSetPrimary(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -326,6 +407,34 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     setFieldErrors({});
     setIsConflict(false);
 
+    // Resolve steps: prefer structuredSteps if present, otherwise parse from textarea
+    const resolvedSteps: RecipeStep[] =
+      structuredSteps.length > 0
+        ? structuredSteps
+            .filter((st) => st.description.trim() || st.title.trim())
+            .map((st, idx) => ({
+              id: st.id,
+              stepNumber: idx + 1,
+              title: st.title.trim() || null,
+              description: st.description.trim(),
+              durationMinutes:
+                st.durationMinutes && Number(st.durationMinutes) > 0
+                  ? Number(st.durationMinutes)
+                  : null,
+              imageUrl: st.imageUrl?.trim() || null,
+            }))
+        : steps
+            .split("\n")
+            .map((desc) => desc.trim())
+            .filter(Boolean)
+            .map((desc, idx) => ({
+              stepNumber: idx + 1,
+              title: null,
+              description: desc,
+              durationMinutes: null,
+              imageUrl: null,
+            }));
+
     const payload: RecipeInput = {
       title: title.trim(),
       description: description.trim() || null,
@@ -342,22 +451,14 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
           const [name, quantityText, unit, notes] = line.split("|").map((part) => part.trim());
           return {
             name,
-            quantity: quantityText && Number.isFinite(Number(quantityText)) ? Number(quantityText) : null,
+            quantity:
+              quantityText && Number.isFinite(Number(quantityText)) ? Number(quantityText) : null,
             unit: unit || null,
             notes: notes || null,
             orderIndex,
           };
         }),
-      steps: steps
-        .split("\n")
-        .map((desc) => desc.trim())
-        .filter(Boolean)
-        .map((desc) => ({
-          title: null,
-          description: desc,
-          durationMinutes: null,
-          imageUrl: null,
-        })),
+      steps: resolvedSteps,
       nutrition: includeNutrition ? nutrition : null,
     };
 
@@ -375,7 +476,9 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
         (reason instanceof Error && reason.message.includes("409"))
       ) {
         setIsConflict(true);
-        setError("Công thức này đã được cập nhật bởi phiên làm việc khác. Vui lòng tải lại dữ liệu để nhận phiên bản mới nhất.");
+        setError(
+          "Công thức này đã được cập nhật bởi phiên làm việc khác. Vui lòng tải lại dữ liệu để nhận phiên bản mới nhất.",
+        );
         showToast("Xung đột phiên bản: Công thức đã bị sửa ở phiên khác.", "error");
         setSaving(false);
         return;
@@ -401,7 +504,11 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
 
   function renderFieldError(field: string) {
     const message = fieldErrors[field]?.join(" ");
-    return message ? <span className={styles.fieldError} id={`${field}-error`} role="alert">{message}</span> : null;
+    return message ? (
+      <span className={styles.fieldError} id={`${field}-error`} role="alert">
+        {message}
+      </span>
+    ) : null;
   }
 
   return (
@@ -426,8 +533,13 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
             gap: "10px",
           }}
         >
-          <strong style={{ fontSize: "14px" }}>⚠️ Xung đột phiên bản dữ liệu (Optimistic Concurrency)</strong>
-          <span data-error-summary>Công thức này đã được cập nhật bởi phiên làm việc khác. Vui lòng tải lại dữ liệu để nhận phiên bản mới nhất.</span>
+          <strong style={{ fontSize: "14px" }}>
+            ⚠️ Xung đột phiên bản dữ liệu (Optimistic Concurrency)
+          </strong>
+          <span data-error-summary>
+            Công thức này đã được cập nhật bởi phiên làm việc khác. Vui lòng tải lại dữ liệu để nhận
+            phiên bản mới nhất.
+          </span>
           <div>
             <button
               type="button"
@@ -440,11 +552,12 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
           </div>
         </div>
       )}
-      {error && !isConflict && <ErrorNotice><span data-error-summary>{error}</span></ErrorNotice>}
       {!loading && (
-        <form className={styles.formStack} onSubmit={(event) => void onSubmit(event)}>
+        <form className={styles.form} onSubmit={(e) => void onSubmit(e)} noValidate>
+          {error && !isConflict && <ErrorNotice>{error}</ErrorNotice>}
+
           <label className={styles.field}>
-            Tên món
+            Tiêu đề
             <input
               id="title"
               aria-invalid={Boolean(fieldErrors.title)}
@@ -453,7 +566,10 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
               minLength={5}
               maxLength={200}
               value={title}
-              onChange={(event) => { setTitle(event.target.value); clearFieldError("title"); }}
+              onChange={(event) => {
+                setTitle(event.target.value);
+                clearFieldError("title");
+              }}
             />
             {renderFieldError("title")}
           </label>
@@ -464,7 +580,10 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
               aria-invalid={Boolean(fieldErrors.description)}
               aria-describedby={fieldErrors.description ? "description-error" : undefined}
               value={description}
-              onChange={(event) => { setDescription(event.target.value); clearFieldError("description"); }}
+              onChange={(event) => {
+                setDescription(event.target.value);
+                clearFieldError("description");
+              }}
             />
             {renderFieldError("description")}
           </label>
@@ -477,11 +596,16 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                 aria-describedby={fieldErrors.categoryId ? "categoryId-error" : undefined}
                 required
                 value={categoryId}
-                onChange={(event) => { setCategoryId(event.target.value); clearFieldError("categoryId"); }}
+                onChange={(event) => {
+                  setCategoryId(event.target.value);
+                  clearFieldError("categoryId");
+                }}
               >
                 <option value="">Chọn danh mục</option>
                 {categories.map((item) => (
-                  <option key={item.id} value={item.id}>{item.name}</option>
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
                 ))}
               </select>
               {renderFieldError("categoryId")}
@@ -493,7 +617,10 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                 aria-invalid={Boolean(fieldErrors.difficulty)}
                 aria-describedby={fieldErrors.difficulty ? "difficulty-error" : undefined}
                 value={difficulty}
-                onChange={(event) => { setDifficulty(event.target.value); clearFieldError("difficulty"); }}
+                onChange={(event) => {
+                  setDifficulty(event.target.value);
+                  clearFieldError("difficulty");
+                }}
               >
                 <option value="Easy">Dễ</option>
                 <option value="Medium">Trung bình</option>
@@ -512,7 +639,10 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                 min="0"
                 required
                 value={prepTime}
-                onChange={(event) => { setPrepTime(event.target.value); clearFieldError("prepTimeMinutes"); }}
+                onChange={(event) => {
+                  setPrepTime(event.target.value);
+                  clearFieldError("prepTimeMinutes");
+                }}
               />
               {renderFieldError("prepTimeMinutes")}
             </label>
@@ -526,7 +656,10 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                 min="0"
                 required
                 value={cookTime}
-                onChange={(event) => { setCookTime(event.target.value); clearFieldError("cookTimeMinutes"); }}
+                onChange={(event) => {
+                  setCookTime(event.target.value);
+                  clearFieldError("cookTimeMinutes");
+                }}
               />
               {renderFieldError("cookTimeMinutes")}
             </label>
@@ -540,7 +673,10 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                 min="1"
                 required
                 value={servings}
-                onChange={(event) => { setServings(event.target.value); clearFieldError("servings"); }}
+                onChange={(event) => {
+                  setServings(event.target.value);
+                  clearFieldError("servings");
+                }}
               />
               {renderFieldError("servings")}
             </label>
@@ -553,16 +689,34 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
               aria-invalid={Boolean(fieldErrors.ingredients)}
               aria-describedby={fieldErrors.ingredients ? "ingredients-error" : undefined}
               value={ingredients}
-              onChange={(event) => { setIngredients(event.target.value); clearFieldError("ingredients"); }}
+              onChange={(event) => {
+                setIngredients(event.target.value);
+                clearFieldError("ingredients");
+              }}
               placeholder={"Thịt bò | 300 | g\nHành lá"}
             />
             {renderFieldError("ingredients")}
           </label>
 
           {structuredIngredients.length > 0 && (
-            <div style={{ display: "grid", gap: "8px", background: "var(--color-surface)", padding: "12px", borderRadius: "6px", border: "1px solid var(--line)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontWeight: 600, fontSize: "12px", color: "var(--forest)" }}>Bảng chi tiết nguyên liệu ({structuredIngredients.length})</span>
+            <div
+              style={{
+                display: "grid",
+                gap: "8px",
+                background: "var(--color-surface)",
+                padding: "12px",
+                borderRadius: "6px",
+                border: "1px solid var(--line)",
+              }}
+            >
+              <div
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              >
+                <span
+                  style={{ fontWeight: 600, fontSize: "12px", color: "var(--forest)" }}
+                >
+                  Bảng chi tiết nguyên liệu ({structuredIngredients.length})
+                </span>
                 <button
                   type="button"
                   className={styles.buttonSecondary}
@@ -573,7 +727,15 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                 </button>
               </div>
               {structuredIngredients.map((ing, idx) => (
-                <div key={idx} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 2fr auto", gap: "8px", alignItems: "center" }}>
+                <div
+                  key={idx}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "2fr 1fr 1fr 2fr auto",
+                    gap: "8px",
+                    alignItems: "center",
+                  }}
+                >
                   <input
                     aria-label={`Tên nguyên liệu ${idx + 1}`}
                     placeholder="Tên nguyên liệu"
@@ -606,7 +768,14 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                     type="button"
                     title="Xóa dòng"
                     aria-label={`Xóa nguyên liệu ${idx + 1}`}
-                    style={{ color: "var(--color-error)", background: "none", border: "none", cursor: "pointer", fontSize: "16px", padding: "4px" }}
+                    style={{
+                      color: "var(--color-error)",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "16px",
+                      padding: "4px",
+                    }}
                     onClick={() => removeIngredientRow(idx)}
                   >
                     ×
@@ -616,59 +785,255 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
             </div>
           )}
 
-          <label className={styles.field}>
-            Các bước chế biến (mỗi bước một dòng)
-            <textarea
-              id="steps"
-              aria-invalid={Boolean(fieldErrors.steps)}
-              aria-describedby={fieldErrors.steps ? "steps-error" : undefined}
-              value={steps}
-              onChange={(event) => { setSteps(event.target.value); clearFieldError("steps"); }}
-              placeholder={"Sơ chế nguyên liệu.\nNấu và nêm nếm."}
-            />
-            {renderFieldError("steps")}
-          </label>
-
-          {structuredSteps.length > 0 && (
-            <div style={{ display: "grid", gap: "8px", background: "var(--color-surface)", padding: "12px", borderRadius: "6px", border: "1px solid var(--line)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontWeight: 600, fontSize: "12px", color: "var(--forest)" }}>Bảng chi tiết các bước ({structuredSteps.length})</span>
-                <button
-                  type="button"
-                  className={styles.buttonSecondary}
-                  style={{ minHeight: "30px", fontSize: "11px", padding: "0 8px" }}
-                  onClick={addStepRow}
+          {/* Structured Steps Section */}
+          <div
+            style={{
+              display: "grid",
+              gap: "12px",
+              background: "var(--color-surface)",
+              padding: "16px",
+              borderRadius: "6px",
+              border: "1px solid var(--line)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "8px",
+              }}
+            >
+              <div>
+                <span
+                  style={{
+                    fontWeight: 700,
+                    fontSize: "13px",
+                    color: "var(--forest)",
+                    display: "block",
+                  }}
                 >
-                  + Thêm bước
-                </button>
+                  Các bước chế biến ({structuredSteps.length} bước)
+                </span>
+                <small style={{ color: "var(--color-muted)", fontSize: "11px" }}>
+                  Mỗi bước hỗ trợ tiêu đề, thời gian, mô tả thao tác và link ảnh minh họa. Dùng nút
+                  mũi tên để sắp xếp thứ tự.
+                </small>
               </div>
-              {structuredSteps.map((st, idx) => (
-                <div key={idx} style={{ display: "grid", gridTemplateColumns: "60px 1fr auto", gap: "8px", alignItems: "center" }}>
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-muted)" }}>Bước {idx + 1}</span>
-                  <input
-                    aria-label={`Nội dung bước ${idx + 1}`}
-                    placeholder="Nội dung bước"
-                    value={st.description}
-                    onChange={(e) => updateStepRow(idx, e.target.value)}
-                    style={{ minHeight: "34px", padding: "4px 8px", fontSize: "12px" }}
-                  />
+              <div style={{ display: "flex", gap: "6px" }}>
+                {steps && structuredSteps.length === 0 && (
                   <button
                     type="button"
-                    title="Xóa bước"
-                    aria-label={`Xóa bước ${idx + 1}`}
-                    style={{ color: "var(--color-error)", background: "none", border: "none", cursor: "pointer", fontSize: "16px", padding: "4px" }}
-                    onClick={() => removeStepRow(idx)}
+                    className={styles.buttonSecondary}
+                    style={{ minHeight: "30px", fontSize: "11px", padding: "0 8px" }}
+                    onClick={syncStepsFromText}
                   >
-                    ×
+                    ⚡ Tạo từ văn bản
                   </button>
-                </div>
-              ))}
+                )}
+                <button
+                  id="add-step-button"
+                  type="button"
+                  className={styles.buttonSecondary}
+                  style={{ minHeight: "30px", fontSize: "11px", padding: "0 10px" }}
+                  onClick={addStepRow}
+                >
+                  + Thêm bước nấu
+                </button>
+              </div>
             </div>
-          )}
+
+            {renderFieldError("steps")}
+
+            {/* List of structured steps */}
+            {structuredSteps.map((st, idx) => (
+              <div
+                key={idx}
+                data-testid={`structured-step-${idx}`}
+                style={{
+                  display: "grid",
+                  gap: "8px",
+                  padding: "12px",
+                  borderRadius: "6px",
+                  border: "1px solid var(--line)",
+                  background: "#fff",
+                }}
+              >
+                <div
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        padding: "2px 8px",
+                        borderRadius: "12px",
+                        background: "var(--color-surface)",
+                        border: "1px solid var(--line)",
+                        color: "var(--forest)",
+                      }}
+                    >
+                      Bước {idx + 1}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                    <button
+                      type="button"
+                      data-testid={`step-move-up-${idx}`}
+                      title="Di chuyển lên"
+                      aria-label={`Di chuyển bước ${idx + 1} lên`}
+                      disabled={idx === 0}
+                      onClick={() => moveStep(idx, -1)}
+                      style={{
+                        padding: "2px 8px",
+                        fontSize: "12px",
+                        cursor: idx === 0 ? "not-allowed" : "pointer",
+                        opacity: idx === 0 ? 0.3 : 1,
+                        border: "1px solid var(--line)",
+                        borderRadius: "4px",
+                        background: "none",
+                      }}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      data-testid={`step-move-down-${idx}`}
+                      title="Di chuyển xuống"
+                      aria-label={`Di chuyển bước ${idx + 1} xuống`}
+                      disabled={idx === structuredSteps.length - 1}
+                      onClick={() => moveStep(idx, 1)}
+                      style={{
+                        padding: "2px 8px",
+                        fontSize: "12px",
+                        cursor: idx === structuredSteps.length - 1 ? "not-allowed" : "pointer",
+                        opacity: idx === structuredSteps.length - 1 ? 0.3 : 1,
+                        border: "1px solid var(--line)",
+                        borderRadius: "4px",
+                        background: "none",
+                      }}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      data-testid={`step-delete-${idx}`}
+                      title="Xóa bước"
+                      aria-label={`Xóa bước ${idx + 1}`}
+                      style={{
+                        color: "var(--color-error)",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "16px",
+                        padding: "2px 6px",
+                      }}
+                      onClick={() => removeStepRow(idx)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 140px",
+                    gap: "8px",
+                    alignItems: "center",
+                  }}
+                >
+                  <input
+                    id={`step-title-${idx}`}
+                    data-testid={`step-title-${idx}`}
+                    aria-label={`Tiêu đề bước ${idx + 1}`}
+                    placeholder="Tiêu đề bước (vd: Sơ chế cá, Ướp gia vị...)"
+                    value={st.title}
+                    onChange={(e) => updateStepField(idx, "title", e.target.value)}
+                    style={{ minHeight: "34px", padding: "4px 8px", fontSize: "12px" }}
+                  />
+                  <input
+                    id={`step-duration-${idx}`}
+                    data-testid={`step-duration-${idx}`}
+                    type="number"
+                    min="0"
+                    aria-label={`Thời gian bước ${idx + 1} (phút)`}
+                    placeholder="Thời gian (phút)"
+                    value={st.durationMinutes ?? ""}
+                    onChange={(e) =>
+                      updateStepField(
+                        idx,
+                        "durationMinutes",
+                        e.target.value ? parseInt(e.target.value, 10) : null,
+                      )
+                    }
+                    style={{ minHeight: "34px", padding: "4px 8px", fontSize: "12px" }}
+                  />
+                </div>
+
+                <textarea
+                  id={`step-desc-${idx}`}
+                  data-testid={`step-desc-${idx}`}
+                  aria-label={`Nội dung bước ${idx + 1}`}
+                  placeholder="Mô tả chi tiết các thao tác thực hiện trong bước này..."
+                  required
+                  rows={2}
+                  value={st.description}
+                  onChange={(e) => updateStepField(idx, "description", e.target.value)}
+                  style={{ padding: "6px 8px", fontSize: "12px" }}
+                />
+
+                <input
+                  id={`step-image-${idx}`}
+                  data-testid={`step-image-${idx}`}
+                  aria-label={`URL hình ảnh bước ${idx + 1}`}
+                  placeholder="URL ảnh minh họa bước nấu (tùy chọn)"
+                  value={st.imageUrl ?? ""}
+                  onChange={(e) => updateStepField(idx, "imageUrl", e.target.value || null)}
+                  style={{ minHeight: "32px", padding: "4px 8px", fontSize: "12px" }}
+                />
+              </div>
+            ))}
+
+            {structuredSteps.length === 0 && (
+              <label className={styles.field} style={{ margin: 0 }}>
+                Nhập nhanh các bước chế biến (mỗi bước một dòng)
+                <textarea
+                  id="steps"
+                  aria-invalid={Boolean(fieldErrors.steps)}
+                  aria-describedby={fieldErrors.steps ? "steps-error" : undefined}
+                  value={steps}
+                  onChange={(event) => {
+                    setSteps(event.target.value);
+                    clearFieldError("steps");
+                  }}
+                  placeholder={"Sơ chế nguyên liệu.\nNấu và nêm nếm.\nTrình bày ra đĩa."}
+                />
+              </label>
+            )}
+          </div>
 
           {/* Nutrition section */}
-          <div style={{ border: "1px solid var(--line)", borderRadius: "6px", padding: "16px", background: "var(--color-surface)" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 600, marginBottom: "8px", cursor: "pointer" }}>
+          <div
+            style={{
+              border: "1px solid var(--line)",
+              borderRadius: "6px",
+              padding: "16px",
+              background: "var(--color-surface)",
+            }}
+          >
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontWeight: 600,
+                marginBottom: "8px",
+                cursor: "pointer",
+              }}
+            >
               <input
                 id="includeNutrition"
                 type="checkbox"
@@ -678,24 +1043,49 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
               Bao gồm thông tin dinh dưỡng (tính trên mỗi khẩu phần)
             </label>
             {includeNutrition && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "12px", marginTop: "8px" }}>
-                {([
-                  { key: "calories", label: "Calories", unit: "kcal", step: 1 },
-                  { key: "protein", label: "Protein", unit: "g", step: 0.1 },
-                  { key: "carbohydrates", label: "Carbs", unit: "g", step: 0.1 },
-                  { key: "fat", label: "Chất béo", unit: "g", step: 0.1 },
-                  { key: "fiber", label: "Chất xơ", unit: "g", step: 0.1 },
-                  { key: "sodium", label: "Natri", unit: "mg", step: 1 },
-                ] as const).map(({ key, label, unit, step }) => (
-                  <label key={key} style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "13px" }}>
-                    <span>{label} <small style={{ color: "var(--color-muted)" }}>({unit})</small></span>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+                  gap: "12px",
+                  marginTop: "8px",
+                }}
+              >
+                {(
+                  [
+                    { key: "calories", label: "Calories", unit: "kcal", step: 1 },
+                    { key: "protein", label: "Protein", unit: "g", step: 0.1 },
+                    { key: "carbohydrates", label: "Carbs", unit: "g", step: 0.1 },
+                    { key: "fat", label: "Chất béo", unit: "g", step: 0.1 },
+                    { key: "fiber", label: "Chất xơ", unit: "g", step: 0.1 },
+                    { key: "sodium", label: "Natri", unit: "mg", step: 1 },
+                  ] as const
+                ).map(({ key, label, unit, step }) => (
+                  <label
+                    key={key}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "4px",
+                      fontSize: "13px",
+                    }}
+                  >
+                    <span>
+                      {label}{" "}
+                      <small style={{ color: "var(--color-muted)" }}>({unit})</small>
+                    </span>
                     <input
                       id={`nutrition-${key}`}
                       type="number"
                       min="0"
                       step={step}
                       value={nutrition[key]}
-                      onChange={(e) => setNutrition((prev) => ({ ...prev, [key]: parseFloat(e.target.value) || 0 }))}
+                      onChange={(e) =>
+                        setNutrition((prev) => ({
+                          ...prev,
+                          [key]: parseFloat(e.target.value) || 0,
+                        }))
+                      }
                       style={{ padding: "4px 8px", fontSize: "13px" }}
                     />
                   </label>
@@ -706,24 +1096,105 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
 
           {/* Image Gallery section */}
           {editing && recipeId && (
-            <div style={{ border: "1px solid var(--line)", borderRadius: "6px", padding: "16px", background: "var(--color-surface)" }}>
-              <span style={{ fontWeight: 600, fontSize: "14px", display: "block", marginBottom: "12px" }}>Quản lý ảnh công thức</span>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}>
-                {images.length === 0 && <span style={{ color: "var(--color-muted)", fontSize: "13px" }}>Chưa có ảnh.</span>}
+            <div
+              style={{
+                border: "1px solid var(--line)",
+                borderRadius: "6px",
+                padding: "16px",
+                background: "var(--color-surface)",
+              }}
+            >
+              <span
+                style={{
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  display: "block",
+                  marginBottom: "12px",
+                }}
+              >
+                Quản lý ảnh công thức
+              </span>
+              <div
+                style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}
+              >
+                {images.length === 0 && (
+                  <span style={{ color: "var(--color-muted)", fontSize: "13px" }}>
+                    Chưa có ảnh.
+                  </span>
+                )}
                 {images.map((img) => (
-                  <div key={img.id} style={{ position: "relative", width: "100px", border: img.isPrimary ? "2px solid var(--forest)" : "1px solid var(--line)", borderRadius: "6px", overflow: "hidden" }}>
+                  <div
+                    key={img.id}
+                    data-testid={`image-card-${img.id}`}
+                    style={{
+                      position: "relative",
+                      width: "100px",
+                      border: img.isPrimary ? "2px solid var(--forest)" : "1px solid var(--line)",
+                      borderRadius: "6px",
+                      overflow: "hidden",
+                    }}
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img.thumbnailUrl ?? img.originalUrl} alt={img.altText ?? ""} style={{ width: "100%", height: "80px", objectFit: "cover" }} />
+                    <img
+                      src={img.thumbnailUrl ?? img.originalUrl}
+                      alt={img.altText ?? ""}
+                      style={{ width: "100%", height: "80px", objectFit: "cover" }}
+                    />
                     {img.isPrimary && (
-                      <span style={{ position: "absolute", top: 2, left: 2, background: "var(--forest)", color: "#fff", fontSize: "9px", padding: "2px 4px", borderRadius: "3px" }}>Ảnh chính</span>
+                      <span
+                        data-testid="badge-primary"
+                        style={{
+                          position: "absolute",
+                          top: 2,
+                          left: 2,
+                          background: "var(--forest)",
+                          color: "#fff",
+                          fontSize: "9px",
+                          padding: "2px 4px",
+                          borderRadius: "3px",
+                        }}
+                      >
+                        Ảnh chính
+                      </span>
                     )}
                     <div style={{ display: "flex", gap: "2px", padding: "4px" }}>
                       {!img.isPrimary && (
-                        <button type="button" title="Đặt làm ảnh chính" style={{ flex: 1, fontSize: "10px", padding: "2px", cursor: "pointer", border: "1px solid var(--line)", borderRadius: "3px", background: "none" }}
-                          onClick={() => void handleSetPrimary(img.id)}>⭐</button>
+                        <button
+                          type="button"
+                          data-testid={`btn-set-primary-${img.id}`}
+                          title="Đặt làm ảnh chính"
+                          style={{
+                            flex: 1,
+                            fontSize: "10px",
+                            padding: "2px",
+                            cursor: "pointer",
+                            border: "1px solid var(--line)",
+                            borderRadius: "3px",
+                            background: "none",
+                          }}
+                          onClick={() => void handleSetPrimary(img.id)}
+                        >
+                          ⭐
+                        </button>
                       )}
-                      <button type="button" title="Xóa ảnh" style={{ flex: 1, fontSize: "10px", padding: "2px", cursor: "pointer", border: "1px solid var(--color-error)", borderRadius: "3px", color: "var(--color-error)", background: "none" }}
-                        onClick={() => void handleDeleteImage(img.id)}>🗑</button>
+                      <button
+                        type="button"
+                        data-testid={`btn-delete-image-${img.id}`}
+                        title="Xóa ảnh"
+                        style={{
+                          flex: 1,
+                          fontSize: "10px",
+                          padding: "2px",
+                          cursor: "pointer",
+                          border: "1px solid var(--color-error)",
+                          borderRadius: "3px",
+                          color: "var(--color-error)",
+                          background: "none",
+                        }}
+                        onClick={() => void handleDeleteImage(img.id)}
+                      >
+                        🗑
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -734,10 +1205,28 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                   placeholder="Alt text (tùy chọn)"
                   value={imageAltText}
                   onChange={(e) => setImageAltText(e.target.value)}
-                  style={{ padding: "6px 10px", fontSize: "13px", border: "1px solid var(--line)", borderRadius: "4px" }}
+                  style={{
+                    padding: "6px 10px",
+                    fontSize: "13px",
+                    border: "1px solid var(--line)",
+                    borderRadius: "4px",
+                  }}
                 />
-                <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", cursor: "pointer" }}>
-                  <input id="imageSetPrimary" type="checkbox" checked={imageSetPrimary} onChange={(e) => setImageSetPrimary(e.target.checked)} />
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    id="imageSetPrimary"
+                    type="checkbox"
+                    checked={imageSetPrimary}
+                    onChange={(e) => setImageSetPrimary(e.target.checked)}
+                  />
                   Đặt làm ảnh chính khi tải lên
                 </label>
                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -747,24 +1236,39 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                     type="file"
                     accept=".jpg,.jpeg,.png,.webp,.avif"
                     disabled={uploadingImage || images.length >= 10}
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleImageUpload(f); }}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void handleImageUpload(f);
+                    }}
                     style={{ fontSize: "13px", flex: 1 }}
                   />
-                  {uploadingImage && <span style={{ fontSize: "13px", color: "var(--color-muted)" }}>Đang tải...</span>}
+                  {uploadingImage && (
+                    <span style={{ fontSize: "13px", color: "var(--color-muted)" }}>
+                      Đang tải...
+                    </span>
+                  )}
                 </div>
-                {images.length >= 10 && <span style={{ fontSize: "12px", color: "var(--color-error)" }}>Đã đạt giới hạn 10 ảnh.</span>}
+                {images.length >= 10 && (
+                  <span style={{ fontSize: "12px", color: "var(--color-error)" }}>
+                    Đã đạt giới hạn 10 ảnh.
+                  </span>
+                )}
               </div>
             </div>
           )}
           {!editing && (
-            <p style={{ fontSize: "12px", color: "var(--color-muted)", fontStyle: "italic" }}>💡 Sau khi lưu bản nháp, bạn có thể quay lại để tải ảnh lên.</p>
+            <p style={{ fontSize: "12px", color: "var(--color-muted)", fontStyle: "italic" }}>
+              💡 Sau khi lưu bản nháp, bạn có thể quay lại để tải ảnh lên.
+            </p>
           )}
 
           <div className={styles.actions}>
             <button className={styles.button} type="submit" disabled={saving || !categoryId}>
               {saving ? "Đang lưu..." : "Lưu bản nháp"}
             </button>
-            <Link className={styles.buttonSecondary} href="/dashboard/recipes">Hủy</Link>
+            <Link className={styles.buttonSecondary} href="/dashboard/recipes">
+              Hủy
+            </Link>
           </div>
         </form>
       )}

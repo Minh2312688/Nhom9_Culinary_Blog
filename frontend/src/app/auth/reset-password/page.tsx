@@ -37,6 +37,7 @@ function ResetPasswordForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [showManualForm, setShowManualForm] = useState(false);
 
   const initialEmail = searchParams.get("email") || "";
   const initialToken = searchParams.get("token") || "";
@@ -74,6 +75,8 @@ function ResetPasswordForm() {
     }
   };
 
+  const hasToken = Boolean(initialToken);
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-amber-50/60 via-white to-orange-50/40">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
@@ -88,7 +91,9 @@ function ResetPasswordForm() {
             Đặt lại mật khẩu
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Nhập mã xác thực và mật khẩu mới cho tài khoản của bạn.
+            {hasToken
+              ? "Nhập mật khẩu mới cho tài khoản của bạn."
+              : "Hoàn tất các bước để khôi phục quyền truy cập tài khoản."}
           </p>
         </div>
 
@@ -114,8 +119,56 @@ function ResetPasswordForm() {
               Đăng nhập ngay
             </Link>
           </div>
+        ) : !hasToken && !showManualForm ? (
+          <div className="space-y-6">
+            <div
+              className="flex items-start gap-3 rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800"
+              role="status"
+            >
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">Chưa có liên kết xác thực</p>
+                <p className="mt-1 text-amber-700 leading-relaxed">
+                  Trang đặt lại mật khẩu yêu cầu liên kết xác thực hợp lệ được gửi từ email của bạn. Nếu bạn quên mật khẩu, hãy gửi yêu cầu để nhận email chứa liên kết trực tiếp.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/auth/forgot-password"
+              className="w-full flex items-center justify-center py-3 px-4 rounded-xl text-white font-medium bg-orange-600 hover:bg-orange-700 transition shadow-sm text-sm"
+            >
+              Yêu cầu đặt lại mật khẩu
+            </Link>
+
+            <div className="flex flex-col gap-2 pt-2 text-center text-sm">
+              <button
+                type="button"
+                onClick={() => setShowManualForm(true)}
+                className="text-orange-600 hover:text-orange-700 font-medium transition underline-offset-2 hover:underline"
+              >
+                Tôi đã có mã xác thực thủ công
+              </button>
+              <Link
+                href="/auth/login"
+                className="inline-flex items-center justify-center text-gray-600 hover:text-gray-900 transition mt-2"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1.5" />
+                Quay lại đăng nhập
+              </Link>
+            </div>
+          </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {hasToken && initialEmail && (
+              <div className="flex items-center gap-2 rounded-xl bg-orange-50 border border-orange-200/80 px-3.5 py-2.5 text-xs text-orange-900">
+                <CheckCircle2 className="w-4 h-4 text-orange-600 shrink-0" />
+                <span className="truncate">
+                  Xác thực cho tài khoản: <strong>{initialEmail}</strong>
+                </span>
+              </div>
+            )}
+
             {serverError && (
               <div
                 className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-800"
@@ -139,7 +192,12 @@ function ResetPasswordForm() {
                 type="email"
                 autoComplete="email"
                 disabled={isSubmitting}
-                className={`w-full px-4 py-2 rounded-xl border bg-gray-50/50 text-gray-900 text-sm transition focus:bg-white focus:outline-none focus:ring-2 ${
+                readOnly={Boolean(hasToken && initialEmail)}
+                className={`w-full px-4 py-2 rounded-xl border ${
+                  hasToken && initialEmail
+                    ? "bg-gray-100 text-gray-600 cursor-not-allowed"
+                    : "bg-gray-50/50 text-gray-900"
+                } text-sm transition focus:bg-white focus:outline-none focus:ring-2 ${
                   errors.email
                     ? "border-red-400 focus:ring-red-500"
                     : "border-gray-200 focus:ring-orange-500 focus:border-orange-500"
@@ -153,29 +211,33 @@ function ResetPasswordForm() {
             </div>
 
             {/* Token */}
-            <div>
-              <label
-                htmlFor="token"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Mã xác thực (Token) <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="token"
-                type="text"
-                disabled={isSubmitting}
-                className={`w-full px-4 py-2 rounded-xl border bg-gray-50/50 text-gray-900 text-sm font-mono transition focus:bg-white focus:outline-none focus:ring-2 ${
-                  errors.token
-                    ? "border-red-400 focus:ring-red-500"
-                    : "border-gray-200 focus:ring-orange-500 focus:border-orange-500"
-                }`}
-                placeholder="Nhập mã xác thực từ email..."
-                {...register("token")}
-              />
-              {errors.token && (
-                <p className="mt-1 text-xs text-red-600">{errors.token.message}</p>
-              )}
-            </div>
+            {hasToken ? (
+              <input type="hidden" {...register("token")} />
+            ) : (
+              <div>
+                <label
+                  htmlFor="token"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Mã xác thực (Token) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="token"
+                  type="text"
+                  disabled={isSubmitting}
+                  className={`w-full px-4 py-2 rounded-xl border bg-gray-50/50 text-gray-900 text-sm font-mono transition focus:bg-white focus:outline-none focus:ring-2 ${
+                    errors.token
+                      ? "border-red-400 focus:ring-red-500"
+                      : "border-gray-200 focus:ring-orange-500 focus:border-orange-500"
+                  }`}
+                  placeholder="Nhập mã xác thực từ email..."
+                  {...register("token")}
+                />
+                {errors.token && (
+                  <p className="mt-1 text-xs text-red-600">{errors.token.message}</p>
+                )}
+              </div>
+            )}
 
             {/* New Password */}
             <div>

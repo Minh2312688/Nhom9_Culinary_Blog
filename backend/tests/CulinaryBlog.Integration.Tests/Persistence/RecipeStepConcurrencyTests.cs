@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 using Xunit;
+using ApplicationUser = CulinaryBlog.Infrastructure.Identity.ApplicationUser;
 
 namespace CulinaryBlog.Integration.Tests.Persistence;
 
@@ -40,13 +41,21 @@ public sealed class RecipeStepConcurrencyTests : IAsyncLifetime
         await using (var setupDb = new ApplicationDbContext(options))
         {
             await setupDb.Database.MigrateAsync();
+            var author = new ApplicationUser
+            {
+                Id = "baker-1",
+                UserName = "baker1",
+                Email = "baker1@example.com",
+                DisplayName = "Baker 1"
+            };
+            setupDb.Users.Add(author);
             var category = Category.Create("Desserts", null);
             var recipe = new Recipe
             {
                 Title = "Chocolate Cake",
                 Slug = "chocolate-cake",
                 CategoryId = category.Id,
-                AuthorId = "baker-1",
+                AuthorId = author.Id,
                 Difficulty = RecipeDifficulty.Medium,
                 Servings = 8
             };
@@ -74,6 +83,8 @@ public sealed class RecipeStepConcurrencyTests : IAsyncLifetime
         // 3. Context A cập nhật thành công trước
         stepA.Description = "Preheat oven to 375F (updated by A)";
         await contextA.SaveChangesAsync();
+        await contextA.Database.ExecuteSqlRawAsync(
+            "UPDATE \"RecipeSteps\" SET \"RowVersion\" = decode('01020304', 'hex') WHERE \"Id\" = {0}", stepA.Id);
 
         // 4. Context B cập nhật dữ liệu dựa trên row version cũ -> phải ném DbUpdateConcurrencyException
         stepB.Description = "Preheat oven to 325F (conflicting update by B)";

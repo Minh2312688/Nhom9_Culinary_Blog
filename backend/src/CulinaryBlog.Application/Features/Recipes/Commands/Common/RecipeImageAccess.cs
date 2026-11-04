@@ -32,7 +32,7 @@ internal static class RecipeImageAccess
         Recipe recipe,
         CancellationToken cancellationToken)
     {
-        await cache.RemoveAsync($"recipes:slug:{recipe.Slug}", cancellationToken);
+        await cache.RemoveAsync($"recipes:slug:{recipe.Slug.ToLowerInvariant()}", cancellationToken);
         await cache.RemoveByPrefixAsync("recipes:", cancellationToken);
     }
 }

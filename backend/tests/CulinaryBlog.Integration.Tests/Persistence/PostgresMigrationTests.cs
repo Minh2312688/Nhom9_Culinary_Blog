@@ -1,11 +1,11 @@
 using CulinaryBlog.Domain.Entities;
-using CulinaryBlog.Infrastructure.Identity;
 using CulinaryBlog.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Testcontainers.PostgreSql;
 using Xunit;
+using ApplicationUser = CulinaryBlog.Infrastructure.Identity.ApplicationUser;
 
 namespace CulinaryBlog.Integration.Tests.Persistence;
 
@@ -45,7 +45,15 @@ public sealed class PostgresMigrationTests : IAsyncLifetime
         var canConnect = await db.Database.CanConnectAsync();
         canConnect.Should().BeTrue();
 
-        // 2. Thêm danh mục và công thức để xác nhận mapping hoạt động trơn tru
+        // 2. Thêm người dùng, danh mục và công thức để xác nhận mapping hoạt động trơn tru
+        var author = new ApplicationUser
+        {
+            Id = "test-author",
+            UserName = "testauthor",
+            Email = "test@example.com",
+            DisplayName = "Test Author"
+        };
+        db.Users.Add(author);
         var category = Category.Create("Test Category", "A test category description");
         db.Categories.Add(category);
         await db.SaveChangesAsync();
@@ -55,7 +63,7 @@ public sealed class PostgresMigrationTests : IAsyncLifetime
             Title = "Postgres Migration Soup",
             Slug = "postgres-migration-soup",
             CategoryId = category.Id,
-            AuthorId = "test-author",
+            AuthorId = author.Id,
             Difficulty = RecipeDifficulty.Easy,
             Servings = 4
         };

@@ -1,17 +1,19 @@
 using System.Net;
 using System.Net.Http.Json;
 using CulinaryBlog.Application.DTOs.System;
-using Microsoft.AspNetCore.Mvc.Testing;
+using CulinaryBlog.Integration.Tests.Observability;
 using Xunit;
 
 namespace CulinaryBlog.Integration.Tests.Endpoints;
 
-public sealed class SystemEndpointsTests : IClassFixture<CustomAuthWebApplicationFactory>
+public sealed class SystemEndpointsTests : IClassFixture<ObservabilityWebApplicationFactory>
 {
     private readonly HttpClient _client;
+    private readonly ObservabilityWebApplicationFactory _factory;
 
-    public SystemEndpointsTests(CustomAuthWebApplicationFactory factory)
+    public SystemEndpointsTests(ObservabilityWebApplicationFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
@@ -54,5 +56,25 @@ public sealed class SystemEndpointsTests : IClassFixture<CustomAuthWebApplicatio
 
         Assert.True(response.Headers.CacheControl?.NoStore ?? false);
         Assert.True(response.Headers.CacheControl?.NoCache ?? false);
+    }
+
+    [Fact]
+    public async Task GetHealthLive_ShouldBeAnonymousTextAndNotCallDependencyProbes()
+    {
+        // Arrange
+        _factory.ResetProbeCalls();
+
+        // Act
+        var response = await _client.GetAsync("/health/live");
+        var body = await response.Content.ReadAsStringAsync();
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Healthy", body);
+        Assert.Equal("text/plain", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("no-cache", response.Headers.Pragma.Single().Name);
+        Assert.Equal(0, _factory.PostgresProbe.CallCount);
+        Assert.Equal(0, _factory.RedisProbe.CallCount);
+        Assert.Equal(0, _factory.MinioProbe.CallCount);
     }
 }

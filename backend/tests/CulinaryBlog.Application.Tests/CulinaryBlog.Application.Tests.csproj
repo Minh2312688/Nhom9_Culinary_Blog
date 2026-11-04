@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\CulinaryBlog.Application\CulinaryBlog.Application.csproj" />
     <ProjectReference Include="..\..\src\CulinaryBlog.Infrastructure\CulinaryBlog.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\CulinaryBlog.API\CulinaryBlog.API.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -11,6 +11,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using Xunit;
 
 namespace CulinaryBlog.Application.Tests.Features.Categories;
@@ -26,6 +27,10 @@ public class CategoryDependencyInjectionTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddApplication();
+        // O-04: AuditLoggingBehavior (registered in AddApplication) depends on
+        // ICurrentUserService; the test DI container must register a stub so
+        // MediatR can instantiate the behavior for any request.
+        services.AddScoped<ICurrentUserService>(_ => Mock.Of<ICurrentUserService>());
         services.AddScoped<IApplicationDbContext>(_ => context);
         services.AddScoped<IUnitOfWork>(_ => new UnitOfWork(context));
         services.AddScoped<ICategoryRepository>(_ => new CategoryRepository(context));

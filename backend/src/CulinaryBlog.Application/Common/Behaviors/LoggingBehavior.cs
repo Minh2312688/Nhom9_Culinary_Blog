@@ -8,6 +8,8 @@ public sealed class LoggingBehavior<TRequest, TResponse>
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
+    private const long SlowThresholdMilliseconds = 500;
+
     private readonly ILogger<LoggingBehavior<TRequest, TResponse>> _logger;
 
     public LoggingBehavior(ILogger<LoggingBehavior<TRequest, TResponse>> logger)
@@ -30,10 +32,22 @@ public sealed class LoggingBehavior<TRequest, TResponse>
             var response = await next(cancellationToken);
             stopwatch.Stop();
 
-            _logger.LogInformation(
-                "Handled {RequestName} in {ElapsedMilliseconds} ms",
-                requestName,
-                stopwatch.ElapsedMilliseconds);
+            if (stopwatch.ElapsedMilliseconds > SlowThresholdMilliseconds)
+            {
+                _logger.LogWarning(
+                    "Handled {RequestName} in {ElapsedMilliseconds} ms ({Outcome})",
+                    requestName,
+                    stopwatch.ElapsedMilliseconds,
+                    "Success");
+            }
+            else
+            {
+                _logger.LogInformation(
+                    "Handled {RequestName} in {ElapsedMilliseconds} ms ({Outcome})",
+                    requestName,
+                    stopwatch.ElapsedMilliseconds,
+                    "Success");
+            }
 
             return response;
         }
@@ -42,9 +56,10 @@ public sealed class LoggingBehavior<TRequest, TResponse>
             stopwatch.Stop();
             _logger.LogError(
                 exception,
-                "Request {RequestName} failed after {ElapsedMilliseconds} ms",
+                "Handled {RequestName} in {ElapsedMilliseconds} ms ({Outcome})",
                 requestName,
-                stopwatch.ElapsedMilliseconds);
+                stopwatch.ElapsedMilliseconds,
+                "Failure");
             throw;
         }
     }

@@ -13,6 +13,9 @@
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Moq" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
+    <PackageReference Include="SSH.NET" />
   </ItemGroup>
 
 </Project>

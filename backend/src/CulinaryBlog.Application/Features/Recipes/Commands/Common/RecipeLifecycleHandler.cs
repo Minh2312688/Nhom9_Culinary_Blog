@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Persistence;
@@ -16,6 +17,9 @@ public sealed class RecipeLifecycleHandler :
     private readonly IApplicationDbContext context;
     private readonly ICurrentUserService currentUser;
     private readonly IRecipeCache cache;
+    private readonly IFileStorageService storage;
+
+    public RecipeLifecycleHandler(IApplicationDbContext context, ICurrentUserService currentUser, IRecipeCache cache, IFileStorageService storage)
     private readonly IFileStorageService? storage;
 
     public RecipeLifecycleHandler(
@@ -36,6 +40,13 @@ public sealed class RecipeLifecycleHandler :
     public async Task Handle(DeleteRecipeCommand request, CancellationToken ct)
     {
         var recipe = await GetOwnedRecipe(request.Id, ct);
+        var images = await context.RecipeImages.Where(i => i.RecipeId == recipe.Id).ToListAsync(ct);
+        var firstFailure = await DeleteStoredObjectsAsync(images, ct);
+        if (firstFailure != null)
+        {
+            await cache.RemoveAsync($"recipes:slug:{recipe.Slug}", ct);
+            await cache.RemoveByPrefixAsync("recipes:", ct);
+            ExceptionDispatchInfo.Capture(firstFailure).Throw();
 
         // Delete all associated image objects from MinIO storage (FR-RCP-007 / TECH-RISK-004)
         if (storage is not null && recipe.Images.Count > 0)
@@ -59,9 +70,37 @@ public sealed class RecipeLifecycleHandler :
         }
 
         context.Recipes.Remove(recipe);
+        context.RecipeImages.RemoveRange(images);
         await context.SaveChangesAsync(ct);
         await cache.RemoveAsync($"recipes:slug:{recipe.Slug.ToLowerInvariant()}", ct);
         await cache.RemoveByPrefixAsync("recipes:", ct);
+    }
+
+    private async Task<Exception?> DeleteStoredObjectsAsync(IEnumerable<RecipeImage> images, CancellationToken ct)
+    {
+        Exception? firstFailure = null;
+        var attempted = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var image in images)
+        {
+            foreach (var url in new[] { image.OriginalUrl, image.MediumUrl, image.ThumbnailUrl })
+            {
+                if (string.IsNullOrWhiteSpace(url) || !attempted.Add(url))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    await storage.DeleteAsync(url, ct);
+                }
+                catch (Exception e) when (e is not OperationCanceledException)
+                {
+                    firstFailure ??= e;
+                }
+            }
+        }
+
+        return firstFailure;
     }
 
     private async Task ChangeStatus(Guid id, RecipeStatus status, CancellationToken ct, bool requireChildren)

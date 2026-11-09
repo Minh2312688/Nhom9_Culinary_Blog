@@ -227,6 +227,8 @@ const server = createServer(async (request, response) => {
           categoryId: "category-1",
           authorId: "author-1",
           publishedAt: "2026-10-01T09:30:00Z",
+          primaryImageUrl: "https://storage.example.test/main.webp",
+          primaryImageAltText: "Roasted tomato soup",
           rowVersion: "v1",
         }]
       : [{
@@ -241,6 +243,8 @@ const server = createServer(async (request, response) => {
           categoryId: "category-1",
           authorId: "author-1",
           publishedAt: "2026-09-20T12:00:00Z",
+          primaryImageUrl: null,
+          primaryImageAltText: null,
           rowVersion: "v1",
         }];
 
@@ -268,6 +272,8 @@ const server = createServer(async (request, response) => {
       categoryId: r.categoryId,
       authorId: r.authorId,
       publishedAt: r.publishedAt,
+      primaryImageUrl: r.images.find((image) => image.isPrimary)?.originalUrl ?? null,
+      primaryImageAltText: r.images.find((image) => image.isPrimary)?.altText ?? null,
       rowVersion: r.rowVersion,
     }));
     sendJson(response, 200, paginated(all, 1, 50));

@@ -143,12 +143,18 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
             .Select(x => new
             {
                 x.Id, x.Title, x.Slug, x.Description, x.Difficulty, x.CookTimeMinutes,
-                x.Servings, x.Status, x.CategoryId, x.AuthorId, x.PublishedAt, x.RowVersion
+                x.Servings, x.Status, x.CategoryId, x.AuthorId, x.PublishedAt, x.RowVersion,
+                PrimaryImage = x.Images
+                    .Where(image => image.IsPrimary)
+                    .OrderBy(image => image.OrderIndex)
+                    .Select(image => new { image.OriginalUrl, image.AltText })
+                    .FirstOrDefault()
             })
             .ToListAsync(cancellationToken);
         var items = rows.Select(x => new RecipeSummaryDto(x.Id, x.Title, x.Slug, x.Description,
             x.Difficulty.ToString(), x.CookTimeMinutes, x.Servings, x.Status, x.CategoryId,
-            x.AuthorId, x.PublishedAt, x.RowVersion)).ToList();
+            x.AuthorId, x.PublishedAt, x.PrimaryImage?.OriginalUrl, x.PrimaryImage?.AltText,
+            x.RowVersion)).ToList();
 
         return new PaginatedResult<RecipeSummaryDto>(items, totalCount, request.Page, request.PageSize);
     }
@@ -161,7 +167,7 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
     private string BuildSearchCacheKey(string normalized, GetRecipesQuery request)
     {
         var scope = currentUser.IsAdmin ? "admin" : currentUser.UserId is null ? "guest" : $"user:{currentUser.UserId}";
-        var material = $"{normalized}|{request.Page}|{request.PageSize}|{request.SortBy?.ToLowerInvariant() ?? "relevance"}|{request.SortOrder?.ToLowerInvariant() ?? "desc"}|{scope}";
+        var material = $"v2|{normalized}|{request.Page}|{request.PageSize}|{request.SortBy?.ToLowerInvariant() ?? "relevance"}|{request.SortOrder?.ToLowerInvariant() ?? "desc"}|{scope}";
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material))).ToLowerInvariant();
         return $"recipes:search:result:{hash}";
     }

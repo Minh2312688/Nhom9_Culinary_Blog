@@ -63,12 +63,18 @@ public sealed class RecipeRepository(IApplicationDbContext context) : IRecipeRep
             .Select(x => new
             {
                 x.Id, x.Title, x.Slug, x.Description, x.Difficulty, x.CookTimeMinutes,
-                x.Servings, x.Status, x.CategoryId, x.AuthorId, x.PublishedAt, x.RowVersion
+                x.Servings, x.Status, x.CategoryId, x.AuthorId, x.PublishedAt, x.RowVersion,
+                PrimaryImage = x.Images
+                    .Where(image => image.IsPrimary)
+                    .OrderBy(image => image.OrderIndex)
+                    .Select(image => new { image.OriginalUrl, image.AltText })
+                    .FirstOrDefault()
             })
             .ToListAsync(cancellationToken);
         var items = rows.Select(x => new RecipeSummaryDto(x.Id, x.Title, x.Slug, x.Description,
             x.Difficulty.ToString(), x.CookTimeMinutes, x.Servings, x.Status, x.CategoryId,
-            x.AuthorId, x.PublishedAt, x.RowVersion)).ToList();
+            x.AuthorId, x.PublishedAt, x.PrimaryImage?.OriginalUrl, x.PrimaryImage?.AltText,
+            x.RowVersion)).ToList();
 
         return new PaginatedResult<RecipeSummaryDto>(items, totalCount, page, pageSize);
     }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getCategory, searchRecipes, type PaginatedResult, type RecipeCategory, type RecipeSummary } from "@/lib/recipes-api";
-import { ErrorNotice, LoadingNotice, Pagination, SitePage } from "../../site-ui";
+import { ErrorNotice, LoadingNotice, Pagination, RecipeCard, SitePage } from "../../site-ui";
 import styles from "../../site-ui.module.css";
 
 export default function CategoryDetailPage() {
@@ -57,12 +57,7 @@ export default function CategoryDetailPage() {
           </div>
           <div className={styles.grid}>
             {result?.items.map((recipe) => (
-              <Link className={styles.card} href={`/recipes/${recipe.slug}`} key={recipe.id}>
-                <p className={styles.cardLabel}>{recipe.difficulty}</p>
-                <h2>{recipe.title}</h2>
-                {recipe.description && <p className={styles.cardText}>{recipe.description}</p>}
-                <div className={styles.cardMeta}><span>{recipe.cookTimeMinutes} phút</span></div>
-              </Link>
+              <RecipeCard recipe={recipe} key={recipe.id} />
             ))}
           </div>
           {!loading && result?.items.length === 0 && <p className={styles.notice}>Danh mục này chưa có công thức.</p>}

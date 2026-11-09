@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ChefHat } from "lucide-react";
 import { useAuth, setStoredUser } from "@/lib/auth-store";
 import { getProfileApi } from "@/lib/auth-api";
+import type { RecipeSummary } from "@/lib/recipes-api";
 import styles from "./site-ui.module.css";
 
 export function BrandLink() {
@@ -132,6 +134,31 @@ export function SectionTitle({
       <h1>{title}</h1>
       {description && <p className={styles.description}>{description}</p>}
     </div>
+  );
+}
+
+export function RecipeCard({ recipe }: Readonly<{ recipe: RecipeSummary }>) {
+  return (
+    <Link className={styles.card} href={`/recipes/${recipe.slug}`}>
+      {recipe.primaryImageUrl && (
+        <Image
+          className={styles.cardImage}
+          src={recipe.primaryImageUrl}
+          alt={recipe.primaryImageAltText || recipe.title}
+          width={640}
+          height={400}
+          sizes="(max-width: 520px) 100vw, (max-width: 740px) 50vw, 33vw"
+          unoptimized
+        />
+      )}
+      <p className={styles.cardLabel}>{recipe.difficulty}</p>
+      <h2>{recipe.title}</h2>
+      {recipe.description && <p className={styles.cardText}>{recipe.description}</p>}
+      <div className={styles.cardMeta}>
+        <span>{recipe.cookTimeMinutes} phút</span>
+        <span>{recipe.servings} khẩu phần</span>
+      </div>
+    </Link>
   );
 }
 

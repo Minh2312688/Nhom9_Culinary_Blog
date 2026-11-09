@@ -14,6 +14,8 @@ public sealed record RecipeSummaryDto(
     Guid CategoryId,
     string AuthorId,
     DateTimeOffset? PublishedAt,
+    string? PrimaryImageUrl,
+    string? PrimaryImageAltText,
     byte[] RowVersion);
 
 public sealed record RecipeAuthorDto(string Id, string DisplayName, string? AvatarUrl);

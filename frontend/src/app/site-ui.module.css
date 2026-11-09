@@ -120,6 +120,7 @@
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
 }
 .card:hover, .card:focus-visible { border-color: var(--tomato); box-shadow: 0 16px 36px rgb(36 49 46 / 12%); transform: translateY(-2px); }
+.cardImage { display: block; width: calc(100% + 38px); height: auto; aspect-ratio: 16 / 10; margin: -19px -19px 16px; border-radius: calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px) 0 0; object-fit: cover; background: var(--teal-50); }
 .cardLabel { margin: 0 0 8px; color: var(--tomato); font: 700 10px var(--font-body); letter-spacing: .8px; text-transform: uppercase; }
 .card h2 { margin: 0; color: var(--forest); font: 600 22px var(--font-display); }
 .cardText { margin: 9px 0 14px; color: var(--color-muted); font: 13px/1.55 var(--font-body); }

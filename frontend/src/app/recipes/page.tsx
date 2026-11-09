@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getRecipes, type PaginatedResult, type RecipeSummary } from "@/lib/recipes-api";
-import { ErrorNotice, LoadingNotice, Pagination, SectionTitle, SitePage } from "../site-ui";
+import { ErrorNotice, LoadingNotice, Pagination, RecipeCard, SectionTitle, SitePage } from "../site-ui";
 import styles from "../site-ui.module.css";
 
 export default function RecipesPage() {
@@ -42,12 +41,7 @@ export default function RecipesPage() {
         {!loading && !error && result?.items.length === 0 && <p className={styles.notice}>Chưa có công thức nào.</p>}
         <div className={styles.grid}>
           {result?.items.map((recipe) => (
-            <Link className={styles.card} href={`/recipes/${recipe.slug}`} key={recipe.id}>
-              <p className={styles.cardLabel}>{recipe.difficulty}</p>
-              <h2>{recipe.title}</h2>
-              {recipe.description && <p className={styles.cardText}>{recipe.description}</p>}
-              <div className={styles.cardMeta}><span>{recipe.cookTimeMinutes} phút</span><span>{recipe.servings} khẩu phần</span></div>
-            </Link>
+            <RecipeCard recipe={recipe} key={recipe.id} />
           ))}
         </div>
         {result && <Pagination page={result.page} totalPages={result.totalPages}

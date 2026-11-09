@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { getRecipes, type RecipeSummary } from "@/lib/recipes-api";
 import { BrandMotion } from "./brand-motion";
-import { ErrorNotice, LoadingNotice, SectionTitle, SitePage } from "./site-ui";
+import { ErrorNotice, LoadingNotice, RecipeCard, SectionTitle, SitePage } from "./site-ui";
 import styles from "./site-ui.module.css";
 
 export default function HomePage() {
@@ -50,12 +50,7 @@ export default function HomePage() {
           {!loading && !error && recipes.length === 0 && <p className={styles.notice}>Chưa có công thức được chia sẻ.</p>}
           <div className={styles.grid}>
             {recipes.map((recipe) => (
-              <Link className={styles.card} href={`/recipes/${recipe.slug}`} key={recipe.id}>
-                <p className={styles.cardLabel}>{recipe.difficulty}</p>
-                <h2>{recipe.title}</h2>
-                {recipe.description && <p className={styles.cardText}>{recipe.description}</p>}
-                <div className={styles.cardMeta}><span>{recipe.cookTimeMinutes} phút</span><span>{recipe.servings} khẩu phần</span></div>
-              </Link>
+              <RecipeCard recipe={recipe} key={recipe.id} />
             ))}
           </div>
         </section>

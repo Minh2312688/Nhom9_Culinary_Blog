@@ -38,6 +38,7 @@ public sealed class GetAuthorProfileQueryHandler(
             throw new NotFoundException("Author", request.AuthorId);
 
         var query = recipes.Query.AsNoTracking()
+            .Include(recipe => recipe.Images.Where(image => image.IsPrimary))
             .Where(recipe => recipe.AuthorId == request.AuthorId && recipe.Status == RecipeStatus.Published);
         var totalCount = await query.CountAsync(cancellationToken);
         var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);

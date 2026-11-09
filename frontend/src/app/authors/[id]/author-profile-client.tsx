@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { AuthorProfilePage } from "@/lib/recipes-api";
-import { SitePage } from "../../site-ui";
+import { RecipeCard, SitePage } from "../../site-ui";
 import styles from "../../site-ui.module.css";
 
 export function AuthorProfileClient({
@@ -61,19 +61,7 @@ export function AuthorProfileClient({
               : (
                 <div className={styles.grid}>
                   {recipes.items.map((recipe) => (
-                    <Link
-                      className={styles.card}
-                      href={`/recipes/${encodeURIComponent(recipe.slug)}`}
-                      key={recipe.id}
-                    >
-                      <p className={styles.cardLabel}>{recipe.difficulty}</p>
-                      <h2>{recipe.title}</h2>
-                      {recipe.description && <p className={styles.cardText}>{recipe.description}</p>}
-                      <div className={styles.cardMeta}>
-                        <span>{recipe.cookTimeMinutes} phút</span>
-                        <span>{recipe.servings} khẩu phần</span>
-                      </div>
-                    </Link>
+                    <RecipeCard recipe={recipe} key={recipe.id} />
                   ))}
                 </div>
               )}

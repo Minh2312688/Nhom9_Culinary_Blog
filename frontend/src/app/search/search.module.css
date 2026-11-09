@@ -45,7 +45,9 @@
 .recipe:nth-child(3) { animation-delay: 70ms; }
 .recipe:nth-child(4) { animation-delay: 105ms; }
 .recipeIndex { padding-top: 2px; color: var(--color-muted); font: 18px var(--font-display); }
-.recipeBody { min-width: 0; }
+.recipeBody { min-width: 0; display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 16px; }
+.recipeImage { width: 100%; height: auto; aspect-ratio: 4 / 3; border-radius: var(--radius-sm); object-fit: cover; background: var(--teal-50); }
+.recipeContent { min-width: 0; }
 .recipeTopline { display: flex; align-items: center; gap: 8px; }
 .difficulty { padding: 3px 7px; color: var(--color-teal); background: var(--teal-50); font: 700 10px var(--font-body); text-transform: uppercase; }
 .recipeStatus { color: var(--color-muted); font: 10px var(--font-body); }
@@ -74,6 +76,7 @@
   .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; padding-bottom: 21px; }
   .resultsHeader h2 { font-size: 23px; }
   .recipe { grid-template-columns: 34px 1fr; gap: 8px; padding: 18px 2px; }
+  .recipeBody { grid-template-columns: 100px minmax(0, 1fr); gap: 10px; }
   .recipeIndex { font-size: 15px; }
   .recipe h3 { font-size: 19px; }
 }

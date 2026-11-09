@@ -22,6 +22,8 @@ export interface RecipeSummary {
   categoryId: string;
   authorId: string;
   publishedAt: string | null;
+  primaryImageUrl?: string | null;
+  primaryImageAltText?: string | null;
   rowVersion: string;
 }
 

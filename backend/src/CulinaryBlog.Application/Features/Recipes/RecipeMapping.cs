@@ -5,10 +5,19 @@ namespace CulinaryBlog.Application.Features.Recipes;
 
 internal static class RecipeMapping
 {
-    public static RecipeSummaryDto ToSummary(this Recipe recipe) => new(
-        recipe.Id, recipe.Title, recipe.Slug, recipe.Description, recipe.Difficulty.ToString(),
-        recipe.CookTimeMinutes, recipe.Servings, recipe.Status, recipe.CategoryId,
-        recipe.AuthorId, recipe.PublishedAt, recipe.RowVersion);
+    public static RecipeSummaryDto ToSummary(this Recipe recipe)
+    {
+        var primaryImage = recipe.Images
+            .Where(image => image.IsPrimary)
+            .OrderBy(image => image.OrderIndex)
+            .FirstOrDefault();
+
+        return new RecipeSummaryDto(
+            recipe.Id, recipe.Title, recipe.Slug, recipe.Description, recipe.Difficulty.ToString(),
+            recipe.CookTimeMinutes, recipe.Servings, recipe.Status, recipe.CategoryId,
+            recipe.AuthorId, recipe.PublishedAt, primaryImage?.OriginalUrl, primaryImage?.AltText,
+            recipe.RowVersion);
+    }
 
     public static RecipeDetailDto ToDetail(this Recipe recipe) => new(
         recipe.Id, recipe.Title, recipe.Slug, recipe.Description, recipe.PrepTimeMinutes,

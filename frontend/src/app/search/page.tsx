@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { ArrowLeft, ArrowRight, Clock3, Search, SlidersHorizontal, Users, X } from "lucide-react";
 import { getRecipeCategories, searchRecipes, type PaginatedResult, type RecipeCategory, type RecipeSummary } from "@/lib/recipes-api";
 import { LoadingSkeleton, SitePage } from "../site-ui";
@@ -235,17 +236,30 @@ export default function RecipeSearchPage() {
                 <article className={styles.recipe} key={recipe.id}>
                   <div className={styles.recipeIndex}>{String((result.page - 1) * result.pageSize + index + 1).padStart(2, "0")}</div>
                   <div className={styles.recipeBody}>
-                    <div className={styles.recipeTopline}>
-                      <span className={styles.difficulty}>{recipe.difficulty}</span>
-                      <span className={styles.recipeStatus}>
-                        {recipe.status === "Published" || recipe.status === 1 ? "Đã xuất bản" : String(recipe.status)}
-                      </span>
-                    </div>
-                    <h3>{recipe.title}</h3>
-                    {recipe.description && <p className={styles.description}>{recipe.description}</p>}
-                    <div className={styles.recipeMeta}>
-                      <span><Clock3 size={15} /> {recipe.cookTimeMinutes} phút</span>
-                      <span><Users size={15} /> {recipe.servings} khẩu phần</span>
+                    {recipe.primaryImageUrl && (
+                      <Image
+                        className={styles.recipeImage}
+                        src={recipe.primaryImageUrl}
+                        alt={recipe.primaryImageAltText || recipe.title}
+                        width={240}
+                        height={180}
+                        sizes="(max-width: 760px) 100px, 160px"
+                        unoptimized
+                      />
+                    )}
+                    <div className={styles.recipeContent}>
+                      <div className={styles.recipeTopline}>
+                        <span className={styles.difficulty}>{recipe.difficulty}</span>
+                        <span className={styles.recipeStatus}>
+                          {recipe.status === "Published" || recipe.status === 1 ? "Đã xuất bản" : String(recipe.status)}
+                        </span>
+                      </div>
+                      <h3>{recipe.title}</h3>
+                      {recipe.description && <p className={styles.description}>{recipe.description}</p>}
+                      <div className={styles.recipeMeta}>
+                        <span><Clock3 size={15} /> {recipe.cookTimeMinutes} phút</span>
+                        <span><Users size={15} /> {recipe.servings} khẩu phần</span>
+                      </div>
                     </div>
                   </div>
                 </article>

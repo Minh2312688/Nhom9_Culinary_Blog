@@ -5,15 +5,17 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: culinaryblog-api
+    container_name: culinary_blog_api
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       Seed__Enabled: "true"
+      Seed__SampleDataPath: /app/sample-data
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       Redis__ConnectionString: redis:6379
       MinIO__Endpoint: minio:9000
+      MinIO__PublicBaseUrl: http://localhost:9000/culinary-blog
       MinIO__AccessKey: ${MINIO_ROOT_USER}
       MinIO__SecretKey: ${MINIO_ROOT_PASSWORD}
       MinIO__UseSSL: "false"
@@ -31,19 +33,27 @@ services:
       Seq__ServerUrl: http://seq:5341
     ports:
       - "5000:8080"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/127.0.0.1/8080"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 120s
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       minio:
-        condition: service_started
+        condition: service_healthy
       # MailHog has no healthcheck (not built into the image); service_started
       # is the honest condition - no fabricated healthcheck.
       mailhog:
         condition: service_started
+    volumes:
+      - ./tools/sample-data:/app/sample-data:ro
     networks:
-      - culinaryblog-network
+      - culinary_blog_network
 
   frontend:
     build:
@@ -51,7 +61,8 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000}
-    container_name: culinaryblog-frontend
+        NEXT_PUBLIC_MEDIA_URL: ${NEXT_PUBLIC_MEDIA_URL:-http://localhost:9000/culinary-blog}
+    container_name: culinary_blog_frontend
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -61,13 +72,14 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     networks:
-      - culinaryblog-network
+      - culinary_blog_network
 
   postgres:
     image: postgres:16-alpine
-    container_name: culinaryblog-postgres
+    container_name: culinary_blog_postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -76,35 +88,35 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - culinary_blog_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
     networks:
-      - culinaryblog-network
+      - culinary_blog_network
 
   redis:
     image: redis:7-alpine
-    container_name: culinaryblog-redis
+    container_name: culinary_blog_redis
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "6379:6379"
     volumes:
-      - redisdata:/data
+      - culinary_blog_redisdata:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
     networks:
-      - culinaryblog-network
+      - culinary_blog_network
 
   minio:
     image: bitnamilegacy/minio:2025.7.23-debian-12-r5
-    container_name: culinaryblog-minio
+    container_name: culinary_blog_minio
     restart: unless-stopped
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -113,13 +125,19 @@ services:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - miniodata:/bitnami/minio/data
+      - culinary_blog_miniodata:/bitnami/minio/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
     networks:
-      - culinaryblog-network
+      - culinary_blog_network
 
   mailhog:
     image: mailhog/mailhog:v1.0.1
-    container_name: culinaryblog-mailhog
+    container_name: culinary_blog_mailhog
     restart: unless-stopped
     # FR-JOB-001: SMTP for Development/demo only. API reaches this service via
     # the Compose network DNS name "mailhog:1025". UI is published on
@@ -130,11 +148,11 @@ services:
       - "127.0.0.1:8025:8025"
       - "127.0.0.1:1025:1025"
     networks:
-      - culinaryblog-network
+      - culinary_blog_network
 
   seq:
     image: datalust/seq:2026.1.17473
-    container_name: culinaryblog-seq
+    container_name: culinary_blog_seq
     restart: unless-stopped
     # chỉ dev
     environment:
@@ -143,16 +161,16 @@ services:
     ports:
       - "127.0.0.1:5341:80"
     volumes:
-      - seqdata:/data
+      - culinary_blog_seqdata:/data
     networks:
-      - culinaryblog-network
+      - culinary_blog_network
 
 volumes:
-  pgdata:
-  redisdata:
-  miniodata:
-  seqdata:
+  culinary_blog_pgdata:
+  culinary_blog_redisdata:
+  culinary_blog_miniodata:
+  culinary_blog_seqdata:
 
 networks:
-  culinaryblog-network:
+  culinary_blog_network:
     driver: bridge

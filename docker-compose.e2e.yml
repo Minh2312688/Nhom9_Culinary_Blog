@@ -5,12 +5,13 @@
 #
 # Isolation guarantees provided by this file (verified via resolved config
 # gate before any `up`):
-#   * container_name of every service carries the run's project name, so the
-#     5 container names are unique per run (base file hardcodes names).
+#   * container_name of every service carries the run's project name, so
+#     containers are unique per run (base file hardcodes names).
 #   * Postgres/Redis/MinIO publish NO host port (ports !reset).
 #   * API binds only 127.0.0.1:5080 (not 0.0.0.0:5000).
 #   * MailHog binds only 127.0.0.1:18025 for the UI; SMTP 1025 is NOT
 #     published - the API uses the in-network name mailhog:1025.
+#   * Frontend and Seq publish NO host ports in E2E (ports !reset).
 #   * API connects to the dedicated E2E database culinary_blog_e2e.
 services:
   api:
@@ -18,6 +19,10 @@ services:
     environment:
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=culinary_blog_e2e;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
     ports: !override ["127.0.0.1:5080:8080"]
+
+  frontend:
+    container_name: ${COMPOSE_PROJECT_NAME}-frontend
+    ports: !reset []
 
   postgres:
     container_name: ${COMPOSE_PROJECT_NAME}-postgres
@@ -47,3 +52,7 @@ services:
     # (no host binding) - nothing in this E2E run sends mail from outside
     # the Compose network.
     ports: !override ["127.0.0.1:18025:8025"]
+
+  seq:
+    container_name: ${COMPOSE_PROJECT_NAME}-seq
+    ports: !reset []

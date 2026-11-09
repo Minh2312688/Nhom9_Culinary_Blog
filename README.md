@@ -163,7 +163,7 @@ Cấu trúc có thể được bổ sung khi các module mới được tích h�
 
 `JWT_SECRET` là bắt buộc. Nếu không có biến này, API dừng khi khởi tạo cấu hình JWT. Redis có thể bỏ cấu hình để dùng cache trong bộ nhớ; khi Redis đã cấu hình nhưng tạm thời không truy cập được, cache bỏ qua lỗi và tiếp tục đọc database.
 
-Identity, refresh token, category, recipe và search dùng chung `ApplicationDbContext` cùng một migration stream. Trong Development, API tự áp dụng migration; `Seed__Enabled=true` bật seed 20 danh mục và 100 công thức. Hướng dẫn chạy toàn dự án ở [docs/run-project.md](docs/run-project.md); chi tiết
+Identity, refresh token, category, recipe và search dùng chung `ApplicationDbContext` cùng một migration stream. Trong Development, API tự áp dụng migration; `Seed__Enabled=true` bật seed danh mục và 20 công thức từ `tools/sample-data/20_cong_thuc_mon_an.json`, đồng thời tải ảnh từ `tools/sample-data/images/` lên MinIO. Hướng dẫn chạy toàn dự án ở [docs/run-project.md](docs/run-project.md); chi tiết
 database và tài khoản ở [docs/postgresql-setup.md](docs/postgresql-setup.md).
 
 > Database cũ từng chạy migration `AuthDbContext` không tương thích tự động với migration đã hợp nhất. Sao lưu trước; dùng database mới theo hướng dẫn để giữ nguyên dữ liệu cũ.

@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $apiProject = Join-Path $repoRoot "backend\src\CulinaryBlog.API\CulinaryBlog.API.csproj"
-$postgresContainer = "culinaryblog-postgres"
+$postgresContainer = "culinary_blog_postgres"
 $mailHogContainer = "frjob001-mailhog-demo"
 $demoDatabase = "frjob001_welcome_demo"
 
@@ -135,6 +135,7 @@ try {
         Jwt__Key = [Environment]::GetEnvironmentVariable("Jwt__Key", "Process")
         ASPNETCORE_ENVIRONMENT = [Environment]::GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Process")
         ASPNETCORE_URLS = [Environment]::GetEnvironmentVariable("ASPNETCORE_URLS", "Process")
+        Seed__Enabled = [Environment]::GetEnvironmentVariable("Seed__Enabled", "Process")
     }
 
     $keyBytes = New-Object byte[] 48
@@ -150,6 +151,7 @@ try {
     $env:Jwt__Key = [Convert]::ToBase64String($keyBytes)
     $env:ASPNETCORE_ENVIRONMENT = "Development"
     $env:ASPNETCORE_URLS = "http://localhost:$ApiPort"
+    $env:Seed__Enabled = "false"
 
     Write-Host "Starting API at http://localhost:$ApiPort. MailHog inbox: http://127.0.0.1:8025"
     Write-Host "Press Ctrl+C to stop the API; PostgreSQL, MailHog, and demo data will be kept."

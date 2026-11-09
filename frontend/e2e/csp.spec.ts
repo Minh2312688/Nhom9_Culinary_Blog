@@ -32,6 +32,27 @@ test.describe("NFR-SEC-004: Content Security Policy Verification", () => {
     expect(csp).toContain("https://*.googleusercontent.com");
   });
 
+  test("production CSP permits the configured API and media origins", async () => {
+    const rawOutput = execSync(
+      `node -e "process.env.NODE_ENV='production'; process.env.NEXT_PUBLIC_API_URL='http://localhost:5000'; process.env.NEXT_PUBLIC_MEDIA_URL='http://localhost:9000/culinary-blog'; import('./next.config.mjs').then(m => m.default.headers()).then(h => console.log(JSON.stringify(h)))"`,
+      { cwd: process.cwd() }
+    ).toString();
+
+    const headers = JSON.parse(rawOutput);
+    const cspEntry = headers[0]?.headers?.find(
+      (h: { key: string; value: string }) => h.key === "Content-Security-Policy"
+    );
+    const connectSrc = cspEntry.value
+      .split("; ")
+      .find((directive: string) => directive.startsWith("connect-src "));
+    const imgSrc = cspEntry.value
+      .split("; ")
+      .find((directive: string) => directive.startsWith("img-src "));
+
+    expect(connectSrc).toContain("http://localhost:5000");
+    expect(imgSrc).toContain("http://localhost:9000");
+  });
+
   test("development CSP must permit local HMR, WebSocket, and localhost origins", async () => {
     const rawOutput = execSync(
       `node -e "process.env.NODE_ENV='development'; import('./next.config.mjs').then(m => m.default.headers()).then(h => console.log(JSON.stringify(h)))"`,

@@ -185,6 +185,7 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<CulinaryBlog.Infrastructure.Persistence.ApplicationDbContext>();
     var userManager = scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.UserManager<CulinaryBlog.Infrastructure.Identity.ApplicationUser>>();
+    var fileStorage = scope.ServiceProvider.GetRequiredService<CulinaryBlog.Application.Contracts.Storage.IFileStorageService>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
     if (db.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory")
@@ -192,7 +193,14 @@ if (app.Environment.IsDevelopment())
         await db.Database.MigrateAsync();
         if (app.Configuration.GetValue("Seed:Enabled", true))
         {
-            await CulinaryBlog.Infrastructure.Persistence.Seed.Lab02DataSeeder.SeedAsync(db, userManager, logger);
+            var sampleDataDirectory = app.Configuration["Seed:SampleDataPath"] ??
+                Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "..", "..", "..", "tools", "sample-data"));
+            await CulinaryBlog.Infrastructure.Persistence.Seed.Lab02DataSeeder.SeedAsync(
+                db,
+                userManager,
+                fileStorage,
+                sampleDataDirectory,
+                logger);
         }
     }
 }

@@ -25,8 +25,47 @@ curl.exe http://localhost:5000/
 ```
 
 Khi API chạy trong `Development`, ứng dụng tự áp dụng migration của
-`ApplicationDbContext`. Seed mặc định tạo 20 danh mục và 100 công thức. Identity,
-refresh token và dữ liệu blog cùng nằm trong PostgreSQL này.
+`ApplicationDbContext`. Seed mặc định tạo danh mục và 20 công thức từ
+`tools/sample-data/20_cong_thuc_mon_an.json`; ảnh trong
+`tools/sample-data/images/` được tải lên MinIO. Compose mount thư mục dữ liệu
+chỉ đọc vào API container. Identity, refresh token và dữ liệu blog cùng nằm
+trong PostgreSQL này.
+
+Tên container, named volume và network của môi trường development dùng tiền tố
+`culinary_blog_`. Các cổng mặc định: frontend `3000`, API `5000`, PostgreSQL
+`5433`, Redis `6379`, MinIO `9000`/`9001`, MailHog `8025`, Seq `5341`.
+
+Để chạy riêng API cùng các dịch vụ phụ thuộc cho xác minh E2E FR-JOB-001, dùng
+project name riêng. Cổng API/MailHog chỉ bind vào loopback; database, Redis,
+MinIO, frontend và Seq không công bố cổng host trong môi trường này:
+
+```powershell
+docker compose -p culinary_blog_e2e -f docker-compose.yml -f docker-compose.e2e.yml --env-file .env.example config --quiet
+docker compose -p culinary_blog_e2e -f docker-compose.yml -f docker-compose.e2e.yml --env-file .env.example up --build -d api
+docker compose -p culinary_blog_e2e -f docker-compose.yml -f docker-compose.e2e.yml ps
+```
+
+E2E API: `http://localhost:5080`; MailHog UI: `http://localhost:18025`.
+Dừng và xóa toàn bộ volume riêng của E2E:
+
+```powershell
+docker compose -p culinary_blog_e2e -f docker-compose.yml -f docker-compose.e2e.yml down -v
+```
+
+Để tạo lại dữ liệu development từ đầu, lưu ý lệnh `down -v` sẽ xóa toàn bộ
+volume PostgreSQL, Redis, MinIO và Seq của project development:
+
+```powershell
+docker compose down -v
+docker compose up --build -d
+```
+
+Theo dõi seed/migration và trạng thái dịch vụ:
+
+```powershell
+docker compose logs -f api
+docker compose ps
+```
 
 Có thể áp dụng migration tường minh từ terminal backend khi PostgreSQL đã sẵn
 sàng. Với Compose, connection string `Postgres` phải trỏ tới `localhost:5433`;
@@ -141,7 +180,7 @@ dừng API chạy từ thư mục gốc:
 
 ```powershell
 docker rm -f frjob001-mailhog-demo
-$u = docker exec culinaryblog-postgres printenv POSTGRES_USER; docker exec culinaryblog-postgres psql -U $u -d postgres -v ON_ERROR_STOP=1 -c 'DROP DATABASE IF EXISTS frjob001_welcome_demo WITH (FORCE);'
+$u = docker exec culinary_blog_postgres printenv POSTGRES_USER; docker exec culinary_blog_postgres psql -U $u -d postgres -v ON_ERROR_STOP=1 -c 'DROP DATABASE IF EXISTS frjob001_welcome_demo WITH (FORCE);'
 ```
 
 Lệnh dọn trên chỉ xóa MailHog và database demo `frjob001_welcome_demo`; không

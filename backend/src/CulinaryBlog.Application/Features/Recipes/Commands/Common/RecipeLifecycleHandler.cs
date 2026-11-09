@@ -17,9 +17,6 @@ public sealed class RecipeLifecycleHandler :
     private readonly IApplicationDbContext context;
     private readonly ICurrentUserService currentUser;
     private readonly IRecipeCache cache;
-    private readonly IFileStorageService storage;
-
-    public RecipeLifecycleHandler(IApplicationDbContext context, ICurrentUserService currentUser, IRecipeCache cache, IFileStorageService storage)
     private readonly IFileStorageService? storage;
 
     public RecipeLifecycleHandler(
@@ -40,37 +37,18 @@ public sealed class RecipeLifecycleHandler :
     public async Task Handle(DeleteRecipeCommand request, CancellationToken ct)
     {
         var recipe = await GetOwnedRecipe(request.Id, ct);
-        var images = await context.RecipeImages.Where(i => i.RecipeId == recipe.Id).ToListAsync(ct);
-        var firstFailure = await DeleteStoredObjectsAsync(images, ct);
-        if (firstFailure != null)
+        if (storage is not null)
         {
-            await cache.RemoveAsync($"recipes:slug:{recipe.Slug}", ct);
-            await cache.RemoveByPrefixAsync("recipes:", ct);
-            ExceptionDispatchInfo.Capture(firstFailure).Throw();
-
-        // Delete all associated image objects from MinIO storage (FR-RCP-007 / TECH-RISK-004)
-        if (storage is not null && recipe.Images.Count > 0)
-        {
-            var urls = recipe.Images
-                .SelectMany(img => new[] { img.OriginalUrl, img.MediumUrl, img.ThumbnailUrl })
-                .Where(url => !string.IsNullOrWhiteSpace(url))
-                .Distinct(StringComparer.Ordinal);
-
-            foreach (var url in urls)
+            var firstFailure = await DeleteStoredObjectsAsync(recipe.Images, ct);
+            if (firstFailure is not null)
             {
-                try
-                {
-                    await storage.DeleteAsync(url!, ct);
-                }
-                catch (Exception)
-                {
-                    // Best-effort cleanup to prevent blocking database cascade deletion
-                }
+                await cache.RemoveAsync($"recipes:slug:{recipe.Slug.ToLowerInvariant()}", ct);
+                await cache.RemoveByPrefixAsync("recipes:", ct);
+                ExceptionDispatchInfo.Capture(firstFailure).Throw();
             }
         }
 
         context.Recipes.Remove(recipe);
-        context.RecipeImages.RemoveRange(images);
         await context.SaveChangesAsync(ct);
         await cache.RemoveAsync($"recipes:slug:{recipe.Slug.ToLowerInvariant()}", ct);
         await cache.RemoveByPrefixAsync("recipes:", ct);
@@ -91,7 +69,7 @@ public sealed class RecipeLifecycleHandler :
 
                 try
                 {
-                    await storage.DeleteAsync(url, ct);
+                    await storage!.DeleteAsync(url, ct);
                 }
                 catch (Exception e) when (e is not OperationCanceledException)
                 {

@@ -38,7 +38,7 @@ Nếu dữ liệu đã tồn tại nhưng thiếu children, seeder bổ sung chi
 
 ## Kích hoạt
 
-Khi `Seed:Enabled=true`, `Program.cs` gọi `Lab02DataSeeder` trên cùng `ApplicationDbContext`, tạo author kỹ thuật, tối thiểu 20 danh mục và 100 công thức có ít nhất 10 nguyên liệu/5 bước. Compose bật cờ này. `RandomDataSeeder` là tùy chọn riêng cho dataset báo cáo, không phải seeder mặc định.
+Khi `Seed:Enabled=true`, `Program.cs` gọi `Lab02DataSeeder` trên cùng `ApplicationDbContext`, tạo danh mục cần thiết và nạp 20 công thức từ `tools/sample-data/20_cong_thuc_mon_an.json`; ảnh được tải từ `tools/sample-data/images/` lên MinIO. Compose mount bộ dữ liệu chỉ đọc vào API container. `RandomDataSeeder` là tùy chọn riêng cho dataset báo cáo, không phải seeder mặc định.
 
 ## Robot Framework report
 

@@ -16,7 +16,7 @@ docker compose ps
 docker compose logs api
 ```
 
-PostgreSQL tạo database và role `POSTGRES_USER` khi volume được khởi tạo lần đầu. API chạy ở Development, tự áp dụng toàn bộ migration của `ApplicationDbContext`; `Seed__Enabled=true` tạo tối thiểu 20 danh mục và 100 công thức mẫu. API: `http://localhost:5000`.
+PostgreSQL tạo database và role `POSTGRES_USER` khi volume được khởi tạo lần đầu. API chạy ở Development, tự áp dụng toàn bộ migration của `ApplicationDbContext`; `Seed__Enabled=true` tạo danh mục và 20 công thức từ `tools/sample-data/20_cong_thuc_mon_an.json`, đồng thời tải các ảnh trong `tools/sample-data/images/` lên MinIO. API: `http://localhost:5000`.
 
 PostgreSQL được publish trên máy host tại `localhost:5433` (cổng container vẫn
 là `5432`, và API trong Compose kết nối bằng `postgres:5432`). Cổng host `5433`

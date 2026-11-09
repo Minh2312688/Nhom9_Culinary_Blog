@@ -17,12 +17,28 @@ function buildContentSecurityPolicy() {
     ].join("; ");
   }
 
-  let extraOrigin = "";
+  let apiOrigin = "";
+  let extraImageOrigin = "";
+  let mediaOrigin = "";
   if (process.env.NEXT_PUBLIC_API_URL) {
     try {
       const parsed = new URL(process.env.NEXT_PUBLIC_API_URL);
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+        apiOrigin = ` ${parsed.origin}`;
+      }
       if (!parsed.hostname.includes("localhost") && parsed.hostname !== "127.0.0.1") {
-        extraOrigin = ` ${parsed.origin}`;
+        extraImageOrigin = ` ${parsed.origin}`;
+      }
+    } catch {
+      // Ignore invalid URL
+    }
+  }
+
+  if (process.env.NEXT_PUBLIC_MEDIA_URL) {
+    try {
+      const parsed = new URL(process.env.NEXT_PUBLIC_MEDIA_URL);
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+        mediaOrigin = ` ${parsed.origin}`;
       }
     } catch {
       // Ignore invalid URL
@@ -33,9 +49,9 @@ function buildContentSecurityPolicy() {
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://accounts.google.com",
     "style-src 'self' 'unsafe-inline' https://accounts.google.com",
-    `img-src 'self' data: blob: https://*.googleusercontent.com https://accounts.google.com${extraOrigin}`,
+    `img-src 'self' data: blob: https://*.googleusercontent.com https://accounts.google.com${extraImageOrigin}${mediaOrigin}`,
     "font-src 'self' data:",
-    `connect-src 'self' https://accounts.google.com${extraOrigin}`,
+    `connect-src 'self' https://accounts.google.com${apiOrigin}`,
     "frame-src 'self' https://accounts.google.com",
     "object-src 'none'",
     "base-uri 'self'",

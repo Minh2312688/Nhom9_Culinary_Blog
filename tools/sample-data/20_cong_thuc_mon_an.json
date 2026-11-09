@@ -1,0 +1,2529 @@
+[
+  {
+    "title": "Bánh mì cá hộp",
+    "description": "Món ăn sáng nhanh gọn và no lâu. Bánh mì giòn rụm kết hợp cùng vị mặn vừa phải của cá hộp và vị béo của bơ lạt.",
+    "categorySlug": "mon-an-sang",
+    "author": "Annie Vo",
+    "prepTimeMinutes": 2,
+    "cookTimeMinutes": 3,
+    "servings": 1,
+    "difficulty": "Easy",
+    "ingredients": [
+      {
+        "name": "Bánh mì nhỏ",
+        "quantity": 1,
+        "unit": "ổ",
+        "notes": "loại nhỏ",
+        "orderIndex": 0
+      },
+      {
+        "name": "Cá hộp sốt cà",
+        "quantity": 1,
+        "unit": "lon",
+        "notes": null,
+        "orderIndex": 1
+      },
+      {
+        "name": "Bơ lạt",
+        "quantity": 1,
+        "unit": "miếng",
+        "notes": null,
+        "orderIndex": 2
+      },
+      {
+        "name": "Đường",
+        "quantity": 0.33,
+        "unit": "muỗng cà phê",
+        "notes": "1/3 mcf",
+        "orderIndex": 3
+      },
+      {
+        "name": "Hành lá, tiêu xay, tỏi phi",
+        "quantity": null,
+        "unit": null,
+        "notes": "1 ít",
+        "orderIndex": 4
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Đun cá hộp",
+        "description": "Cá hộp cho ra chảo, thêm ít nước và đường cho vừa ăn vì cá hộp hơi mặn.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Sơ chế bơ",
+        "description": "Bơ lạt bóc vỏ sẵn.",
+        "durationMinutes": 1,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Hoàn thiện",
+        "description": "Đổ cá hộp ra đĩa, cho miếng bơ lạt lên trên, cuối cùng thêm hành lá, tiêu xay và tỏi phi. Dùng kẹp bánh mì hoặc chấm kiểu bánh mì chảo.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "banh_mi_ca_hop",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Bánh mì cá hộp hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step1.webp",
+      "altText": "Bước 1 làm bánh mì cá hộp",
+      "isPrimary": true,
+      "orderIndex": 1,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step2.webp",
+      "altText": "Bước 2 làm bánh mì cá hộp",
+      "isPrimary": true,
+      "orderIndex": 2,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+  ]
+  },
+  {
+    "title": "Bò xào củ sen với ớt xanh",
+    "description": "Thịt bò mềm, củ sen giòn ngọt kết hợp cùng ớt xanh không cay tươi mát, rất hợp ăn nóng cùng cơm trắng.",
+    "categorySlug": "mon-xao",
+    "author": "Bean JP",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 10,
+    "servings": 2,
+    "difficulty": "Easy",
+    "ingredients": [
+      {
+        "name": "Thịt bò thái mỏng",
+        "quantity": 250,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 0
+      },
+      {
+        "name": "Củ sen sơ chế sẵn",
+        "quantity": 150,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 1
+      },
+      {
+        "name": "Ớt xanh không cay hoặc Piman",
+        "quantity": 2,
+        "unit": "quả",
+        "notes": "hoặc 4-5 trái nhỏ",
+        "orderIndex": 2
+      },
+      {
+        "name": "Tỏi",
+        "quantity": 2,
+        "unit": "tép",
+        "notes": "băm nhỏ",
+        "orderIndex": 3
+      },
+      {
+        "name": "Hành lá",
+        "quantity": null,
+        "unit": null,
+        "notes": "tùy chọn",
+        "orderIndex": 4
+      },
+      {
+        "name": "Nước mắm",
+        "quantity": 10,
+        "unit": "ml",
+        "notes": null,
+        "orderIndex": 5
+      },
+      {
+        "name": "Đường",
+        "quantity": 0.5,
+        "unit": "muỗng cà phê",
+        "notes": "tùy chọn",
+        "orderIndex": 6
+      },
+      {
+        "name": "Tiêu",
+        "quantity": null,
+        "unit": null,
+        "notes": "1 ít",
+        "orderIndex": 7
+      },
+      {
+        "name": "Dầu ăn",
+        "quantity": 7.5,
+        "unit": "ml",
+        "notes": "5-7.5 ml",
+        "orderIndex": 8
+      },
+      {
+        "name": "Nước lọc",
+        "quantity": 10,
+        "unit": "ml",
+        "notes": null,
+        "orderIndex": 9
+      },
+      {
+        "name": "Dầu mè",
+        "quantity": 3,
+        "unit": "ml",
+        "notes": "2-3 ml",
+        "orderIndex": 10
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Sơ chế củ sen",
+        "description": "Đổ bỏ phần nước trong túi củ sen, rửa nhẹ rồi để ráo. Cắt mỗi khoanh củ sen thành 4 phần vừa ăn.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Sơ chế ớt và tỏi",
+        "description": "Ớt xanh cắt mỗi trái thành 2-3 khúc (nếu dùng piman, bỏ hạt cắt 4-6 miếng). Tỏi băm nhỏ.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Ướp thịt bò",
+        "description": "Trộn thịt bò với 10 ml nước mắm, tiêu, 5-7.5 ml dầu ăn và 1/2 muỗng cà phê đường. Ướp khoảng 10 phút.",
+        "durationMinutes": 10,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 4,
+        "title": "Xào thịt bò",
+        "description": "Làm nóng chảo, phi thơm tỏi rồi cho thịt bò vào xào nhanh đến khi gần chín trút ra đĩa, giữ lại mỡ và nước thịt trong chảo.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 5,
+        "title": "Xào củ sen và ớt",
+        "description": "Cho củ sen và ớt xanh vào chảo xào 1-2 phút trên lửa vừa đến lớn.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 6,
+        "title": "Nêm gia vị",
+        "description": "Pha 10 ml nước mắm với 10 ml nước lọc, rưới vào chảo đảo khoảng 1 phút cho gia vị áo đều.",
+        "durationMinutes": 1,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 7,
+        "title": "Trộn thịt bò",
+        "description": "Cho thịt bò trở lại chảo, đảo nhanh đến khi thịt chín hoàn toàn và các nguyên liệu hòa quyện.",
+        "durationMinutes": 1,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 8,
+        "title": "Hoàn thành",
+        "description": "Thêm 2-3 ml dầu mè cho thơm, rắc hành lá rồi tắt bếp.",
+        "durationMinutes": 1,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "bo-xao-cu-sen-voi-ot-xanh",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Bò xào củ sen với ớt xanh hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step1-1.webp",
+      "altText": "Bước 1 làm bò xào củ sen với ớt xanh",
+      "isPrimary": true,
+      "orderIndex": 1,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step1-2.webp",
+      "altText": "Bước 1 làm bò xào củ sen với ớt xanh",
+      "isPrimary": true,
+      "orderIndex": 2,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step2.webp",
+      "altText": "Bước 2 làm bò xào củ sen với ớt xanh",
+      "isPrimary": true,
+      "orderIndex": 3,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step3.webp",
+      "altText": "Bước 3 làm bò xào củ sen với ớt xanh",
+      "isPrimary": true,
+      "orderIndex": 4,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step7.webp",
+      "altText": "Bước 7 làm bò xào củ sen với ớt xanh",
+      "isPrimary": true,
+      "orderIndex": 5,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+  ]
+  },
+  {
+    "title": "Cá He Kho Rệu",
+    "description": "Món cá kho rệu đậm đà chuẩn vị miền Tây. Cá kho lâu cùng nước dừa tươi đến khi xương mềm nhừ, thịt cá béo ngậy thấm vị.",
+    "categorySlug": "mon-kho",
+    "author": "Bòn Bon",
+    "prepTimeMinutes": 20,
+    "cookTimeMinutes": 480,
+    "servings": 4,
+    "difficulty": "Expert",
+    "ingredients": [
+      {
+        "name": "Cá he tươi",
+        "quantity": 4,
+        "unit": "con",
+        "notes": null,
+        "orderIndex": 0
+      },
+      {
+        "name": "Cà chua beef",
+        "quantity": 1,
+        "unit": "quả",
+        "notes": null,
+        "orderIndex": 1
+      },
+      {
+        "name": "Thơm (dứa)",
+        "quantity": 0.5,
+        "unit": "trái",
+        "notes": null,
+        "orderIndex": 2
+      },
+      {
+        "name": "Nước dừa tươi",
+        "quantity": 1,
+        "unit": "trái",
+        "notes": null,
+        "orderIndex": 3
+      },
+      {
+        "name": "Tỏi",
+        "quantity": 0.5,
+        "unit": "củ",
+        "notes": null,
+        "orderIndex": 4
+      },
+      {
+        "name": "Tiêu",
+        "quantity": 1.5,
+        "unit": "muỗng cà phê",
+        "notes": null,
+        "orderIndex": 5
+      },
+      {
+        "name": "Đường",
+        "quantity": 2,
+        "unit": "muỗng canh",
+        "notes": null,
+        "orderIndex": 6
+      },
+      {
+        "name": "Nước tương",
+        "quantity": 2,
+        "unit": "muỗng canh",
+        "notes": null,
+        "orderIndex": 7
+      },
+      {
+        "name": "Muối",
+        "quantity": 1,
+        "unit": "muỗng cà phê",
+        "notes": null,
+        "orderIndex": 8
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Sơ chế và cấp đông cá",
+        "description": "Cá he làm sạch ruột, giữ đầu và vảy. Rửa chanh cho sạch, ướp 1 muỗng cà phê muối, để cá thẳng, đậy kín cho vào tủ cấp đông 2-4 ngày.",
+        "durationMinutes": 20,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Kho cá Slow Cook",
+        "description": "Rửa cá sạch để ráo. Lót cà chua và thơm xào với tỏi phi dưới đáy nồi. Đặt cá vào, thêm nước tương, 1 muỗng cà phê muối, tiêu, ớt, nước dừa, đường và nước lọc ngập cá. Kho 8-10 tiếng chế độ Slow Cook.",
+        "durationMinutes": 480,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Nêm nếm hoàn tất",
+        "description": "Thử đầu cá mềm rệu là được, nêm nếm lại vừa ăn, thêm xíu nước mắm vào nước cá kho cho đậm đà.",
+        "durationMinutes": 5,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "ca_he_kho_reu",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Cá hề kho rệu hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step1-1.webp",
+      "altText": "Bước 1 làm cá hệ kho rệu",
+      "isPrimary": true,
+      "orderIndex": 1,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },
+    {
+      "file": "step1-2.webp",
+      "altText": "Bước 1 làm cá hệ kho rệu",
+      "isPrimary": true,
+      "orderIndex": 2,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step2-1.webp",
+      "altText": "Bước 2 làm cá hệ kho rệu",
+      "isPrimary": true,
+      "orderIndex": 3,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step2-2.webp",
+      "altText": "Bước 2 làm cá hệ kho rệu",
+      "isPrimary": true,
+      "orderIndex": 4,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step3.webp",
+      "altText": "Bước 3 làm cá hệ kho rệu",
+      "isPrimary": true,
+      "orderIndex": 5,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+  ]
+  },
+  {
+    "title": "Canh rau cải Baby",
+    "description": "Món canh chay đơn giản thanh ngọt, nước dùng nấu từ củ sắn giúp giảm tính âm, giữ màu xanh tươi mát của rau.",
+    "categorySlug": "mon-canh",
+    "author": "Bảo Bình",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 25,
+    "servings": 2,
+    "difficulty": "Easy",
+    "ingredients": [
+      {
+        "name": "Rau cải baby",
+        "quantity": 200,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 0
+      },
+      {
+        "name": "Củ sắn (hoặc nấm rơm)",
+        "quantity": 200,
+        "unit": "g",
+        "notes": "hoặc 50g nấm rơm",
+        "orderIndex": 1
+      },
+      {
+        "name": "Nước",
+        "quantity": 600,
+        "unit": "ml",
+        "notes": null,
+        "orderIndex": 2
+      },
+      {
+        "name": "Hạt nêm chay",
+        "quantity": 2,
+        "unit": "muỗng cà phê",
+        "notes": null,
+        "orderIndex": 3
+      },
+      {
+        "name": "Nước mắm chay",
+        "quantity": 1,
+        "unit": "muỗng canh",
+        "notes": null,
+        "orderIndex": 4
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Hầm nước dùng",
+        "description": "Củ sắn gọt vỏ, cắt nhỏ cho vào nồi cùng 600 ml nước, hầm nhỏ lửa 20-30 phút cho ngọt rồi vớt ra. (Nếu dùng nấm rơm thì nấu sôi 10 phút).",
+        "durationMinutes": 20,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Sơ chế rau",
+        "description": "Rau cải baby rửa sạch, cắt khúc vừa ăn.",
+        "durationMinutes": 3,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Nấu canh",
+        "description": "Cho rau cải vào nồi nước dùng, nấu sôi thêm 3 phút. Nêm hạt nêm chay, khuấy đều.",
+        "durationMinutes": 3,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 4,
+        "title": "Hoàn thành",
+        "description": "Tắt bếp, thêm nước mắm chay, đảo nhẹ rồi múc ra tô.",
+        "durationMinutes": 1,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "canh_rau_cai_baby",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Canh rau cải baby hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }]
+  },
+  {
+    "title": "Canh rau tập tàng",
+    "description": "Món canh giải nhiệt thanh mát kết hợp rau muống, rau dền cơm và mướp hương.",
+    "categorySlug": "mon-canh",
+    "author": "Bảo Bình",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 6,
+    "servings": 3,
+    "difficulty": "Easy",
+    "ingredients": [
+      {
+        "name": "Rau muống",
+        "quantity": 100,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 0
+      },
+      {
+        "name": "Rau dền cơm",
+        "quantity": 100,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 1
+      },
+      {
+        "name": "Mướp",
+        "quantity": 0.5,
+        "unit": "quả",
+        "notes": null,
+        "orderIndex": 2
+      },
+      {
+        "name": "Nước lọc",
+        "quantity": 600,
+        "unit": "ml",
+        "notes": "500-600 ml",
+        "orderIndex": 3
+      },
+      {
+        "name": "Hạt nêm, muối",
+        "quantity": null,
+        "unit": null,
+        "notes": "tùy khẩu vị",
+        "orderIndex": 4
+      },
+      {
+        "name": "Nước mắm chay",
+        "quantity": 1,
+        "unit": "muỗng canh",
+        "notes": "1 muỗng vừa",
+        "orderIndex": 5
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Sơ chế",
+        "description": "Rửa sạch rau muống, rau dền cơm và mướp. Cắt nhỏ cả ba nguyên liệu.",
+        "durationMinutes": 3,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Nấu rau muống",
+        "description": "Đun sôi 500-600 ml nước, cho rau muống vào nấu khoảng 2-3 phút.",
+        "durationMinutes": 3,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Nấu mướp và rau dền",
+        "description": "Cho mướp và rau dền cơm vào, nấu sôi thêm 2-3 phút.",
+        "durationMinutes": 3,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 4,
+        "title": "Hoàn thiện",
+        "description": "Nêm hạt nêm tùy khẩu vị. Tắt bếp rồi thêm 1 muỗng vừa nước mắm chay, khuấy đều và dùng nóng.",
+        "durationMinutes": 1,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "canh_rau_tap_tang",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Canh rau tap tang hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+  ]
+  },
+  {
+    "title": "Đậu phụ xào sa tế chay lá quế",
+    "description": "Đậu phụ xé nhỏ chiên giòn ngoài mềm trong, thấm vị sa tế chay mặn ngọt và dậy mùi thơm đặc trưng của lá quế.",
+    "categorySlug": "mon-chay",
+    "author": "Bảo Bình",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 10,
+    "servings": 1,
+    "difficulty": "Easy",
+    "ingredients": [
+      {
+        "name": "Đậu phụ tươi",
+        "quantity": 250,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 0
+      },
+      {
+        "name": "Sa tế chay",
+        "quantity": 1,
+        "unit": "muỗng canh",
+        "notes": "1 muỗng canh vừa",
+        "orderIndex": 1
+      },
+      {
+        "name": "Đường",
+        "quantity": 1,
+        "unit": "muỗng cà phê",
+        "notes": null,
+        "orderIndex": 2
+      },
+      {
+        "name": "Nước tương hoặc hạt nêm chay",
+        "quantity": null,
+        "unit": null,
+        "notes": "vừa đủ",
+        "orderIndex": 3
+      },
+      {
+        "name": "Muối",
+        "quantity": null,
+        "unit": null,
+        "notes": "1 chút",
+        "orderIndex": 4
+      },
+      {
+        "name": "Lá quế (rau húng chó)",
+        "quantity": null,
+        "unit": null,
+        "notes": "vừa đủ",
+        "orderIndex": 5
+      },
+      {
+        "name": "Dầu ăn",
+        "quantity": null,
+        "unit": null,
+        "notes": "vừa đủ",
+        "orderIndex": 6
+      },
+      {
+        "name": "Hành boa rô",
+        "quantity": null,
+        "unit": null,
+        "notes": "tùy chọn",
+        "orderIndex": 7
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Sơ chế đậu phụ",
+        "description": "Dùng tay bẻ, xé đậu phụ thành những miếng nhỏ vừa ăn để có bề mặt tự nhiên, dễ thấm gia vị.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Chiên đậu phụ",
+        "description": "Đun nóng dầu trong chảo, cho chút muối giảm bắn dầu rồi chiên đậu phụ đến khi vàng đều bên ngoài. Vớt ra ráo dầu.",
+        "durationMinutes": 5,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Xào sa tế",
+        "description": "Phi thơm hành boa rô (nếu có), cho đậu chiên, sa tế chay, đường, nước tương/hạt nêm chay vào đảo đều ở lửa nhỏ.",
+        "durationMinutes": 3,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 4,
+        "title": "Cho lá quế",
+        "description": "Cho lá quế vào, đảo nhanh cho dậy mùi thơm rồi tắt bếp. Bày ra đĩa dùng nóng với cơm.",
+        "durationMinutes": 1,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "dau_phu_xao_sa_te_chay_la_que",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Đậu phụ xào sa tế chay lá quế hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step2.webp",
+      "altText": "Bước 2 làm đậu phụ xào sa tế chay lá quế",
+      "isPrimary": true,
+      "orderIndex": 1,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step4.webp",
+      "altText": "Bước 4 làm đậu phụ xào sa tế chay lá quế",
+      "isPrimary": true,
+      "orderIndex": 2,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+  ]
+  },
+  {
+    "title": "Bánh Mì Kẹp Thanh Cua Phô Mai",
+    "description": "Bánh mì kẹp phô mai Cheddar chảy béo ngậy cùng thanh cua, thêm đồ chua và rau mầm tươi ngon giòn rụm.",
+    "categorySlug": "mon-an-sang",
+    "author": "Dory",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 5,
+    "servings": 1,
+    "difficulty": "Easy",
+    "ingredients": [
+      {
+        "name": "Bánh mì nhỏ",
+        "quantity": 1,
+        "unit": "ổ",
+        "notes": "hoặc ổ lớn cắt khúc",
+        "orderIndex": 0
+      },
+      {
+        "name": "Thanh cua",
+        "quantity": 4,
+        "unit": "thanh",
+        "notes": "3-4 thanh",
+        "orderIndex": 1
+      },
+      {
+        "name": "Phô mai Cheddar",
+        "quantity": 2,
+        "unit": "miếng",
+        "notes": null,
+        "orderIndex": 2
+      },
+      {
+        "name": "Đọt mầm đậu hà lan",
+        "quantity": null,
+        "unit": null,
+        "notes": "vài đọt",
+        "orderIndex": 3
+      },
+      {
+        "name": "Đồ chua",
+        "quantity": null,
+        "unit": null,
+        "notes": "1 nhúm",
+        "orderIndex": 4
+      },
+      {
+        "name": "Nước tương",
+        "quantity": 2,
+        "unit": "muỗng cà phê",
+        "notes": "2 mcf",
+        "orderIndex": 5
+      },
+      {
+        "name": "Muối tiêu",
+        "quantity": null,
+        "unit": null,
+        "notes": "1 ít",
+        "orderIndex": 6
+      },
+      {
+        "name": "Ớt hiểm",
+        "quantity": 1,
+        "unit": "trái",
+        "notes": "bỏ qua nếu không ăn cay",
+        "orderIndex": 7
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Kẹp và nướng bánh mì",
+        "description": "Bánh mì xẻ ruột, đặt phô mai Cheddar và thanh cua vào, nướng 4-5 phút ở 180°C trong nồi chiên không dầu.",
+        "durationMinutes": 5,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Thêm rau đồ chua",
+        "description": "Nướng xong lấy bánh ra cho đồ chua, rau mầm và ớt xắt lên trên.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Nêm sốt và thưởng thức",
+        "description": "Chan nhẹ thêm ít nước tương, rắc muối tiêu và thưởng thức ngay cho nóng giòn.",
+        "durationMinutes": 1,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "banh_mi_kep_thanh_cua_pho_mai",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Bánh mì kẹp thanh cua phô mai hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step1-1.webp",
+      "altText": "Bước 1 làm bánh mì kẹp thanh cua phô mai",
+      "isPrimary": true,
+      "orderIndex": 1,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },
+    {
+      "file": "step1-2.webp",
+      "altText": "Bước 1 làm bánh mì kẹp thanh cua phô mai",
+      "isPrimary": true,
+      "orderIndex": 2,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },
+    {
+      "file": "step1-3.webp",
+      "altText": "Bước 1 làm bánh mì kẹp thanh cua phô mai",
+      "isPrimary": true,
+      "orderIndex": 3,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step2-1.webp",
+      "altText": "Bước 2 làm bánh mì kẹp thanh cua phô mai",
+      "isPrimary": true,
+      "orderIndex": 4,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step2-2.webp",
+      "altText": "Bước 2 làm bánh mì kẹp thanh cua phô mai",
+      "isPrimary": true,
+      "orderIndex": 5,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },
+    {
+      "file": "step2-3.webp",
+      "altText": "Bước 2 làm bánh mì kẹp thanh cua phô mai",
+      "isPrimary": true,
+      "orderIndex": 6,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step3-1.webp",
+      "altText": "Bước 3 làm bánh mì kẹp thanh cua phô mai",
+      "isPrimary": true,
+      "orderIndex": 7,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step3-2.webp",
+      "altText": "Bước 3 làm bánh mì kẹp thanh cua phô mai",
+      "isPrimary": true,
+      "orderIndex": 8,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+  ]
+  },
+  {
+    "title": "Canh gà nấu nấm gừng",
+    "description": "Món canh nhẹ thanh mát, vị ngọt tự nhiên từ cánh gà có xương kết hợp nấm shimeji, shiitake và gừng tươi.",
+    "categorySlug": "mon-canh",
+    "author": "Bean JP",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 30,
+    "servings": 3,
+    "difficulty": "Easy",
+    "ingredients": [
+      {
+        "name": "Cánh gà có xương",
+        "quantity": 300,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 0
+      },
+      {
+        "name": "Nấm Buna shimeji",
+        "quantity": 100,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 1
+      },
+      {
+        "name": "Nấm Shiitake tươi",
+        "quantity": 3,
+        "unit": "tai",
+        "notes": null,
+        "orderIndex": 2
+      },
+      {
+        "name": "Gừng tươi",
+        "quantity": 15,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 3
+      },
+      {
+        "name": "Nước",
+        "quantity": 1000,
+        "unit": "ml",
+        "notes": null,
+        "orderIndex": 4
+      },
+      {
+        "name": "Nước mắm",
+        "quantity": 15,
+        "unit": "ml",
+        "notes": null,
+        "orderIndex": 5
+      },
+      {
+        "name": "Hành lá",
+        "quantity": null,
+        "unit": null,
+        "notes": "1 ít",
+        "orderIndex": 6
+      },
+      {
+        "name": "Tiêu",
+        "quantity": null,
+        "unit": null,
+        "notes": "1 ít tùy chọn",
+        "orderIndex": 7
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Sơ chế nấm gừng",
+        "description": "Shimeji cắt gốc tách nhỏ; Shiitake bỏ cuống cắt miếng; Gừng thái lát; Hành lá cắt nhỏ.",
+        "durationMinutes": 5,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Nấu cánh gà",
+        "description": "Cho cánh gà, gừng và 1000 ml nước vào nồi đun sôi rồi hạ lửa vừa.",
+        "durationMinutes": 5,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Hớt bọt và hầm",
+        "description": "Hớt bọt để nước trong, nấu liu riu 15 phút cho tiết nước ngọt.",
+        "durationMinutes": 15,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 4,
+        "title": "Cho nấm",
+        "description": "Thêm shiitake và shimeji vào nấu 5 phút đến khi nấm và gà chín.",
+        "durationMinutes": 5,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 5,
+        "title": "Nêm nước mắm",
+        "description": "Thêm nước mắm, khuấy nhẹ và nếm điều chỉnh.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 6,
+        "title": "Tắt bếp",
+        "description": "Cho hành lá và tiêu vào rồi tắt bếp, dùng nóng với cơm.",
+        "durationMinutes": 1,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "canh_ga_nau_nam_gung",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Canh gà nấu nấm gừng hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step5.webp",
+      "altText": "Bước 5 làm canh gà nấu nấm gừng hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 1,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step6.webp",
+      "altText": "Bước 6 làm canh gà nấu nấm gừng hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 2,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+  ]
+  },
+  {
+    "title": "Canh khổ qua nhồi thịt",
+    "description": "Món canh thanh nhiệt truyền thống với vị đắng nhẹ khổ qua hòa quyện nhân thịt xay bóp mộc nhĩ đậm đà.",
+    "categorySlug": "mon-canh",
+    "author": "Hường Lê",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 30,
+    "servings": 3,
+    "difficulty": "Medium",
+    "ingredients": [
+      {
+        "name": "Khổ qua",
+        "quantity": 4,
+        "unit": "trái",
+        "notes": null,
+        "orderIndex": 0
+      },
+      {
+        "name": "Thịt vai xay",
+        "quantity": 350,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 1
+      },
+      {
+        "name": "Mộc nhĩ (nấm mèo)",
+        "quantity": null,
+        "unit": null,
+        "notes": "ngâm nở băm nhỏ",
+        "orderIndex": 2
+      },
+      {
+        "name": "Hành tím",
+        "quantity": 3,
+        "unit": "củ",
+        "notes": null,
+        "orderIndex": 3
+      },
+      {
+        "name": "Hành lá, ngò rí",
+        "quantity": null,
+        "unit": null,
+        "notes": null,
+        "orderIndex": 4
+      },
+      {
+        "name": "Nước mắm, hạt nêm, đường, dầu hàu, tiêu, bột ngọt, dầu ăn",
+        "quantity": null,
+        "unit": null,
+        "notes": "vừa đủ",
+        "orderIndex": 5
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Sơ chế khổ qua và mộc nhĩ",
+        "description": "Khổ qua xẻ giữa, móc hết hạt ra cạo sạch. Trụng nước sôi pha 1 muỗng đường rồi vớt ráo. Mộc nhĩ ngâm nở rửa sạch băm nhỏ.",
+        "durationMinutes": 10,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Trộn nhân và nhồi khổ qua",
+        "description": "Phi thơm hành tím băm, cho mộc nhĩ vào đảo với dầu hàu, hạt nêm. Cho thịt xay vào tô cùng mộc nhĩ xào, hành tím băm, đường, hạt nêm, bột ngọt, tiêu và xíu nước mắm bóp nhồi cho dẻo quyện rồi nhồi vào khổ qua.",
+        "durationMinutes": 10,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Hầm canh",
+        "description": "Bắc nồi 1.5L nước nêm 1 muỗng đường và ít muối. Nước sôi thả khổ qua nhồi thịt vào hầm riu riu 16-20 phút.",
+        "durationMinutes": 20,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "canh_kho_qua_nhoi_thit",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Canh khổ qua nhồi thịt hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+  ]
+  },
+  {
+    "title": "Chả Giò khoai môn-thịt",
+    "description": "Chả giò chiên 2 lần giòn rụm bên ngoài, nhân bên trong bùi béo từ khoai môn bào sợi hòa quyện cùng thịt ba rọi.",
+    "categorySlug": "mon-chien",
+    "author": "Hoàng Thị Tố Hà",
+    "prepTimeMinutes": 40,
+    "cookTimeMinutes": 20,
+    "servings": 5,
+    "difficulty": "Medium",
+    "ingredients": [
+      {
+        "name": "Thịt ba rọi (nạc dăm/vai)",
+        "quantity": 300,
+        "unit": "g",
+        "notes": "có chút mỡ",
+        "orderIndex": 0
+      },
+      {
+        "name": "Khoai môn",
+        "quantity": 500,
+        "unit": "g",
+        "notes": "bào sợi",
+        "orderIndex": 1
+      },
+      {
+        "name": "Hành củ tím",
+        "quantity": 100,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 2
+      },
+      {
+        "name": "Hạt nêm",
+        "quantity": 2,
+        "unit": "muỗng cà phê",
+        "notes": "2 muỗng cafe",
+        "orderIndex": 3
+      },
+      {
+        "name": "Đường",
+        "quantity": 1,
+        "unit": "muỗng cà phê",
+        "notes": null,
+        "orderIndex": 4
+      },
+      {
+        "name": "Bột ngọt",
+        "quantity": 1,
+        "unit": "muỗng cà phê",
+        "notes": null,
+        "orderIndex": 5
+      },
+      {
+        "name": "Tiêu",
+        "quantity": 1,
+        "unit": "muỗng cà phê",
+        "notes": null,
+        "orderIndex": 6
+      },
+      {
+        "name": "Bánh tráng gạo 22cm",
+        "quantity": 1,
+        "unit": "xấp",
+        "notes": null,
+        "orderIndex": 7
+      },
+      {
+        "name": "Dầu ăn",
+        "quantity": 500,
+        "unit": "g",
+        "notes": "chiên ngập dầu",
+        "orderIndex": 8
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Sơ chế nguyên liệu",
+        "description": "Thịt ba rọi xay nhỏ vừa; hành tím xay nhỏ; khoai môn gọt vỏ bào sợi.",
+        "durationMinutes": 15,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Trộn và ướp nhân",
+        "description": "Trộn khoai môn, hành tím, thịt cùng hạt nêm, đường, bột ngọt, tiêu. Bọc kín để tủ lạnh 30 phút cho nhân dẻo thấm.",
+        "durationMinutes": 35,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Cuốn chả giò",
+        "description": "Đặt nhân vào bánh tráng có thấm nước, gấp 2 mép bánh cuộn tròn không quá chặt.",
+        "durationMinutes": 15,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 4,
+        "title": "Chiên 2 lần",
+        "description": "Chiên sơ lần 1 ở lửa nhỏ đến khi vỏ cứng ngả vàng nhẹ vớt ráo. Chiên lần 2 ở lửa lớn trước khi ăn để vỏ vàng giòn xốp tối đa.",
+        "durationMinutes": 15,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 5,
+        "title": "Thành phẩm",
+        "description": "Bày ra đĩa ăn nóng kèm tương ớt chua ngọt.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "cha_gio_khoai_mon_thit",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Chả giò khoai môn thịt hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step1-1.webp",
+      "altText": "Bước 1 làm chả giò khoai môn thịt",
+      "isPrimary": true,
+      "orderIndex": 1,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },
+    {
+      "file": "step1-2.webp",
+      "altText": "Bước 1 làm chả giò khoai môn thịt",
+      "isPrimary": true,
+      "orderIndex": 2,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step2-1.webp",
+      "altText": "Bước 2 làm chả giò khoai môn thịt",
+      "isPrimary": true,
+      "orderIndex": 3,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step2-2.webp",
+      "altText": "Bước 2 làm chả giò khoai môn thịt",
+      "isPrimary": true,
+      "orderIndex": 4,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step3-1.webp",
+      "altText": "Bước 3 làm chả giò khoai môn thịt",
+      "isPrimary": true,
+      "orderIndex": 5,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step3-2.webp",
+      "altText": "Bước 3 làm chả giò khoai môn thịt",
+      "isPrimary": true,
+      "orderIndex": 6,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step4-1.webp",
+      "altText": "Bước 4 làm chả giò khoai môn thịt",
+      "isPrimary": true,
+      "orderIndex": 7,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step4-2.webp",
+      "altText": "Bước 4 làm chả giò khoai môn thịt",
+      "isPrimary": true,
+      "orderIndex": 8,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step5.webp",
+      "altText": "Bước 5 làm chả giò khoai môn thịt",
+      "isPrimary": true,
+      "orderIndex": 9,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    
+  ]
+  },
+  {
+    "title": "Cháo tôm rau ngót",
+    "description": "Món cháo ăn dặm thơm ngon bổ dưỡng, kết hợp tôm tươi xào hành thơm cùng rau ngót xay mịn.",
+    "categorySlug": "mon-chao",
+    "author": "Bếp nhà Cọp",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 60,
+    "servings": 1,
+    "difficulty": "Easy",
+    "ingredients": [
+      {
+        "name": "Gạo",
+        "quantity": 25,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 0
+      },
+      {
+        "name": "Rau ngót",
+        "quantity": 15,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 1
+      },
+      {
+        "name": "Tôm tươi",
+        "quantity": 15,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 2
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Nấu cháo",
+        "description": "Nấu cháo với tỉ lệ 1 thìa gạo và 4 thìa nước trong 1 tiếng cho cháo chín nhừ.",
+        "durationMinutes": 60,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Xào tôm",
+        "description": "Tôm bóc vỏ làm sạch băm nhỏ rồi đem xào thơm với hành khô.",
+        "durationMinutes": 5,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Sơ chế rau ngót",
+        "description": "Rau ngót luộc chín và xay nhuyễn ra.",
+        "durationMinutes": 5,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 4,
+        "title": "Trộn hoàn chỉnh",
+        "description": "Đợi cháo chín múc ra bát và trộn đều tôm xào cùng rau ngót xay.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "chao_tom_rau_ngot",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Cháo tôm rau ngót hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    
+  ]
+  },
+  {
+    "title": "Đậu phụ Nhật trộn thính",
+    "description": "Món ăn chay lai rai thú vị với đậu phụ Nhật cắt sợi chiên vàng giòn rắc thính gạo thơm phức, cuốn lá sung lá mơ.",
+    "categorySlug": "mon-chay",
+    "author": "Bảo Bình",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 10,
+    "servings": 2,
+    "difficulty": "Easy",
+    "ingredients": [
+      {
+        "name": "Đậu phụ Nhật",
+        "quantity": 200,
+        "unit": "g",
+        "notes": "hoặc đậu phụ thường",
+        "orderIndex": 0
+      },
+      {
+        "name": "Thính gạo",
+        "quantity": 2,
+        "unit": "muỗng canh",
+        "notes": null,
+        "orderIndex": 1
+      },
+      {
+        "name": "Hạt nêm",
+        "quantity": null,
+        "unit": null,
+        "notes": "vừa đủ",
+        "orderIndex": 2
+      },
+      {
+        "name": "Muối",
+        "quantity": null,
+        "unit": null,
+        "notes": "vừa đủ",
+        "orderIndex": 3
+      },
+      {
+        "name": "Lá chanh",
+        "quantity": null,
+        "unit": null,
+        "notes": "thái chỉ",
+        "orderIndex": 4
+      },
+      {
+        "name": "Ớt",
+        "quantity": 1,
+        "unit": "quả",
+        "notes": "thái lát",
+        "orderIndex": 5
+      },
+      {
+        "name": "Lá sung ăn kèm (hoặc lá mơ)",
+        "quantity": null,
+        "unit": null,
+        "notes": "ăn kèm",
+        "orderIndex": 6
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Chiên đậu phụ",
+        "description": "Cắt đậu phụ Nhật thành lát mỏng, chiên lửa vừa đến khi vàng đều hai mặt.",
+        "durationMinutes": 5,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Thái sợi",
+        "description": "Để nguội bớt, cắt đậu phụ thành sợi nhỏ vừa ăn.",
+        "durationMinutes": 3,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Trộn gia vị",
+        "description": "Trộn đậu phụ với muối và hạt nêm cho thấm vị.",
+        "durationMinutes": 1,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 4,
+        "title": "Trộn thính",
+        "description": "Rắc thính gạo vào, trộn đều tay cho thính bám đều.",
+        "durationMinutes": 1,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 5,
+        "title": "Thêm lá chanh ớt",
+        "description": "Thêm ớt thái lát và lá chanh thái chỉ, trộn đều. Cuốn với lá sung hoặc lá mơ chấm mắm chua ngọt.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "dau_phu_nhat_tron_thinh",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Đậu phụ Nhật trộn thính hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    
+  ]
+  },
+  {
+    "title": "Mì ý nấm chay",
+    "description": "Món mì Ý chay béo ngậy bơ tỏi, sốt nước tương đậm đà kết hợp nấm xào xém vàng và đậu phộng giòn thơm.",
+    "categorySlug": "mon-chay",
+    "author": "Hoàng Nga",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 15,
+    "servings": 1,
+    "difficulty": "Easy",
+    "ingredients": [
+      {
+        "name": "Mì Ý",
+        "quantity": null,
+        "unit": null,
+        "notes": "vừa ăn",
+        "orderIndex": 0
+      },
+      {
+        "name": "Nước tương",
+        "quantity": 2,
+        "unit": "muỗng",
+        "notes": "2 m",
+        "orderIndex": 1
+      },
+      {
+        "name": "Hắc xì dầu",
+        "quantity": 2,
+        "unit": "muỗng",
+        "notes": "2 m",
+        "orderIndex": 2
+      },
+      {
+        "name": "Hạt nêm",
+        "quantity": 2,
+        "unit": "muỗng cà phê",
+        "notes": "2 thia cf",
+        "orderIndex": 3
+      },
+      {
+        "name": "Tỏi",
+        "quantity": 2,
+        "unit": "tép",
+        "notes": "băm nhỏ",
+        "orderIndex": 4
+      },
+      {
+        "name": "Bơ",
+        "quantity": null,
+        "unit": null,
+        "notes": "vừa đủ",
+        "orderIndex": 5
+      },
+      {
+        "name": "Nấm",
+        "quantity": null,
+        "unit": null,
+        "notes": "vừa đủ",
+        "orderIndex": 6
+      },
+      {
+        "name": "Đậu phộng xay nhỏ",
+        "quantity": null,
+        "unit": null,
+        "notes": "rắc lên trên",
+        "orderIndex": 7
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Luộc mì và xào nấm",
+        "description": "Luộc mì vớt ra. Băm nhỏ tỏi, phi thơm với bơ rồi cho nấm vào xào cùng 1 muỗng cà phê hạt nêm đến khi xém vàng.",
+        "durationMinutes": 8,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Đun sốt cùng mì",
+        "description": "Pha nước tương, hắc xì dầu, 1 muỗng cà phê hạt nêm và nước. Trộn đều rồi đổ vào chảo, cho mì Ý vào đun đến khi sệt.",
+        "durationMinutes": 5,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Bày ra đĩa",
+        "description": "Cho mì ra đĩa, xếp nấm xào lên trên và rắc đậu phộng xay nhỏ.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "mi_y_nam_chay",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Mì ý nấm chay hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    
+  ]
+  },
+  {
+    "title": "Nấm bào ngư xào sả ớt",
+    "description": "Nấm bào ngư xé sợi sấy nồi chiên không dầu dẻo dai xào sả ớt sốt đậm đà cay thơm cực kỳ hao cơm.",
+    "categorySlug": "mon-xao",
+    "author": "Allieyya",
+    "prepTimeMinutes": 10,
+    "cookTimeMinutes": 15,
+    "servings": 2,
+    "difficulty": "Easy",
+    "ingredients": [
+      {
+        "name": "Nấm bào ngư",
+        "quantity": 500,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 0
+      },
+      {
+        "name": "Tỏi băm",
+        "quantity": 1,
+        "unit": "muỗng canh",
+        "notes": "1 tbsp",
+        "orderIndex": 1
+      },
+      {
+        "name": "Sả băm",
+        "quantity": 1,
+        "unit": "muỗng canh",
+        "notes": "1 tbsp",
+        "orderIndex": 2
+      },
+      {
+        "name": "Ớt tươi",
+        "quantity": 1,
+        "unit": "trái",
+        "notes": "xắt nhỏ",
+        "orderIndex": 3
+      },
+      {
+        "name": "Nước tương",
+        "quantity": 2,
+        "unit": "muỗng canh",
+        "notes": "2 tbsp",
+        "orderIndex": 4
+      },
+      {
+        "name": "Dầu hào",
+        "quantity": 1,
+        "unit": "muỗng canh",
+        "notes": "1 tbsp",
+        "orderIndex": 5
+      },
+      {
+        "name": "Tương ớt",
+        "quantity": 1,
+        "unit": "muỗng canh",
+        "notes": "1 tbsp",
+        "orderIndex": 6
+      },
+      {
+        "name": "Đường",
+        "quantity": 1,
+        "unit": "muỗng cà phê",
+        "notes": "1 tsp",
+        "orderIndex": 7
+      },
+      {
+        "name": "Dầu ăn",
+        "quantity": null,
+        "unit": null,
+        "notes": "vừa đủ",
+        "orderIndex": 8
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Sấy nấm",
+        "description": "Xé sợi nấm rồi bỏ vào nồi chiên không dầu sấy ở 180°C khoảng 10-15 phút cho nấm săn lại.",
+        "durationMinutes": 12,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Pha sốt sả ớt",
+        "description": "Cho dầu ăn vào chảo xào thơm tỏi và sả. Sau đó cho nước tương, dầu hào, tương ớt, đường và ớt vào đun sệt.",
+        "durationMinutes": 3,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Xào nấm",
+        "description": "Đảo sốt sệt xíu rồi cho nấm bào ngư vào xào hơi cạn nước là xong.",
+        "durationMinutes": 3,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "nam_bao_ngu_xao_sa_ot",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Nấm bào ngư xào sả ớt hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    
+  ]
+  },
+  {
+    "title": "Rau Diếp Cá Nước Dừa",
+    "description": "Thức uống giải nhiệt tươi mát hòa quyện giữa vị thanh mát đặc trưng của rau diếp cá và nước dừa xiêm ngọt dịu.",
+    "categorySlug": "thuc-uong",
+    "author": "Rose Truong",
+    "prepTimeMinutes": 5,
+    "cookTimeMinutes": 0,
+    "servings": 1,
+    "difficulty": "Easy",
+    "ingredients": [
+      {
+        "name": "Nước dừa xiêm",
+        "quantity": 400,
+        "unit": "ml",
+        "notes": null,
+        "orderIndex": 0
+      },
+      {
+        "name": "Rau diếp cá",
+        "quantity": 300,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 1
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Rửa rau",
+        "description": "Rau diếp cá nhặt rửa sạch sẽ để ráo.",
+        "durationMinutes": 3,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Xay sinh tố",
+        "description": "Cho nước dừa xiêm và rau diếp cá vào máy xay sinh tố xay nhuyễn.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Lọc bã",
+        "description": "Lọc lấy nước bỏ xác, đổ ra ly thưởng thức thức uống thanh nhiệt.",
+        "durationMinutes": 1,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "rau-diep-ca-nuoc-dua",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Rau diếp cá nước dừa hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },
+     {
+      "file": "step1.webp",
+      "altText": "Bước 1 làm rau diếp cá nước dừa",
+      "isPrimary": true,
+      "orderIndex": 1,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },
+    {
+      "file": "step2.webp",
+      "altText": "Bước 2 làm rau diếp cá nước dừa",
+      "isPrimary": true,
+      "orderIndex": 2,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    
+    
+  ]
+  },
+  {
+    "title": "Súp thanh cua, hạt chia",
+    "description": "Món súp thanh mát ngọt trong từ nước dùng gà ninh hành tây, kết hợp bắp Mỹ, hạt chia, thanh cua xé và trứng cút béo ngậy.",
+    "categorySlug": "mon-sup",
+    "author": "Hoàng Thị Tố Hà",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 40,
+    "servings": 5,
+    "difficulty": "Medium",
+    "ingredients": [
+      {
+        "name": "Xương gà",
+        "quantity": 300,
+        "unit": "g",
+        "notes": "nấu nước dùng",
+        "orderIndex": 0
+      },
+      {
+        "name": "Hành tây",
+        "quantity": 0.5,
+        "unit": "củ",
+        "notes": null,
+        "orderIndex": 1
+      },
+      {
+        "name": "Hành tím",
+        "quantity": 1,
+        "unit": "củ",
+        "notes": null,
+        "orderIndex": 2
+      },
+      {
+        "name": "Muối hạt",
+        "quantity": 1,
+        "unit": "muỗng cà phê",
+        "notes": "1 muỗng cafe",
+        "orderIndex": 3
+      },
+      {
+        "name": "Thanh cua",
+        "quantity": 8,
+        "unit": "thanh",
+        "notes": null,
+        "orderIndex": 4
+      },
+      {
+        "name": "Bắp Mỹ (bắp ngọt)",
+        "quantity": 0.5,
+        "unit": "trái",
+        "notes": null,
+        "orderIndex": 5
+      },
+      {
+        "name": "Hạt chia",
+        "quantity": 1,
+        "unit": "muỗng canh",
+        "notes": null,
+        "orderIndex": 6
+      },
+      {
+        "name": "Trứng cút",
+        "quantity": 10,
+        "unit": "quả",
+        "notes": null,
+        "orderIndex": 7
+      },
+      {
+        "name": "Trứng gà",
+        "quantity": 1,
+        "unit": "quả",
+        "notes": null,
+        "orderIndex": 8
+      },
+      {
+        "name": "Bột năng",
+        "quantity": 3,
+        "unit": "muỗng canh",
+        "notes": null,
+        "orderIndex": 9
+      },
+      {
+        "name": "Hạt nêm, đường, dầu mè, bột ngọt, tiêu",
+        "quantity": null,
+        "unit": null,
+        "notes": "1 muỗng cafe mỗi loại",
+        "orderIndex": 10
+      },
+      {
+        "name": "Nước dùng gà",
+        "quantity": 1,
+        "unit": "L",
+        "notes": null,
+        "orderIndex": 11
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Nấu nước dùng gà",
+        "description": "Xương gà sơ chế với muối giấm, trụng qua nước sôi có rượu trắng. Cho vào nồi có 1L nước cùng hành tây, hành tím, muối hạt ninh lửa nhỏ đến khi xương mềm vớt bỏ xương hành.",
+        "durationMinutes": 30,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Chuẩn bị nhân",
+        "description": "Thanh cua cắt đôi xé sợi; hạt chia ngâm nở; bắp tách hạt luộc chín giữ lại 1 chén nước luộc; trứng cút luộc bóc vỏ.",
+        "durationMinutes": 10,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Nấu súp",
+        "description": "Đun sôi nước dùng gà cùng nước luộc bắp, nêm gia vị. Cho thanh cua, bắp, hạt chia vào. Rưới bột năng hòa nước khuấy tạo sánh, cho trứng gà đánh tan khuấy tạo sợi, thêm trứng cút và dầu mè.",
+        "durationMinutes": 10,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 4,
+        "title": "Thành phẩm",
+        "description": "Súp sánh trong ngọt thanh, ăn nóng rắc thêm tiêu và ngò rí.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "sup_thanh_cua_hat_chia",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Súp thanh cua hạt chia hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step1-1.webp",
+      "altText": "Bước 1 làm súp thanh cua hạt chia",
+      "isPrimary": true,
+      "orderIndex": 1,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },
+    {
+      "file": "step1-2.webp",
+      "altText": "Bước 1 làm súp thanh cua hạt chia ",
+      "isPrimary": true,
+      "orderIndex": 2,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step2-1.webp",
+      "altText": "Bước 2 làm súp thanh cua hạt chia",
+      "isPrimary": true,
+      "orderIndex": 3,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step2-2.webp",
+      "altText": "Bước 2 làm súp thanh cua hạt chia",
+      "isPrimary": true,
+      "orderIndex": 4,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    } ,{
+      "file": "step2-3.webp",
+      "altText": "Bước 2 làm súp thanh cua hạt chia",
+      "isPrimary": true,
+      "orderIndex": 5,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step3-1.webp",
+      "altText": "Bước 3 làm súp thanh cua hạt chia",
+      "isPrimary": true,
+      "orderIndex": 6,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step3-2.webp",
+      "altText": "Bước 3 làm súp thanh cua hạt chia",
+      "isPrimary": true,
+      "orderIndex": 7,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    } ,{
+      "file": "step3-3.webp",
+      "altText": "Bước 3 làm súp thanh cua hạt chia",
+      "isPrimary": true,
+      "orderIndex": 8,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step4.webp",
+      "altText": "Bước 4 làm súp thanh cua hạt chia",
+      "isPrimary": true,
+      "orderIndex": 9,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    
+  ]
+  },
+  {
+    "title": "Thịt Bò Xào Thập Cẩm",
+    "description": "Thịt bò xào mềm ngọt hòa quyện cùng rau củ phong phú như đậu cô ve, cà chua, dứa chua ngọt và hành tây.",
+    "categorySlug": "mon-xao",
+    "author": "Rose Truong",
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 15,
+    "servings": 3,
+    "difficulty": "Easy",
+    "ingredients": [
+      {
+        "name": "Thịt bò",
+        "quantity": 500,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 0
+      },
+      {
+        "name": "Cà chua",
+        "quantity": 1,
+        "unit": "trái",
+        "notes": null,
+        "orderIndex": 1
+      },
+      {
+        "name": "Thơm (dứa)",
+        "quantity": 1,
+        "unit": "miếng",
+        "notes": null,
+        "orderIndex": 2
+      },
+      {
+        "name": "Đậu cô ve",
+        "quantity": 150,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 3
+      },
+      {
+        "name": "Hành tây",
+        "quantity": 1,
+        "unit": "củ",
+        "notes": null,
+        "orderIndex": 4
+      },
+      {
+        "name": "Hành lá",
+        "quantity": 3,
+        "unit": "cây",
+        "notes": null,
+        "orderIndex": 5
+      },
+      {
+        "name": "Tỏi",
+        "quantity": 1,
+        "unit": "củ",
+        "notes": null,
+        "orderIndex": 6
+      },
+      {
+        "name": "Tiêu xay",
+        "quantity": 0.5,
+        "unit": "muỗng cà phê",
+        "notes": "1/2 muỗng cafe",
+        "orderIndex": 7
+      },
+      {
+        "name": "Dầu hào",
+        "quantity": 1,
+        "unit": "muỗng canh",
+        "notes": null,
+        "orderIndex": 8
+      },
+      {
+        "name": "Xì dầu",
+        "quantity": 1,
+        "unit": "muỗng canh",
+        "notes": null,
+        "orderIndex": 9
+      },
+      {
+        "name": "Dầu ăn",
+        "quantity": 3,
+        "unit": "muỗng canh",
+        "notes": null,
+        "orderIndex": 10
+      },
+      {
+        "name": "Muối",
+        "quantity": null,
+        "unit": null,
+        "notes": "1 ít",
+        "orderIndex": 11
+      },
+      {
+        "name": "Chén xì dầu dằm ớt",
+        "quantity": 1,
+        "unit": "chén",
+        "notes": "chấm kèm",
+        "orderIndex": 12
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Sơ chế nguyên liệu",
+        "description": "Rửa sạch và cắt miếng vừa ăn các loại rau củ dứa, cà chua, đậu cô ve, hành tây.",
+        "durationMinutes": 10,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Ướp và xào tái thịt bò",
+        "description": "Thịt bò ướp với 1/2 củ tỏi băm, 1 muỗng dầu ăn, 1/2 muỗng xì dầu, tiêu 15 phút. Phi thơm tỏi xào tái thịt bò rồi trút ra đĩa.",
+        "durationMinutes": 15,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Xào đậu cô ve",
+        "description": "Cho đậu cô ve vào xào chín với chút muối.",
+        "durationMinutes": 3,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 4,
+        "title": "Xào chung thập cẩm",
+        "description": "Cho các nguyên liệu dứa, cà chua, hành tây vào xào chín tới rồi cho đĩa thịt bò vào xào chung nêm nếm lại.",
+        "durationMinutes": 3,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 5,
+        "title": "Múc ra đĩa",
+        "description": "Cho thịt bò xào ra đĩa, rắc hành lá tiêu xay, kèm chén xì dầu dằm ớt để chấm.",
+        "durationMinutes": 1,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "thit-bao-xao-thap-cam",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Thịt bò xào thập cẩm hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step1-1.webp",
+      "altText": "Bước 1 làm thịt bò xào thập cẩm",
+      "isPrimary": true,
+      "orderIndex": 1,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },
+    {
+      "file": "step1-2.webp",
+      "altText": "Bước 1 làm thịt bò xào thập cẩm",
+      "isPrimary": true,
+      "orderIndex": 2,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step2.webp",
+      "altText": "Bước 2 làm thịt bò xào thập cẩm",
+      "isPrimary": true,
+      "orderIndex": 3,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step3.webp",
+      "altText": "Bước 3 làm thịt bò xào thập cẩm",
+      "isPrimary": true,
+      "orderIndex": 4,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step3.webp",
+      "altText": "Bước 3 làm thịt bò xào thập cẩm",
+      "isPrimary": true,
+      "orderIndex": 5,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step4-1.webp",
+      "altText": "Bước 4 làm thịt bò xào thập cẩm",
+      "isPrimary": true,
+      "orderIndex": 6,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step4-2.webp",
+      "altText": "Bước 4 làm thịt bò xào thập cẩm",
+      "isPrimary": true,
+      "orderIndex": 7,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    
+  ]
+  },
+  {
+    "title": "Thịt heo áp chảo kẹp bánh mì",
+    "description": "Thịt đùi heo mỏng ngấm sốt gừng tỏi áp chảo xém thơm, kẹp bánh mì cùng đồ chua dưa leo ngò rí đậm đà.",
+    "categorySlug": "mon-an-sang",
+    "author": "Minh Hayes",
+    "prepTimeMinutes": 120,
+    "cookTimeMinutes": 10,
+    "servings": 2,
+    "difficulty": "Medium",
+    "ingredients": [
+      {
+        "name": "Thịt đùi heo",
+        "quantity": 4,
+        "unit": "lát",
+        "notes": "thái mỏng",
+        "orderIndex": 0
+      },
+      {
+        "name": "Nước tương",
+        "quantity": 1,
+        "unit": "muỗng canh",
+        "notes": "1 tbsp",
+        "orderIndex": 1
+      },
+      {
+        "name": "Dầu hào",
+        "quantity": 1,
+        "unit": "muỗng canh",
+        "notes": "1 tbsp",
+        "orderIndex": 2
+      },
+      {
+        "name": "Dầu mè",
+        "quantity": 1,
+        "unit": "muỗng canh",
+        "notes": "1 tbsp",
+        "orderIndex": 3
+      },
+      {
+        "name": "Muối",
+        "quantity": 1,
+        "unit": "muỗng cà phê",
+        "notes": "1 tsp",
+        "orderIndex": 4
+      },
+      {
+        "name": "Tiêu",
+        "quantity": 1,
+        "unit": "muỗng cà phê",
+        "notes": "1 tsp",
+        "orderIndex": 5
+      },
+      {
+        "name": "Baking soda",
+        "quantity": 1,
+        "unit": "muỗng cà phê",
+        "notes": "1 tsp",
+        "orderIndex": 6
+      },
+      {
+        "name": "Bột mì + bột bắp",
+        "quantity": 20,
+        "unit": "g",
+        "notes": null,
+        "orderIndex": 7
+      },
+      {
+        "name": "Hành lá, gừng, tỏi",
+        "quantity": null,
+        "unit": null,
+        "notes": "thái mỏng",
+        "orderIndex": 8
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Ướp thịt",
+        "description": "Hòa nước ướp cùng 1/2 cup nước lọc, gừng tỏi hành lá thái mỏng. Ướp thịt mỏng khoảng 2 tiếng cho thấm mềm, sau đó xoa bột mì bột bắp.",
+        "durationMinutes": 120,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Áp chảo",
+        "description": "Cho dầu láng mặt chảo, áp chảo thịt vàng xém 2 mặt.",
+        "durationMinutes": 8,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Kẹp bánh mì",
+        "description": "Cho thêm hành gừng tỏi cho thơm, gắp thịt nóng kẹp vào bánh mì ăn kèm đồ chua dưa leo ngò rí.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "thit_heo_ap_chao_kep_banh_mi",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Thịt heo áp chảo kẹp bánh mì hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step1-1.webp",
+      "altText": "Bước 1 làm thịt heo áp chảo kẹp bánh mì",
+      "isPrimary": true,
+      "orderIndex": 1,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },
+    {
+      "file": "step1-2.webp",
+      "altText": "Bước 1 làm thịt heo áp chảo kẹp bánh mì",
+      "isPrimary": true,
+      "orderIndex": 2,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step2-1.webp",
+      "altText": "Bước 2 làm thịt heo áp chảo kẹp bánh mì",
+      "isPrimary": true,
+      "orderIndex": 3,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step2-2.webp",
+      "altText": "Bước 2 làm thịt heo áp chảo kẹp bánh mì",
+      "isPrimary": true,
+      "orderIndex": 4,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step3-1.webp",
+      "altText": "Bước 3 làm thịt heo áp chảo kẹp bánh mì",
+      "isPrimary": true,
+      "orderIndex": 5,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step3-2.webp",
+      "altText": "Bước 3 làm thịt heo áp chảo kẹp bánh mì",
+      "isPrimary": true,
+      "orderIndex": 6,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    
+  ]
+  },
+  {
+    "title": "Thịt heo quay giòn da",
+    "description": "Thịt ba chỉ heo ướp bột xá xíu đậm đà, bí quyết xăm da và nướng 2 nhiệt độ cho lớp da nổ phồng vàng giòn rụm.",
+    "categorySlug": "mon-quay",
+    "author": "Manh's Kitchen",
+    "prepTimeMinutes": 480,
+    "cookTimeMinutes": 70,
+    "servings": 4,
+    "difficulty": "Hard",
+    "ingredients": [
+      {
+        "name": "Thịt ba chỉ heo",
+        "quantity": 700,
+        "unit": "g",
+        "notes": "chọn da dày chút",
+        "orderIndex": 0
+      },
+      {
+        "name": "Bột xá xíu",
+        "quantity": 2,
+        "unit": "muỗng cà phê",
+        "notes": "2 tsp",
+        "orderIndex": 1
+      },
+      {
+        "name": "Gia vị (ngũ vị hương, bột tỏi, bột hành, hạt nêm, tiêu, bột ngọt)",
+        "quantity": null,
+        "unit": null,
+        "notes": "vừa đủ",
+        "orderIndex": 2
+      },
+      {
+        "name": "Màu đỏ thực phẩm",
+        "quantity": 2,
+        "unit": "giọt",
+        "notes": "1-2 giọt",
+        "orderIndex": 3
+      },
+      {
+        "name": "Bột màu điều",
+        "quantity": 1,
+        "unit": "muỗng cà phê",
+        "notes": "1 tsp",
+        "orderIndex": 4
+      },
+      {
+        "name": "Giấm ăn",
+        "quantity": 2,
+        "unit": "muỗng canh",
+        "notes": "2 tbsp",
+        "orderIndex": 5
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Sơ chế và ướp thịt qua đêm",
+        "description": "Rửa sạch thịt, luộc úp da 8-10 phút. Khứa caro mặt thịt thoa gia vị và bột xá xíu. Lật da xăm kỹ, lau khô thoa bột màu điều và màu đỏ. Để tủ lạnh qua đêm.",
+        "durationMinutes": 480,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Nướng nhiệt độ thấp bọc giấy bạc",
+        "description": "Bọc giấy bạc quanh thịt, quét giấm pha ít màu lên da. Nướng 120°C trong 30 phút, quét giấm nướng thêm 30 phút.",
+        "durationMinutes": 60,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Nướng nổ da giòn rụm",
+        "description": "Tháo giấy bạc, quét dầu ăn mỏng lên da, nướng 200°C rãnh trên trong 30 phút đến khi da nổ phồng giòn rụm.",
+        "durationMinutes": 30,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 4,
+        "title": "Thành phẩm",
+        "description": "Dùng nóng kẹp bánh mì hoặc ăn cùng bánh hỏi.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "thit_heo_quay",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Thịt heo quay hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step2-1.webp",
+      "altText": "Bước 2 làm thịt heo quay",
+      "isPrimary": true,
+      "orderIndex": 1,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step2-2.webp",
+      "altText": "Bước 2 làm thịt heo quay",
+      "isPrimary": true,
+      "orderIndex": 2,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step3-1.webp",
+      "altText": "Bước 3 làm thịt heo quay",
+      "isPrimary": true,
+      "orderIndex": 3,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step3-2.webp",
+      "altText": "Bước 3 làm thịt heo quay",
+      "isPrimary": true,
+      "orderIndex": 4,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    
+  ]
+  },
+  {
+    "title": "Thịt xá xíu",
+    "description": "Thịt heo cuộn hoặc nạc dăm ướp sốt xá xíu đậm đà qua đêm, khìa nước dừa tươi ngọt béo và nướng xém cạnh hấp dẫn.",
+    "categorySlug": "mon-khia",
+    "author": "Manh's Kitchen",
+    "prepTimeMinutes": 480,
+    "cookTimeMinutes": 45,
+    "servings": 4,
+    "difficulty": "Medium",
+    "ingredients": [
+      {
+        "name": "Thịt đùi/nạc dăm/ba chỉ cuộn",
+        "quantity": 500,
+        "unit": "g",
+        "notes": "có buộc dây cố định",
+        "orderIndex": 0
+      },
+      {
+        "name": "Bột xá xíu",
+        "quantity": 0.5,
+        "unit": "gói",
+        "notes": "1/2 gói",
+        "orderIndex": 1
+      },
+      {
+        "name": "Sốt xá xíu",
+        "quantity": 0.5,
+        "unit": "gói",
+        "notes": "1/2 gói",
+        "orderIndex": 2
+      },
+      {
+        "name": "Màu đỏ hoặc gạch tôm",
+        "quantity": 2,
+        "unit": "giọt",
+        "notes": "1-2 giọt",
+        "orderIndex": 3
+      },
+      {
+        "name": "Nước hành tỏi gừng",
+        "quantity": null,
+        "unit": null,
+        "notes": "vừa đủ",
+        "orderIndex": 4
+      },
+      {
+        "name": "Nước dừa tươi",
+        "quantity": 1,
+        "unit": "L",
+        "notes": "1 lít",
+        "orderIndex": 5
+      }
+    ],
+    "steps": [
+      {
+        "stepNumber": 1,
+        "title": "Ướp thịt qua đêm",
+        "description": "Thịt rửa sạch với giấm muối, ướp bột và sốt xá xíu, màu thực phẩm qua đêm.",
+        "durationMinutes": 480,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 2,
+        "title": "Áp chảo và khìa nước dừa",
+        "description": "Áp chảo thịt với dầu màu điều cho săn. Cho nước dừa tươi, quế, hoa hồi, đinh hương, hành tím/hành tây vào khìa đến cạn còn ~100ml.",
+        "durationMinutes": 35,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 3,
+        "title": "Nướng xém cạnh",
+        "description": "Nướng thịt ở 160°C trong 10-15 phút đến khi sốt bám bóng xém. Sốt dùng chan bánh mì, cơm, xôi.",
+        "durationMinutes": 15,
+        "imageAsset": null
+      },
+      {
+        "stepNumber": 4,
+        "title": "Hoàn thành",
+        "description": "Thái lát mỏng dùng với bánh mì, xôi hoặc hủ tiếu.",
+        "durationMinutes": 2,
+        "imageAsset": null
+      }
+    ],
+    "nutritionPerServing": null,
+    "folder": "thit_xa_xiu",
+    "images": [ {
+      "file": "main.webp",
+      "altText": "Thịt xá xíu hoàn thiện",
+      "isPrimary": true,
+      "orderIndex": 0,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step2.webp",
+      "altText": "Bước 2 làm thịt xá xíu",
+      "isPrimary": true,
+      "orderIndex": 1,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step3.webp",
+      "altText": "Bước 3 làm thịt xá xíu",
+      "isPrimary": true,
+      "orderIndex": 2,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    ,{
+      "file": "step4-1.webp",
+      "altText": "Bước 4 làm thịt xá xíu",
+      "isPrimary": true,
+      "orderIndex": 3,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    },{
+      "file": "step4-2.webp",
+      "altText": "Bước 4 làm thịt xá xíu",
+      "isPrimary": true,
+      "orderIndex": 4,
+      "licenseOrSource": "Nguồn và quyền sử dụng ảnh"
+    }
+    
+  ]
+  }
+]

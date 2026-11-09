@@ -16,9 +16,10 @@ docker info
 ```
 
 - Clone repository và mở terminal tại thư mục gốc có `docker-compose.yml`.
-- Đảm bảo các cổng `3000`, `5000`, `5433`, `6379`, `9000`, `9001` chưa bị ứng dụng
-  khác sử dụng. PostgreSQL, Redis và MinIO được publish ra máy host để tiện phát
-  triển; không nên mở các cổng này ra Internet.
+- Đảm bảo các cổng `3000`, `5000`, `5433`, `6379`, `8025`, `1025`, `9000`,
+  `9001` và `5341` chưa bị ứng dụng khác sử dụng. PostgreSQL, Redis và MinIO
+  được publish ra máy host để tiện phát triển; không nên mở các cổng này ra
+  Internet.
 
 ## 2. Cấu hình lần đầu
 
@@ -32,7 +33,9 @@ notepad .env
 Thay `POSTGRES_PASSWORD`, `MINIO_ROOT_PASSWORD` và `JWT_SECRET` bằng giá trị riêng.
 `JWT_SECRET` phải có ít nhất 32 ký tự. Không gửi hoặc commit file `.env`.
 Giữ `NEXT_PUBLIC_API_URL=http://localhost:5000` khi mở web trên chính máy đang
-chạy Docker. Giá trị này được nhúng vào frontend lúc build.
+chạy Docker và `NEXT_PUBLIC_MEDIA_URL=http://localhost:9000/culinary-blog` để
+trình duyệt tải ảnh từ MinIO. Hai giá trị công khai này được nhúng vào frontend
+lúc build và thêm chính xác origin vào Content Security Policy.
 Frontend nhận `API_INTERNAL_URL=http://api:8080` lúc runtime để Server
 Components gọi API qua mạng nội bộ Compose. Biến này không có tiền tố
 `NEXT_PUBLIC_` và không được chuyển xuống browser; khi frontend chạy trực tiếp
@@ -57,11 +60,21 @@ thời gian. Khi các container đã chạy:
 | Redis | `localhost:6379` | Cache |
 | MinIO API | http://localhost:9000 | Lưu ảnh |
 | MinIO Console | http://localhost:9001 | Đăng nhập bằng credentials MinIO trong `.env` |
+| MailHog UI | http://127.0.0.1:8025 | Hộp thư giả lập, chỉ dùng development |
+| Seq | http://127.0.0.1:5341 | Dashboard log, chỉ dùng development |
 
-Ứng dụng dùng **một PostgreSQL database** cho Identity và dữ liệu blog. Ở
-Development, API tự áp dụng EF migration khi khởi động; `Seed__Enabled=true`
-bật dữ liệu mẫu gồm 20 danh mục và 100 công thức. Nếu API chưa sẵn sàng, đợi
-PostgreSQL/Redis khởi động rồi xem log ở bước dưới.
+Ứng dụng dùng **một PostgreSQL database** cho Identity và dữ liệu blog. Các
+container, volumes và network dùng tiền tố `culinary_blog_`; volume được
+Compose scope theo project name để các project khác nhau không dùng chung dữ
+liệu. Ở Development, API tự áp dụng EF migration khi khởi động;
+`Seed__Enabled=true` bật seed danh mục và 20 công thức từ
+`tools/sample-data/20_cong_thuc_mon_an.json`, đồng thời tải ảnh trong
+`tools/sample-data/images/` lên MinIO. Nếu API chưa sẵn sàng, đợi
+PostgreSQL/Redis/MinIO healthy rồi xem log ở bước dưới. Healthcheck chờ API mở
+cổng sau migration/seed; Compose chỉ khởi động frontend khi API healthy.
+Seed không xóa dữ liệu cũ; database đã có 100 công thức giả lập từ phiên bản
+trước sẽ giữ nguyên chúng. Dùng `docker compose down -v` rồi khởi động lại nếu
+cần tạo database development mới chỉ với bộ dữ liệu JSON.
 
 Có thể áp dụng migration thủ công từ host sau khi PostgreSQL Compose sẵn sàng.
 Connection string `Postgres` cần dùng host port `5433`; lấy database/user/password
@@ -164,6 +177,7 @@ Có thể build riêng API và frontend:
 ```powershell
 docker build -t culinaryblog-api:local -f backend/Dockerfile backend
 docker build --build-arg NEXT_PUBLIC_API_URL=http://localhost:5000 `
+  --build-arg NEXT_PUBLIC_MEDIA_URL=http://localhost:9000/culinary-blog `
   -t culinaryblog-frontend:local -f frontend/Dockerfile frontend
 ```
 
@@ -177,7 +191,8 @@ docker save -o culinaryblog-frontend.tar culinaryblog-frontend:local
 Người nhận tải image bằng `docker load -i culinaryblog-api.tar` và tương tự cho
 frontend. Khi chia sẻ qua registry, cần đăng nhập registry và push image theo
 tên/namespace do nhóm thống nhất. Không đưa secrets vào build arguments; riêng
-`NEXT_PUBLIC_API_URL` là cấu hình công khai và cần đặt đúng trước khi build.
+`NEXT_PUBLIC_API_URL` và `NEXT_PUBLIC_MEDIA_URL` là cấu hình công khai và cần
+đặt đúng trước khi build.
 
 ## 7. Dữ liệu tồn tại và đặt lại
 

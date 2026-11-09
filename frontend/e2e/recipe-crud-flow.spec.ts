@@ -76,6 +76,102 @@ test.describe("FR-RCP-010: E2E Recipe CRUD, Structured Steps, Nutrition & Image 
     await expect(page).toHaveURL(/.*\/dashboard\/recipes/, { timeout: 10_000 });
   });
 
+  test("3a. Recipe creation uploads a selected primary image after the recipe is saved", async ({ page }) => {
+    await page.addInitScript((tok) => {
+      sessionStorage.setItem("culinary_access_token", tok);
+    }, MOCK_AUTH_TOKEN);
+    let createCount = 0;
+    let uploadBody = "";
+
+    await page.route("**/api/v1/recipes/", async (route) => {
+      if (route.request().method() === "POST") {
+        createCount++;
+        await route.fulfill({ status: 201, json: { id: "created-recipe-image" } });
+        return;
+      }
+      await route.fallback();
+    });
+    await page.route("**/api/v1/recipes/created-recipe-image/images/**", async (route) => {
+      uploadBody = route.request().postDataBuffer()?.toString("utf8") ?? "";
+      await route.fulfill({
+        status: 201,
+        json: {
+          imageId: "created-image-1",
+          originalUrl: "https://storage.example.test/created-image.webp",
+          altText: "Canh chua hoàn chỉnh",
+          isPrimary: true,
+        },
+      });
+    });
+
+    await page.goto("/dashboard/recipes/new");
+    await expect(page.locator("#categoryId option")).toHaveCount(4, { timeout: 10_000 });
+    await page.fill("#title", "Canh chua ảnh đại diện");
+    await page.selectOption("#categoryId", { label: "Món chính" });
+    await page.fill("#imageAltText", "Canh chua hoàn chỉnh");
+    await page.check("#imageSetPrimary");
+    await page.locator("#imageFile").setInputFiles({
+      name: "main.webp",
+      mimeType: "image/webp",
+      buffer: Buffer.from("sample-image"),
+    });
+    await page.getByRole("button", { name: "Lưu bản nháp" }).click();
+
+    await expect(page).toHaveURL(/.*\/dashboard\/recipes$/, { timeout: 10_000 });
+    expect(createCount).toBe(1);
+    expect(uploadBody).toContain('name="file"');
+    expect(uploadBody).toContain('name="isPrimary"\r\n\r\ntrue');
+    expect(uploadBody).toContain("Canh chua hoàn chỉnh");
+  });
+
+  test("3b. Recipe image upload retry does not create a duplicate recipe", async ({ page }) => {
+    await page.addInitScript((tok) => {
+      sessionStorage.setItem("culinary_access_token", tok);
+    }, MOCK_AUTH_TOKEN);
+    let createCount = 0;
+    let uploadCount = 0;
+
+    await page.route("**/api/v1/recipes/", async (route) => {
+      if (route.request().method() === "POST") {
+        createCount++;
+        await route.fulfill({ status: 201, json: { id: "created-recipe-image" } });
+        return;
+      }
+      await route.fallback();
+    });
+    await page.route("**/api/v1/recipes/created-recipe-image/images/**", async (route) => {
+      uploadCount++;
+      await route.fulfill(uploadCount === 1
+        ? { status: 503, contentType: "application/problem+json", json: { title: "Storage unavailable" } }
+        : {
+          status: 201,
+          json: {
+            imageId: "created-image-1",
+            originalUrl: "https://storage.example.test/created-image.webp",
+            altText: "Canh chua",
+            isPrimary: true,
+          },
+        });
+    });
+
+    await page.goto("/dashboard/recipes/new");
+    await expect(page.locator("#categoryId option")).toHaveCount(4, { timeout: 10_000 });
+    await page.fill("#title", "Canh chua ảnh đại diện");
+    await page.selectOption("#categoryId", { label: "Món chính" });
+    await page.locator("#imageFile").setInputFiles({
+      name: "main.webp",
+      mimeType: "image/webp",
+      buffer: Buffer.from("sample-image"),
+    });
+    await page.getByRole("button", { name: "Lưu bản nháp" }).click();
+
+    await expect(page.locator("[data-error-summary]")).toContainText(/đã lưu.*ảnh chưa tải lên/i);
+    await page.getByRole("button", { name: "Thử tải ảnh lại" }).click();
+    await expect(page).toHaveURL(/.*\/dashboard\/recipes$/, { timeout: 10_000 });
+    expect(createCount).toBe(1);
+    expect(uploadCount).toBe(2);
+  });
+
   test("4. Structured Steps Reordering (Move Up / Down / Delete)", async ({ page }) => {
     await page.addInitScript((tok) => {
       sessionStorage.setItem("culinary_access_token", tok);
@@ -154,12 +250,33 @@ test.describe("FR-RCP-010: E2E Recipe CRUD, Structured Steps, Nutrition & Image 
     // Nutrition section verification
     const nutritionSec = page.locator("[data-testid='recipe-nutrition']");
     await expect(nutritionSec).toBeVisible();
+    await expect(nutritionSec).toContainText(/ước tính để tham khảo.*mỗi khẩu phần/i);
     await expect(nutritionSec.getByText("285 kcal")).toBeVisible();
     await expect(nutritionSec.getByText("34.5 g")).toBeVisible();
     await expect(nutritionSec.getByText("12 g")).toBeVisible();
     await expect(nutritionSec.getByText("7.5 g")).toBeVisible();
     await expect(nutritionSec.getByText("3.2 g")).toBeVisible();
     await expect(nutritionSec.getByText("620 mg")).toBeVisible();
+  });
+
+  test("5a. Recipe detail places the primary image before recipe content and secondary images after nutrition", async ({ page }) => {
+    await page.goto("/recipes/image-ordering");
+
+    const title = page.getByRole("heading", { name: "Món có nhiều ảnh" });
+    const primaryImage = page.locator("[data-testid='recipe-primary-image']");
+    const nutrition = page.locator("[data-testid='recipe-nutrition']");
+    const secondaryImages = page.locator("[data-testid='recipe-secondary-images']");
+    await expect(primaryImage).toHaveAttribute("src", "https://storage.example.test/primary.webp");
+    await expect(secondaryImages.locator("img")).toHaveCount(1);
+    expect(await title.evaluate((node) =>
+      Boolean(node.compareDocumentPosition(document.querySelector("[data-testid='recipe-primary-image']")!)
+        & Node.DOCUMENT_POSITION_FOLLOWING))).toBeTruthy();
+    expect(await primaryImage.evaluate((node) =>
+      Boolean(node.compareDocumentPosition(document.querySelector("[data-testid='recipe-nutrition']")!)
+        & Node.DOCUMENT_POSITION_FOLLOWING))).toBeTruthy();
+    expect(await nutrition.evaluate((node) =>
+      Boolean(node.compareDocumentPosition(document.querySelector("[data-testid='recipe-secondary-images']")!)
+        & Node.DOCUMENT_POSITION_FOLLOWING))).toBeTruthy();
   });
 
   test("6. Recipe Image Gallery: Upload, Set Primary, and Delete Image", async ({ page }) => {

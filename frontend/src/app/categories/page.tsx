@@ -31,6 +31,11 @@ export default function CategoriesPage() {
         <div className={styles.grid}>
           {categories.map((category) => (
             <Link className={styles.card} href={`/categories/${category.slug}`} key={category.id}>
+              {category.imageUrl
+                ? <img className={styles.cardImage} src={category.imageUrl} alt={category.name} />
+                : <div className={styles.cardImagePlaceholder} role="img" aria-label={`${category.name} — chưa có ảnh`}>
+                    <span>Chưa có ảnh</span>
+                  </div>}
               <p className={styles.cardLabel}>DANH MỤC</p>
               <h2>{category.name}</h2>
               {category.description && <p className={styles.cardText}>{category.description}</p>}

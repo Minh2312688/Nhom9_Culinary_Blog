@@ -1,12 +1,14 @@
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Authentication;
 using CulinaryBlog.Application.Contracts.Persistence;
+using CulinaryBlog.Application.Contracts.Storage;
 using CulinaryBlog.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace CulinaryBlog.Integration.Tests.Endpoints;
 
@@ -79,6 +81,8 @@ public sealed class CategoryWebApplicationFactory : WebApplicationFactory<Progra
             }
 
             services.AddSingleton<ICategoryCache, TestCategoryCache>();
+            services.RemoveAll<IFileStorageService>();
+            services.AddSingleton<IFileStorageService, TestCategoryFileStorage>();
         });
     }
 
@@ -104,6 +108,29 @@ public sealed class CategoryWebApplicationFactory : WebApplicationFactory<Progra
         using var scope = Services.CreateScope();
         return query(scope.ServiceProvider.GetRequiredService<IApplicationDbContext>());
     }
+}
+
+internal sealed class TestCategoryFileStorage : IFileStorageService
+{
+    public int UploadCount { get; private set; }
+
+    public Task<FileUploadResult> UploadAsync(
+        FileUploadRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        UploadCount++;
+        return Task.FromResult(new FileUploadResult(
+            $"categories/{request.FileName}",
+            $"https://media.example.test/categories/{request.FileName}",
+            request.ContentType ?? "image/webp",
+            request.Length));
+    }
+
+    public Task<Stream> DownloadAsync(string fileUrl, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
+    public Task DeleteAsync(string fileUrl, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
 }
 
 internal sealed class TestCategoryCache : ICategoryCache

@@ -57,6 +57,15 @@ public static class Lab02DataSeeder
     {
         var recipes = SampleRecipeDataLoader.Load(sampleDataDirectory);
         var categories = await EnsureCategoriesAsync(context, recipes, cancellationToken);
+        var categoryImages = SampleCategoryImageLoader.Load(
+            Path.Combine(sampleDataDirectory, "images", "danhmuc"));
+        await EnsureCategoryImagesAsync(
+            context,
+            categories.Values,
+            categoryImages,
+            storage,
+            logger,
+            cancellationToken);
 
         foreach (var sample in recipes)
         {
@@ -65,12 +74,24 @@ public static class Lab02DataSeeder
             var recipe = await context.Recipes
                 .IgnoreQueryFilters()
                 .Include(item => item.Images)
+                .Include(item => item.Nutrition)
                 .SingleOrDefaultAsync(item => item.Slug == slug, cancellationToken);
 
             if (recipe is null)
             {
                 recipe = CreateRecipe(sample, slug, categories[sample.CategorySlug], author.Id);
                 context.Recipes.Add(recipe);
+                await context.SaveChangesAsync(cancellationToken);
+            }
+            else if (recipe.Nutrition is null)
+            {
+                recipe.Nutrition = CreateNutrition(sample);
+                context.RecipeNutritions.Add(recipe.Nutrition);
+                await context.SaveChangesAsync(cancellationToken);
+            }
+            else if (recipe.Nutrition.IsDeleted)
+            {
+                RestoreNutrition(recipe.Nutrition, sample);
                 await context.SaveChangesAsync(cancellationToken);
             }
 
@@ -146,6 +167,56 @@ public static class Lab02DataSeeder
         return category;
     }
 
+    private static async Task EnsureCategoryImagesAsync(
+        ApplicationDbContext context,
+        IEnumerable<Category> categories,
+        IReadOnlyDictionary<string, string> categoryImages,
+        IFileStorageService storage,
+        ILogger logger,
+        CancellationToken cancellationToken)
+    {
+        foreach (var category in categories)
+        {
+            if (!string.IsNullOrWhiteSpace(category.ImageUrl) ||
+                !categoryImages.TryGetValue(category.Slug, out var imagePath))
+            {
+                continue;
+            }
+
+            var fileName = Path.GetFileName(imagePath);
+            await using var stream = File.OpenRead(imagePath);
+            var uploaded = await storage.UploadAsync(
+                new FileUploadRequest(
+                    stream,
+                    fileName,
+                    GetContentType(fileName),
+                    stream.Length,
+                    StorageFolders.Categories),
+                cancellationToken);
+
+            category.ImageUrl = uploaded.Url;
+            try
+            {
+                await context.SaveChangesAsync(cancellationToken);
+            }
+            catch
+            {
+                try
+                {
+                    await storage.DeleteAsync(uploaded.Url, CancellationToken.None);
+                }
+                catch (Exception cleanupException)
+                {
+                    logger.LogError(cleanupException,
+                        "Failed to remove category image {ImageUrl} after database save failed.",
+                        uploaded.Url);
+                }
+
+                throw;
+            }
+        }
+    }
+
     private static async Task<ApplicationUser> EnsureAuthorAsync(
         UserManager<ApplicationUser> userManager,
         string displayName)
@@ -193,6 +264,7 @@ public static class Lab02DataSeeder
             CookTimeMinutes = sample.CookTimeMinutes,
             Servings = sample.Servings,
             Difficulty = Enum.Parse<RecipeDifficulty>(sample.Difficulty, true),
+            Nutrition = CreateNutrition(sample),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -223,6 +295,28 @@ public static class Lab02DataSeeder
 
         recipe.Publish(DateTimeOffset.UtcNow);
         return recipe;
+    }
+
+    private static RecipeNutrition CreateNutrition(SampleRecipeData sample)
+        => new()
+        {
+            Calories = sample.Nutrition!.Calories!.Value,
+            Protein = sample.Nutrition.Protein!.Value,
+            Carbohydrates = sample.Nutrition.Carbohydrates!.Value,
+            Fat = sample.Nutrition.Fat!.Value,
+            Fiber = sample.Nutrition.Fiber!.Value,
+            Sodium = sample.Nutrition.Sodium!.Value
+        };
+
+    private static void RestoreNutrition(RecipeNutrition nutrition, SampleRecipeData sample)
+    {
+        nutrition.Calories = sample.Nutrition!.Calories!.Value;
+        nutrition.Protein = sample.Nutrition.Protein!.Value;
+        nutrition.Carbohydrates = sample.Nutrition.Carbohydrates!.Value;
+        nutrition.Fat = sample.Nutrition.Fat!.Value;
+        nutrition.Fiber = sample.Nutrition.Fiber!.Value;
+        nutrition.Sodium = sample.Nutrition.Sodium!.Value;
+        nutrition.IsDeleted = false;
     }
 
     private static async Task EnsureImagesAsync(

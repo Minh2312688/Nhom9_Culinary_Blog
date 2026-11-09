@@ -76,6 +76,10 @@ Seed không xóa dữ liệu cũ; database đã có 100 công thức giả lập
 trước sẽ giữ nguyên chúng. Dùng `docker compose down -v` rồi khởi động lại nếu
 cần tạo database development mới chỉ với bộ dữ liệu JSON.
 
+Nutrition trong JSON là giá trị ước tính để tham khảo trên mỗi khẩu phần, không
+thay thế tư vấn chuyên môn. Seeder bổ sung dinh dưỡng còn thiếu nhưng không ghi
+đè giá trị dinh dưỡng đã có.
+
 Có thể áp dụng migration thủ công từ host sau khi PostgreSQL Compose sẵn sàng.
 Connection string `Postgres` cần dùng host port `5433`; lấy database/user/password
 từ `.env` và không ghi secret vào shell history:

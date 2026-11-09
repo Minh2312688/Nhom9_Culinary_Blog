@@ -127,9 +127,23 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   const [imageAltText, setImageAltText] = useState("");
   const [imageSetPrimary, setImageSetPrimary] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [pendingImagePreviewUrl, setPendingImagePreviewUrl] = useState<string | null>(null);
+  const [createdRecipeId, setCreatedRecipeId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const structuredIngredients = parseIngredientsText(ingredients);
+
+  useEffect(() => {
+    if (!pendingImageFile) {
+      setPendingImagePreviewUrl(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(pendingImageFile);
+    setPendingImagePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendingImageFile]);
 
   async function loadRecipeData(accessToken: string, signal?: AbortSignal) {
     const categoryItems = await getRecipeCategories(signal ?? new AbortController().signal);
@@ -378,6 +392,68 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     }
   }
 
+  async function uploadPendingImage(targetRecipeId: string) {
+    if (!pendingImageFile) return;
+
+    setUploadingImage(true);
+    try {
+      const result = await uploadRecipeImage(
+        token,
+        targetRecipeId,
+        pendingImageFile,
+        imageSetPrimary,
+        imageAltText || undefined,
+      );
+      setImages((current) => [...current, {
+        id: result.imageId,
+        originalUrl: result.originalUrl,
+        thumbnailUrl: result.thumbnailUrl,
+        altText: result.altText,
+        isPrimary: result.isPrimary,
+        orderIndex: current.length,
+      }]);
+      setPendingImageFile(null);
+      setCreatedRecipeId(null);
+      setImageAltText("");
+      setImageSetPrimary(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
+  function handlePendingImageSelection(file: File | undefined) {
+    if (!file) {
+      setPendingImageFile(null);
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("File quá lớn (tối đa 5MB).", "error");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setPendingImageFile(null);
+      return;
+    }
+    setPendingImageFile(file);
+    setError(null);
+  }
+
+  async function retryPendingImageUpload() {
+    if (!createdRecipeId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await uploadPendingImage(createdRecipeId);
+      showToast("Ảnh đã được tải lên.", "success");
+      router.push("/dashboard/recipes");
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "Không thể tải ảnh.";
+      setError(`Bản nháp đã lưu, nhưng ảnh chưa tải lên. ${message}`);
+      showToast(message, "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleSetPrimary(imageId: string) {
     if (!recipeId) return;
     try {
@@ -406,6 +482,11 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     setError(null);
     setFieldErrors({});
     setIsConflict(false);
+
+    if (createdRecipeId && pendingImageFile) {
+      await retryPendingImageUpload();
+      return;
+    }
 
     // Resolve steps: prefer structuredSteps if present, otherwise parse from textarea
     const resolvedSteps: RecipeStep[] =
@@ -466,7 +547,19 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
       if (editing && recipe && recipeId) {
         await updateRecipe(token, recipeId, { ...payload, rowVersion: recipe.rowVersion });
       } else {
-        await createRecipe(token, payload);
+        const createdRecipe = await createRecipe(token, payload);
+        if (pendingImageFile) {
+          setCreatedRecipeId(createdRecipe.id);
+          try {
+            await uploadPendingImage(createdRecipe.id);
+          } catch (reason) {
+            const message = reason instanceof Error ? reason.message : "Không thể tải ảnh.";
+            setError(`Bản nháp đã lưu, nhưng ảnh chưa tải lên. ${message}`);
+            showToast(message, "error");
+            setSaving(false);
+            return;
+          }
+        }
       }
       showToast(editing ? "Đã cập nhật công thức." : "Đã lưu bản nháp.", "success");
       router.push("/dashboard/recipes");
@@ -554,7 +647,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
       )}
       {!loading && (
         <form className={styles.form} onSubmit={(e) => void onSubmit(e)} noValidate>
-          {error && !isConflict && <ErrorNotice>{error}</ErrorNotice>}
+          {error && !isConflict && <ErrorNotice><span data-error-summary>{error}</span></ErrorNotice>}
 
           <label className={styles.field}>
             Tiêu đề
@@ -1238,7 +1331,11 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                     disabled={uploadingImage || images.length >= 10}
                     onChange={(e) => {
                       const f = e.target.files?.[0];
-                      if (f) void handleImageUpload(f);
+                      if (editing) {
+                        if (f) void handleImageUpload(f);
+                      } else {
+                        handlePendingImageSelection(f);
+                      }
                     }}
                     style={{ fontSize: "13px", flex: 1 }}
                   />
@@ -1257,9 +1354,65 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
             </div>
           )}
           {!editing && (
-            <p style={{ fontSize: "12px", color: "var(--color-muted)", fontStyle: "italic" }}>
-              💡 Sau khi lưu bản nháp, bạn có thể quay lại để tải ảnh lên.
-            </p>
+            <section
+              style={{
+                display: "grid",
+                gap: "10px",
+                padding: "16px",
+                border: "1px solid var(--line)",
+                borderRadius: "6px",
+                background: "var(--color-surface)",
+              }}
+            >
+              <strong>Ảnh đại diện công thức (không bắt buộc)</strong>
+              <label className={styles.field} htmlFor="imageAltText">
+                Mô tả ảnh
+                <input
+                  id="imageAltText"
+                  value={imageAltText}
+                  onChange={(event) => setImageAltText(event.target.value)}
+                  placeholder="Mô tả ngắn về món ăn"
+                />
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <input
+                  id="imageSetPrimary"
+                  type="checkbox"
+                  checked={imageSetPrimary}
+                  onChange={(event) => setImageSetPrimary(event.target.checked)}
+                />
+                Đặt làm ảnh chính
+              </label>
+              <input
+                ref={fileInputRef}
+                id="imageFile"
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp,.avif"
+                disabled={saving || uploadingImage || Boolean(createdRecipeId)}
+                onChange={(event) => handlePendingImageSelection(event.target.files?.[0])}
+              />
+              {pendingImagePreviewUrl && (
+                <img
+                  className={styles.recipeImage}
+                  src={pendingImagePreviewUrl}
+                  alt={imageAltText || title || "Ảnh công thức"}
+                />
+              )}
+              {uploadingImage && <span role="status">Đang tải ảnh lên...</span>}
+              {createdRecipeId && pendingImageFile && (
+                <button
+                  className={styles.buttonSecondary}
+                  type="button"
+                  onClick={() => void retryPendingImageUpload()}
+                  disabled={saving || uploadingImage}
+                >
+                  Thử tải ảnh lại
+                </button>
+              )}
+              <p style={{ fontSize: "12px", color: "var(--color-muted)", fontStyle: "italic" }}>
+                Ảnh sẽ được tải lên sau khi lưu bản nháp.
+              </p>
+            </section>
           )}
 
           <div className={styles.actions}>

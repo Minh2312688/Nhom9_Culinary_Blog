@@ -46,6 +46,18 @@ public static class SampleRecipeDataLoader
             throw new InvalidDataException("A sample recipe has a missing title, category, author, or valid difficulty.");
         }
 
+        if (recipe.Nutrition is null ||
+            recipe.Nutrition.Calories is null or < 0 ||
+            recipe.Nutrition.Protein is null or < 0 ||
+            recipe.Nutrition.Carbohydrates is null or < 0 ||
+            recipe.Nutrition.Fat is null or < 0 ||
+            recipe.Nutrition.Fiber is null or < 0 ||
+            recipe.Nutrition.Sodium is null or < 0)
+        {
+            throw new InvalidDataException(
+                $"Sample recipe '{recipe.Title}' must include non-negative values for all nutrition fields.");
+        }
+
         if (recipe.Ingredients is null ||
             recipe.Steps is null ||
             recipe.Images is null ||
@@ -111,6 +123,7 @@ public sealed class SampleRecipeData
     public string Description { get; init; } = string.Empty;
     public string CategorySlug { get; init; } = string.Empty;
     public string Author { get; init; } = string.Empty;
+    public SampleRecipeNutrition? Nutrition { get; init; }
     public int PrepTimeMinutes { get; init; }
     public int CookTimeMinutes { get; init; }
     public int Servings { get; init; }
@@ -120,6 +133,16 @@ public sealed class SampleRecipeData
     public string Folder { get; init; } = string.Empty;
     public List<SampleRecipeImage> Images { get; init; } = [];
     public string ImageDirectory { get; set; } = string.Empty;
+}
+
+public sealed class SampleRecipeNutrition
+{
+    public int? Calories { get; init; }
+    public decimal? Protein { get; init; }
+    public decimal? Carbohydrates { get; init; }
+    public decimal? Fat { get; init; }
+    public decimal? Fiber { get; init; }
+    public decimal? Sodium { get; init; }
 }
 
 public sealed class SampleRecipeIngredient

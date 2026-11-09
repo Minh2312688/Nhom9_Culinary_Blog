@@ -138,6 +138,41 @@ const initialRecipes = [
     },
     author: { id: "author-1", displayName: "Chef Minh", avatarUrl: null },
   }),
+  createInitialRecipe({
+    id: "recipe-image-ordering",
+    title: "Món có nhiều ảnh",
+    slug: "image-ordering",
+    description: "Mô tả món ăn.",
+    publishedAt: null,
+    images: [
+      {
+        id: "secondary-image",
+        originalUrl: "https://storage.example.test/secondary.webp",
+        mediumUrl: null,
+        thumbnailUrl: null,
+        altText: "Ảnh phụ",
+        isPrimary: false,
+        orderIndex: 1,
+      },
+      {
+        id: "primary-image",
+        originalUrl: "https://storage.example.test/primary.webp",
+        mediumUrl: null,
+        thumbnailUrl: null,
+        altText: "Ảnh chính",
+        isPrimary: true,
+        orderIndex: 0,
+      },
+    ],
+    nutrition: {
+      calories: 310,
+      protein: 18.5,
+      carbohydrates: 36,
+      fat: 10.2,
+      fiber: 4.1,
+      sodium: 680,
+    },
+  }),
 ];
 
 for (const r of initialRecipes) {

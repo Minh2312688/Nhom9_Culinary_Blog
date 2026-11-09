@@ -1,10 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
 using System.Text.Json;
+using CulinaryBlog.Application.Contracts.Storage;
 using CulinaryBlog.Application.DTOs;
 using CulinaryBlog.Domain.Entities;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace CulinaryBlog.Integration.Tests.Endpoints;
@@ -194,6 +197,73 @@ public class CategoryMutationEndpointsTests
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
         factory.Query(context => context.Categories.IgnoreQueryFilters().Single().IsDeleted)
             .Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task UploadCategoryImage_ShouldPersistImageUrlForAdmin()
+    {
+        await using var factory = new CategoryWebApplicationFactory();
+        await factory.SeedAsync(async context =>
+        {
+            context.Categories.Add(Category.Create("Món canh"));
+            await context.SaveChangesAsync();
+        });
+        var id = factory.Query(context => context.Categories.Single().Id);
+        var client = factory.CreateClientAs("Admin");
+        using var form = new MultipartFormDataContent();
+        using var file = new ByteArrayContent([1]);
+        file.Headers.ContentType = new MediaTypeHeaderValue("image/webp");
+        form.Add(file, "file", "mon-canh.webp");
+
+        var response = await client.PostAsync($"/api/v1/categories/{id}/image", form);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<CategoryDto>();
+        body!.ImageUrl.Should().Be("https://media.example.test/categories/mon-canh.webp");
+        factory.Query(context => context.Categories.Single().ImageUrl)
+            .Should().Be("https://media.example.test/categories/mon-canh.webp");
+        factory.Services.GetRequiredService<IFileStorageService>()
+            .Should().BeOfType<TestCategoryFileStorage>()
+            .Which.UploadCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task UploadCategoryImage_WithoutFile_ShouldReturnValidationProblem()
+    {
+        await using var factory = new CategoryWebApplicationFactory();
+        var client = factory.CreateClientAs("Admin");
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent("value"), "other");
+
+        var response = await client.PostAsync($"/api/v1/categories/{Guid.NewGuid()}/image", form);
+        var responseBody = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest, responseBody);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
+        factory.Services.GetRequiredService<IFileStorageService>()
+            .Should().BeOfType<TestCategoryFileStorage>()
+            .Which.UploadCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task UploadCategoryImage_ShouldRequireAdminRole()
+    {
+        await using var factory = new CategoryWebApplicationFactory();
+        await factory.SeedAsync(async context =>
+        {
+            context.Categories.Add(Category.Create("Món canh"));
+            await context.SaveChangesAsync();
+        });
+        var id = factory.Query(context => context.Categories.Single().Id);
+        using var form = new MultipartFormDataContent();
+
+        var anonymousResponse = await factory.CreateClient()
+            .PostAsync($"/api/v1/categories/{id}/image", form);
+        var authorResponse = await factory.CreateClientAs("Author")
+            .PostAsync($"/api/v1/categories/{id}/image", form);
+
+        anonymousResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        authorResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     [Fact]

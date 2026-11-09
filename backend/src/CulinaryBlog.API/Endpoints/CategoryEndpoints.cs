@@ -2,12 +2,14 @@ using CulinaryBlog.Application.Common.Models;
 using CulinaryBlog.Application.DTOs;
 using CulinaryBlog.Application.Features.Categories.Commands.CreateCategory;
 using CulinaryBlog.Application.Features.Categories.Commands.DeleteCategory;
+using CulinaryBlog.Application.Features.Categories.Commands.UploadCategoryImage;
 using CulinaryBlog.Application.Features.Categories.Commands.UpdateCategory;
 using CulinaryBlog.Application.Features.Categories.Queries.GetCategories;
 using CulinaryBlog.Application.Features.Categories.Queries.GetCategoryBySlug;
 using CulinaryBlog.Domain.Constants;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 
 namespace CulinaryBlog.API.Endpoints;
@@ -49,6 +51,50 @@ public static class CategoryEndpoints
             .ProducesProblem(400)
             .ProducesProblem(404)
             .ProducesProblem(409);
+
+        group.MapPost("/{id:guid}/image", async (
+            Guid id,
+            HttpRequest request,
+            ISender sender,
+            CancellationToken ct) =>
+        {
+            if (!request.HasFormContentType)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["file"] = ["A multipart/form-data request is required."]
+                });
+            }
+
+            var form = await request.ReadFormAsync(ct);
+            var file = form.Files.GetFile("file");
+            if (file is null)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["file"] = ["The file field is required."]
+                });
+            }
+
+            using var content = file.OpenReadStream();
+            var result = await sender.Send(new UploadCategoryImageCommand(
+                id,
+                content,
+                file.FileName,
+                file.ContentType,
+                file.Length), ct);
+
+            return Results.Ok(result);
+        })
+            .RequireAuthorization(policy => policy.RequireRole(AppRoles.Admin))
+            .WithName("UploadCategoryImage")
+            .Accepts<IFormFile>("multipart/form-data")
+            .Produces<CategoryDto>(200)
+            .ProducesValidationProblem(400)
+            .ProducesProblem(401)
+            .ProducesProblem(403)
+            .ProducesProblem(404)
+            .ProducesProblem(503);
 
         group.MapDelete("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
         {

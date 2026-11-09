@@ -68,7 +68,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 420, "protein": 19, "carbohydrates": 48, "fat": 17, "fiber": 3, "sodium": 950 },
     "folder": "banh_mi_ca_hop",
     "images": [ {
       "file": "main.webp",
@@ -238,7 +238,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 360, "protein": 28, "carbohydrates": 25, "fat": 16, "fiber": 4, "sodium": 780 },
     "folder": "bo-xao-cu-sen-voi-ot-xanh",
     "images": [ {
       "file": "main.webp",
@@ -380,7 +380,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 290, "protein": 30, "carbohydrates": 12, "fat": 13, "fiber": 1, "sodium": 850 },
     "folder": "ca_he_kho_reu",
     "images": [ {
       "file": "main.webp",
@@ -499,7 +499,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 95, "protein": 8, "carbohydrates": 9, "fat": 3, "fiber": 3, "sodium": 500 },
     "folder": "canh_rau_cai_baby",
     "images": [ {
       "file": "main.webp",
@@ -592,7 +592,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 75, "protein": 4, "carbohydrates": 12, "fat": 2, "fiber": 4, "sodium": 450 },
     "folder": "canh_rau_tap_tang",
     "images": [ {
       "file": "main.webp",
@@ -700,7 +700,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 330, "protein": 17, "carbohydrates": 13, "fat": 24, "fiber": 3, "sodium": 620 },
     "folder": "dau_phu_xao_sa_te_chay_la_que",
     "images": [ {
       "file": "main.webp",
@@ -813,7 +813,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 480, "protein": 20, "carbohydrates": 52, "fat": 20, "fiber": 3, "sodium": 1050 },
     "folder": "banh_mi_kep_thanh_cua_pho_mai",
     "images": [ {
       "file": "main.webp",
@@ -987,7 +987,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 210, "protein": 22, "carbohydrates": 5, "fat": 11, "fiber": 1.5, "sodium": 600 },
     "folder": "canh_ga_nau_nam_gung",
     "images": [ {
       "file": "main.webp",
@@ -1087,7 +1087,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 230, "protein": 18, "carbohydrates": 14, "fat": 12, "fiber": 4, "sodium": 700 },
     "folder": "canh_kho_qua_nhoi_thit",
     "images": [ {
       "file": "main.webp",
@@ -1209,7 +1209,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 380, "protein": 14, "carbohydrates": 38, "fat": 20, "fiber": 3, "sodium": 650 },
     "folder": "cha_gio_khoai_mon_thit",
     "images": [ {
       "file": "main.webp",
@@ -1340,7 +1340,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 310, "protein": 17, "carbohydrates": 45, "fat": 7, "fiber": 2, "sodium": 550 },
     "folder": "chao_tom_rau_ngot",
     "images": [ {
       "file": "main.webp",
@@ -1449,7 +1449,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 260, "protein": 16, "carbohydrates": 14, "fat": 16, "fiber": 3, "sodium": 520 },
     "folder": "dau_phu_nhat_tron_thinh",
     "images": [ {
       "file": "main.webp",
@@ -1551,7 +1551,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 430, "protein": 13, "carbohydrates": 62, "fat": 15, "fiber": 6, "sodium": 700 },
     "folder": "mi_y_nam_chay",
     "images": [ {
       "file": "main.webp",
@@ -1660,7 +1660,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 180, "protein": 6, "carbohydrates": 18, "fat": 10, "fiber": 4, "sodium": 500 },
     "folder": "nam_bao_ngu_xao_sa_ot",
     "images": [ {
       "file": "main.webp",
@@ -1720,7 +1720,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 110, "protein": 2, "carbohydrates": 20, "fat": 3, "fiber": 1, "sodium": 20 },
     "folder": "rau-diep-ca-nuoc-dua",
     "images": [ {
       "file": "main.webp",
@@ -1872,7 +1872,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 180, "protein": 11, "carbohydrates": 20, "fat": 7, "fiber": 2, "sodium": 650 },
     "folder": "sup_thanh_cua_hat_chia",
     "images": [ {
       "file": "main.webp",
@@ -2080,7 +2080,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 340, "protein": 28, "carbohydrates": 18, "fat": 17, "fiber": 4, "sodium": 700 },
     "folder": "thit-bao-xao-thap-cam",
     "images": [ {
       "file": "main.webp",
@@ -2234,7 +2234,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 560, "protein": 28, "carbohydrates": 55, "fat": 25, "fiber": 3, "sodium": 900 },
     "folder": "thit_heo_ap_chao_kep_banh_mi",
     "images": [ {
       "file": "main.webp",
@@ -2368,7 +2368,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 520, "protein": 26, "carbohydrates": 8, "fat": 42, "fiber": 1, "sodium": 850 },
     "folder": "thit_heo_quay",
     "images": [ {
       "file": "main.webp",
@@ -2489,7 +2489,7 @@
         "imageAsset": null
       }
     ],
-    "nutritionPerServing": null,
+    "nutrition": { "calories": 330, "protein": 25, "carbohydrates": 18, "fat": 18, "fiber": 1, "sodium": 800 },
     "folder": "thit_xa_xiu",
     "images": [ {
       "file": "main.webp",

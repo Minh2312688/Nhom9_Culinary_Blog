@@ -1,11 +1,12 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createCategory,
   deleteCategory,
   getRecipeCategories,
+  uploadCategoryImage,
   updateCategory,
   type RecipeCategory,
 } from "@/lib/recipes-api";
@@ -21,10 +22,25 @@ export default function DashboardCategoriesPage() {
   const [selected, setSelected] = useState<RecipeCategory | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [pendingUploadCategoryId, setPendingUploadCategoryId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    if (!pendingImageFile) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(pendingImageFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [pendingImageFile]);
 
   const loadCategories = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -57,6 +73,8 @@ export default function DashboardCategoriesPage() {
     setSelected(category);
     setName(category.name);
     setDescription(category.description ?? "");
+    setPendingImageFile(null);
+    setPendingUploadCategoryId(null);
     setError(null);
     setFieldErrors({});
   }
@@ -65,8 +83,45 @@ export default function DashboardCategoriesPage() {
     setSelected(null);
     setName("");
     setDescription("");
+    setPendingImageFile(null);
+    setPendingUploadCategoryId(null);
     setFieldErrors({});
     setError(null);
+  }
+
+  function onImageSelected(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    if (file && file.size > 5 * 1024 * 1024) {
+      event.target.value = "";
+      setPendingImageFile(null);
+      setError("Ảnh danh mục không được vượt quá 5 MB.");
+      return;
+    }
+    setPendingImageFile(file);
+    setError(null);
+  }
+
+  async function finishImageUpload(categoryId: string): Promise<boolean> {
+    if (!pendingImageFile) return true;
+
+    setUploadingImage(true);
+    try {
+      await uploadCategoryImage(token, categoryId, pendingImageFile);
+      setPendingUploadCategoryId(null);
+      resetForm();
+      showToast(selected ? "Đã cập nhật danh mục." : "Đã tạo danh mục.", "success");
+      await loadCategories();
+      return true;
+    } catch (reason) {
+      const uploadMessage = reason instanceof Error ? reason.message : "Không thể tải ảnh danh mục lên.";
+      const message = `${selected ? "Đã cập nhật" : "Đã tạo"} danh mục, nhưng ảnh chưa tải lên. ${uploadMessage}`;
+      setPendingUploadCategoryId(categoryId);
+      setError(message);
+      showToast(message, "error");
+      return false;
+    } finally {
+      setUploadingImage(false);
+    }
   }
 
   function clearFieldError(field: string) {
@@ -85,16 +140,29 @@ export default function DashboardCategoriesPage() {
     setError(null);
     setFieldErrors({});
     try {
+      if (pendingUploadCategoryId) {
+        await finishImageUpload(pendingUploadCategoryId);
+        return;
+      }
+
+      let savedCategory: RecipeCategory;
       if (selected) {
-        await updateCategory(token, selected.id, {
+        savedCategory = await updateCategory(token, selected.id, {
           name: name.trim(),
           description: description.trim() || null,
           imageUrl: selected.imageUrl ?? null,
           orderIndex: selected.orderIndex ?? 0,
         });
       } else {
-        await createCategory(token, { name: name.trim(), description: description.trim() || null });
+        savedCategory = await createCategory(token, { name: name.trim(), description: description.trim() || null });
       }
+
+      if (pendingImageFile) {
+        setPendingUploadCategoryId(savedCategory.id);
+        await finishImageUpload(savedCategory.id);
+        return;
+      }
+
       resetForm();
       showToast(selected ? "Đã cập nhật danh mục." : "Đã tạo danh mục.", "success");
       await loadCategories();
@@ -131,9 +199,21 @@ export default function DashboardCategoriesPage() {
             <label className={styles.field}>Tên danh mục<input id="name" aria-invalid={Boolean(fieldErrors.name)} aria-describedby={fieldErrors.name ? "name-error" : undefined} required minLength={2} maxLength={100} value={name} onChange={(event) => { setName(event.target.value); clearFieldError("name"); }} />{fieldErrors.name && <span className={styles.fieldError} id="name-error" role="alert">{fieldErrors.name.join(" ")}</span>}</label>
             <label className={styles.field}>Mô tả<input id="description" aria-invalid={Boolean(fieldErrors.description)} aria-describedby={fieldErrors.description ? "description-error" : undefined} maxLength={500} value={description} onChange={(event) => { setDescription(event.target.value); clearFieldError("description"); }} />{fieldErrors.description && <span className={styles.fieldError} id="description-error" role="alert">{fieldErrors.description.join(" ")}</span>}</label>
           </div>
+          <label className={styles.field} htmlFor="categoryImageFile">Ảnh danh mục
+            <input id="categoryImageFile" type="file" accept="image/*" onChange={onImageSelected} disabled={Boolean(pendingUploadCategoryId) || saving} />
+          </label>
+          {(previewUrl || selected?.imageUrl) && (
+            <img
+              className={styles.categoryImagePreview}
+              src={previewUrl ?? selected?.imageUrl ?? undefined}
+              alt={name.trim() || selected?.name || "Ảnh danh mục"}
+            />
+          )}
+          {uploadingImage && <p role="status">Đang tải ảnh danh mục lên...</p>}
           <div className={styles.actions}>
-            <button className={styles.button} type="submit" disabled={saving}>{saving ? "Đang lưu..." : selected ? "Cập nhật" : "Tạo danh mục"}</button>
-            {selected && <button className={styles.buttonSecondary} type="button" onClick={resetForm}>Hủy sửa</button>}
+            <button className={styles.button} type="submit" disabled={saving || Boolean(pendingUploadCategoryId)}>{saving ? "Đang lưu..." : selected ? "Cập nhật" : "Tạo danh mục"}</button>
+            {pendingUploadCategoryId && <button className={styles.button} type="button" onClick={() => void finishImageUpload(pendingUploadCategoryId)} disabled={saving}>Thử tải ảnh lại</button>}
+            {selected && <button className={styles.buttonSecondary} type="button" onClick={resetForm} disabled={Boolean(pendingUploadCategoryId)}>Hủy sửa</button>}
           </div>
         </form>
         <div className={styles.toolbar}><h2>Danh mục hiện có</h2><span>{categories.length} mục</span></div>

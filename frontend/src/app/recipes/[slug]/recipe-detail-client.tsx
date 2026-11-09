@@ -10,6 +10,8 @@ export function RecipeDetailClient({ recipe }: Readonly<{ recipe: RecipeDetail }
     .slice()
     .sort((first, second) => Number(second.isPrimary) - Number(first.isPrimary) ||
       first.orderIndex - second.orderIndex);
+  const primaryImage = images.find((image) => image.isPrimary) ?? images[0];
+  const secondaryImages = images.filter((image) => image.id !== primaryImage?.id);
   const ingredients = recipe.ingredients
     .slice()
     .sort((first, second) => first.orderIndex - second.orderIndex);
@@ -22,6 +24,16 @@ export function RecipeDetailClient({ recipe }: Readonly<{ recipe: RecipeDetail }
       <main className={styles.detail}>
         <p className={styles.eyebrow}><Link href="/recipes">CÔNG THỨC</Link> / CHI TIẾT</p>
         <h1>{recipe.title}</h1>
+        {primaryImage && (
+          <div className={styles.recipeHero}>
+            <img
+              className={styles.recipeHeroImage}
+              data-testid="recipe-primary-image"
+              src={primaryImage.mediumUrl ?? primaryImage.thumbnailUrl ?? primaryImage.originalUrl}
+              alt={primaryImage.altText ?? recipe.title}
+            />
+          </div>
+        )}
         {recipe.publishedAt && (
           <p className={styles.cardMeta}>
             <time dateTime={recipe.publishedAt}>
@@ -43,19 +55,6 @@ export function RecipeDetailClient({ recipe }: Readonly<{ recipe: RecipeDetail }
           </p>
         )}
         {recipe.description && <p className={styles.detailLead}>{recipe.description}</p>}
-        {images.length > 0 && (
-          <div className={styles.recipeImages}>
-            {images.map((image) => (
-              <img
-                className={styles.recipeImage}
-                key={image.id}
-                src={image.mediumUrl ?? image.thumbnailUrl ?? image.originalUrl}
-                alt={image.altText ?? recipe.title}
-                loading="lazy"
-              />
-            ))}
-          </div>
-        )}
         <div className={styles.cardMeta}>
           <span>Chuẩn bị {recipe.prepTimeMinutes} phút</span>
           <span>Nấu {recipe.cookTimeMinutes} phút</span>
@@ -104,6 +103,7 @@ export function RecipeDetailClient({ recipe }: Readonly<{ recipe: RecipeDetail }
         {recipe.nutrition && (
           <section className={styles.detailSection} data-testid="recipe-nutrition">
             <h2>Thông tin dinh dưỡng (mỗi khẩu phần)</h2>
+            <p>Giá trị ước tính để tham khảo, tính trên mỗi khẩu phần.</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: "10px", marginTop: "8px" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "2px", padding: "8px 12px", background: "var(--color-surface)", borderRadius: "6px", border: "1px solid var(--line)" }}>
                 <span style={{ fontSize: "11px", color: "var(--color-muted)" }}>Calories</span>
@@ -129,6 +129,22 @@ export function RecipeDetailClient({ recipe }: Readonly<{ recipe: RecipeDetail }
                 <span style={{ fontSize: "11px", color: "var(--color-muted)" }}>Natri</span>
                 <strong style={{ fontSize: "15px" }}>{recipe.nutrition.sodium} mg</strong>
               </div>
+            </div>
+          </section>
+        )}
+        {secondaryImages.length > 0 && (
+          <section className={styles.detailSection} data-testid="recipe-secondary-images">
+            <h2>Hình ảnh khác</h2>
+            <div className={styles.recipeImages}>
+              {secondaryImages.map((image) => (
+                <img
+                  className={styles.recipeImage}
+                  key={image.id}
+                  src={image.mediumUrl ?? image.thumbnailUrl ?? image.originalUrl}
+                  alt={image.altText ?? recipe.title}
+                  loading="lazy"
+                />
+              ))}
             </div>
           </section>
         )}

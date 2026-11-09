@@ -271,6 +271,20 @@ export async function updateCategory(
   });
 }
 
+export async function uploadCategoryImage(
+  token: string,
+  categoryId: string,
+  file: File,
+): Promise<RecipeCategory> {
+  const form = new FormData();
+  form.append("file", file);
+  return request(`/api/v1/categories/${categoryId}/image`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: form,
+  });
+}
+
 export async function deleteCategory(token: string, id: string): Promise<void> {
   return request(`/api/v1/categories/${id}`, {
     method: "DELETE",

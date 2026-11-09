@@ -166,6 +166,10 @@ Cấu trúc có thể được bổ sung khi các module mới được tích h�
 Identity, refresh token, category, recipe và search dùng chung `ApplicationDbContext` cùng một migration stream. Trong Development, API tự áp dụng migration; `Seed__Enabled=true` bật seed danh mục và 20 công thức từ `tools/sample-data/20_cong_thuc_mon_an.json`, đồng thời tải ảnh từ `tools/sample-data/images/` lên MinIO. Hướng dẫn chạy toàn dự án ở [docs/run-project.md](docs/run-project.md); chi tiết
 database và tài khoản ở [docs/postgresql-setup.md](docs/postgresql-setup.md).
 
+Dữ liệu dinh dưỡng của 20 công thức mẫu là giá trị ước tính trên mỗi khẩu phần
+để tham khảo, không thay thế tư vấn chuyên môn. Seed chỉ bổ sung dinh dưỡng còn
+thiếu cho công thức đã tồn tại và không ghi đè giá trị người dùng đã lưu.
+
 > Database cũ từng chạy migration `AuthDbContext` không tương thích tự động với migration đã hợp nhất. Sao lưu trước; dùng database mới theo hướng dẫn để giữ nguyên dữ liệu cũ.
 
 ### Frontend

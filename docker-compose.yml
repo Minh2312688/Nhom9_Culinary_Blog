@@ -20,15 +20,19 @@ services:
       MinIO__SecretKey: ${MINIO_ROOT_PASSWORD}
       MinIO__UseSSL: "false"
       Jwt__Key: ${JWT_SECRET}
-      # FR-JOB-001 (SRS-AUDIT sec-12-4): SMTP -> MailHog inside Compose.
-      # Env overrides appsettings.Development.json (localhost:1025), which
-      # still applies when the API runs directly outside Docker. MailHog
-      # needs no credentials and no SSL. Never a production SMTP provider.
-      Smtp__Host: mailhog
-      Smtp__Port: "1025"
-      Smtp__UseSsl: "false"
-      Smtp__Username: ""
-      Smtp__Password: ""
+      # FR-AUTH-003: Google ID Token audience validation (matches frontend Google Client ID).
+      Google__ClientId: ${GOOGLE_CLIENT_ID:-${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}}
+      # FR-AUTH-004: Public frontend URL used in password reset email links.
+      Frontend__BaseUrl: ${FRONTEND_BASE_URL:-http://localhost:3000}
+      # FR-JOB-001 (SRS-AUDIT sec-12-4): Defaults to MailHog inside Compose for offline demo.
+      # To send real transactional emails (e.g., Brevo on port 587), set SMTP_* in local .env.
+      Smtp__Host: ${SMTP_HOST:-mailhog}
+      Smtp__Port: ${SMTP_PORT:-1025}
+      Smtp__UseSsl: ${SMTP_USE_SSL:-false}
+      Smtp__Username: ${SMTP_USERNAME:-}
+      Smtp__Password: ${SMTP_PASSWORD:-}
+      Smtp__FromAddress: ${SMTP_FROM_ADDRESS:-no-reply@culinaryblog.local}
+      Smtp__FromName: ${SMTP_FROM_NAME:-Culinary Blog}
       # Seq logging/ingestion
       Seq__ServerUrl: http://seq:5341
     ports:
@@ -62,6 +66,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5000}
         NEXT_PUBLIC_MEDIA_URL: ${NEXT_PUBLIC_MEDIA_URL:-http://localhost:9000/culinary-blog}
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
     container_name: culinary_blog_frontend
     restart: unless-stopped
     environment:

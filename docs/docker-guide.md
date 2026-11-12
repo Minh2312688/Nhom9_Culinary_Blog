@@ -41,6 +41,13 @@ Components gọi API qua mạng nội bộ Compose. Biến này không có tiề
 `NEXT_PUBLIC_` và không được chuyển xuống browser; khi frontend chạy trực tiếp
 trên host, dùng `API_INTERNAL_URL=http://localhost:5000`.
 
+### Cấu hình Google Login & Email (MailHog demo vs Brevo gửi thật)
+
+- **Google Login (`NEXT_PUBLIC_GOOGLE_CLIENT_ID`):** `.env.example` và `frontend/.env.example` đã điền sẵn Web Client ID phát triển công khai cho `http://localhost:3000`. Docker Compose truyền biến này vào cả lúc build Frontend và cho API (`Google__ClientId`). Nếu chạy Next.js ngoài Docker (`npm run dev`), sao chép `frontend/.env.example` thành `frontend/.env.local`. Trên Google Cloud Console, OAuth Client ID cần khai báo đúng **Authorized JavaScript origins** (ví dụ `http://localhost:3000`); nếu ứng dụng OAuth đang ở trạng thái Testing thì chỉ các Test Users được cấp quyền hoặc cần tự tạo Client ID riêng mới đăng nhập được trên máy mới.
+- **Email Quên mật khẩu / Welcome Email (`SMTP_*`):**
+  - **Chế độ demo / offline (mặc định):** Khi không khai báo `SMTP_*` trong `.env`, Docker Compose tự dùng **MailHog** (`mailhog:1025`, xem thư giả lập tại `http://127.0.0.1:8025`). Email trong MailHog **không** gửi tới Gmail thật.
+  - **Gửi email thật (Brevo):** Bỏ ghi chú và điền các biến `SMTP_HOST`, `SMTP_PORT`, `SMTP_USE_SSL`, `SMTP_USERNAME`, `SMTP_PASSWORD` (SMTP Key cá nhân — không commit vào Git), `SMTP_FROM_ADDRESS`, `SMTP_FROM_NAME` trong `.env` cục bộ rồi chạy `docker compose up -d api`. Brevo bật kiểm soát IP nguồn (`Authorized IP addresses`), nên khi đổi mạng hoặc chạy từ máy thành viên khác mà API log `525: 5.7.1 Unauthorized IP address`, cần vào **Brevo → Security → Authorized IP addresses** thêm IP công cộng hiện tại của máy đó.
+
 ## 3. Khởi chạy toàn bộ ứng dụng
 
 ```powershell

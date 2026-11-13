@@ -1,6 +1,7 @@
 import "server-only";
 
 const API_INTERNAL_URL = process.env.API_INTERNAL_URL;
+const refreshFlights = new Map<string, Promise<BackendTokenPair>>();
 
 export interface BackendTokenPair {
   accessToken: string;
@@ -25,7 +26,30 @@ export class AuthBackendError extends Error {
 
 function endpoint(path: string): string {
   if (!API_INTERNAL_URL) throw new AuthBackendError();
-  return `${API_INTERNAL_URL.replace(/\/+$/, "")}${path}`;
+  let base: URL;
+  try {
+    base = new URL(API_INTERNAL_URL);
+  } catch {
+    throw new AuthBackendError();
+  }
+  if (
+    (base.protocol !== "http:" && base.protocol !== "https:") ||
+    base.username ||
+    base.password ||
+    base.search ||
+    base.hash ||
+    (base.pathname !== "" && base.pathname !== "/") ||
+    !path.startsWith("/api/v1/") ||
+    path.startsWith("//") ||
+    path.includes("\\")
+  ) {
+    throw new AuthBackendError();
+  }
+  return new URL(path, base.origin).toString();
+}
+
+export function internalApiEndpoint(path: string): URL {
+  return new URL(endpoint(path));
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
@@ -108,6 +132,24 @@ export async function getProfile(accessToken: string): Promise<BackendProfile> {
 
 export async function refreshBackendTokens(refreshToken: string): Promise<BackendTokenPair> {
   return tokenPair(await postJson<BackendTokenPair>("/api/v1/auth/refresh", { refreshToken }));
+}
+
+export async function refreshBackendTokensOnce(refreshToken: string): Promise<BackendTokenPair> {
+  const digestBytes = await globalThis.crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(refreshToken),
+  );
+  const digest = Array.from(new Uint8Array(digestBytes))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+  const existing = refreshFlights.get(digest);
+  if (existing) return existing;
+
+  const flight = refreshBackendTokens(refreshToken).finally(() => {
+    if (refreshFlights.get(digest) === flight) refreshFlights.delete(digest);
+  });
+  refreshFlights.set(digest, flight);
+  return flight;
 }
 
 export async function logoutFromBackend(accessToken: string, refreshToken: string): Promise<void> {

@@ -22,6 +22,7 @@ const accountsByRefreshToken = new Map();
 let refreshRequestCount = 0;
 let logoutRequestCount = 0;
 let logoutRequestAuthorized = false;
+const apiRequests = [];
 
 function createAuthAccount(email, options = {}) {
   const suffix = options.suffix ?? "chef";
@@ -301,6 +302,18 @@ const server = createServer(async (request, response) => {
     return;
   }
 
+  if (url.pathname === "/__test__/requests" && request.method === "GET") {
+    sendJson(response, 200, apiRequests);
+    return;
+  }
+
+  if (url.pathname === "/__test__/requests" && request.method === "DELETE") {
+    apiRequests.length = 0;
+    response.writeHead(204);
+    response.end();
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/__test/auth/refresh-count") {
     sendJson(response, 200, { count: refreshRequestCount });
     return;
@@ -312,6 +325,15 @@ const server = createServer(async (request, response) => {
       authorized: logoutRequestAuthorized,
     });
     return;
+  }
+
+  if (url.pathname.startsWith("/api/v1/")) {
+    apiRequests.push({
+      method: request.method,
+      path: url.pathname,
+      query: url.search,
+      authorizationPresent: Boolean(request.headers.authorization),
+    });
   }
 
   if (request.method === "POST" && url.pathname === "/api/v1/auth/login") {
@@ -509,6 +531,12 @@ const server = createServer(async (request, response) => {
 
   // List recipes
   if (request.method === "GET" && (url.pathname === "/api/v1/recipes" || url.pathname === "/api/v1/recipes/")) {
+    const bearer = request.headers.authorization?.replace(/^Bearer\s+/i, "");
+    if (bearer && !accountsByAccessToken.has(bearer)) {
+      sendJson(response, 401, { status: 401, title: "Unauthorized" });
+      return;
+    }
+
     const all = Array.from(recipesDb.values()).map((r) => ({
       id: r.id,
       title: r.title,

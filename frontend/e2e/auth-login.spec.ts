@@ -1,22 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
+import { signInWithCredentials } from "./support/auth";
 
 const mockApiUrl = "http://127.0.0.1:5055";
-
-async function signIn(
-  page: Page,
-  provider: "email-password" | "google-id-token",
-  credentials: Record<string, string>,
-) {
-  const api = page.context().request;
-  const csrfResponse = await api.get("/api/auth/csrf");
-  expect(csrfResponse.ok()).toBe(true);
-  const { csrfToken } = (await csrfResponse.json()) as { csrfToken: string };
-
-  return api.post(`/api/auth/callback/${provider}`, {
-    form: { csrfToken, callbackUrl: "/", ...credentials },
-    maxRedirects: 0,
-  });
-}
 
 async function sessionFor(page: Page) {
   const response = await page.context().request.get("/api/auth/session");
@@ -44,7 +29,7 @@ test.describe("Auth.js credentials and server-side token lifecycle", () => {
   test("email credentials expose only profile data and keep backend tokens out of browser storage", async ({ page }) => {
     await page.goto("/");
 
-    await signIn(page, "email-password", {
+    await signInWithCredentials(page, "email-password", {
       email: "chef@example.com",
       password: "Password123!",
     });
@@ -75,7 +60,7 @@ test.describe("Auth.js credentials and server-side token lifecycle", () => {
   test("Google ID-token credentials expose only the returned profile", async ({ page }) => {
     await page.goto("/");
 
-    await signIn(page, "google-id-token", { idToken: "test-google-id-token" });
+    await signInWithCredentials(page, "google-id-token", { idToken: "test-google-id-token" });
 
     const cookie = (await page.context().cookies()).find((item) => item.name.includes("session-token"));
     expect(cookie?.httpOnly).toBe(true);
@@ -103,7 +88,7 @@ test.describe("Auth.js credentials and server-side token lifecycle", () => {
   test("invalid credentials do not create an authenticated session", async ({ page }) => {
     await page.goto("/");
 
-    const response = await signIn(page, "email-password", {
+    const response = await signInWithCredentials(page, "email-password", {
       email: "wrong@example.com",
       password: "WrongPassword",
     });
@@ -115,7 +100,7 @@ test.describe("Auth.js credentials and server-side token lifecycle", () => {
   test("locked accounts do not create an authenticated session", async ({ page }) => {
     await page.goto("/");
 
-    const response = await signIn(page, "email-password", {
+    const response = await signInWithCredentials(page, "email-password", {
       email: "locked-chef@example.com",
       password: "Password123!",
     });
@@ -126,7 +111,7 @@ test.describe("Auth.js credentials and server-side token lifecycle", () => {
 
   test("concurrent expired sessions share one refresh and return only the safe session", async ({ page }) => {
     await page.goto("/");
-    await signIn(page, "email-password", {
+    await signInWithCredentials(page, "email-password", {
       email: "expired-chef@example.com",
       password: "Password123!",
     });
@@ -156,7 +141,7 @@ test.describe("Auth.js credentials and server-side token lifecycle", () => {
 
   test("refreshes before access-token expiry within the 30-second skew", async ({ page }) => {
     await page.goto("/");
-    await signIn(page, "email-password", {
+    await signInWithCredentials(page, "email-password", {
       email: "near-expiry-chef@example.com",
       password: "Password123!",
     });
@@ -170,7 +155,7 @@ test.describe("Auth.js credentials and server-side token lifecycle", () => {
 
   test("failed refresh marks the Auth.js session as expired without exposing tokens", async ({ page }) => {
     await page.goto("/");
-    await signIn(page, "email-password", {
+    await signInWithCredentials(page, "email-password", {
       email: "refresh-failure-chef@example.com",
       password: "Password123!",
     });
@@ -185,7 +170,7 @@ test.describe("Auth.js credentials and server-side token lifecycle", () => {
 
   test("sign-out revokes backend tokens and clears the Auth.js session", async ({ page }) => {
     await page.goto("/");
-    await signIn(page, "email-password", {
+    await signInWithCredentials(page, "email-password", {
       email: "chef@example.com",
       password: "Password123!",
     });
@@ -199,7 +184,7 @@ test.describe("Auth.js credentials and server-side token lifecycle", () => {
 
   test("backend revoke failure does not prevent local sign-out", async ({ page }) => {
     await page.goto("/");
-    await signIn(page, "email-password", {
+    await signInWithCredentials(page, "email-password", {
       email: "logout-failure-chef@example.com",
       password: "Password123!",
     });

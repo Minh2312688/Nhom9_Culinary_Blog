@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { CredentialsSignin } from "@auth/core/errors";
 import NextAuth, { type User } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
@@ -8,14 +7,15 @@ import {
   loginWithGoogleIdToken,
   loginWithPassword,
   logoutFromBackend,
-  refreshBackendTokens,
+  refreshBackendTokensOnce,
   type BackendTokenPair,
 } from "@/lib/server/auth-backend";
 
-const REFRESH_SKEW_MS = 30_000;
-const refreshFlights = new Map<string, Promise<BackendTokenPair>>();
+export const BACKEND_TOKEN_REFRESH_SKEW_MS = 30_000;
 
 const isProduction = process.env.NODE_ENV === "production";
+export const AUTH_SESSION_COOKIE_NAME = `${isProduction ? "__Secure-" : ""}authjs.session-token`;
+export const AUTH_SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 
 type AuthenticatedUser = User & {
   roles: string[];
@@ -55,18 +55,6 @@ async function authenticate(
     refreshToken: tokenPair.refreshToken,
     accessTokenExpiresAt: Date.now() + tokenPair.expiresIn * 1000,
   };
-}
-
-function refreshOnce(refreshToken: string): Promise<BackendTokenPair> {
-  const digest = createHash("sha256").update(refreshToken).digest("hex");
-  const existing = refreshFlights.get(digest);
-  if (existing) return existing;
-
-  const flight = refreshBackendTokens(refreshToken).finally(() => {
-    if (refreshFlights.get(digest) === flight) refreshFlights.delete(digest);
-  });
-  refreshFlights.set(digest, flight);
-  return flight;
 }
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
@@ -115,11 +103,11 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   trustHost: true,
   session: {
     strategy: "jwt",
-    maxAge: 7 * 24 * 60 * 60,
+    maxAge: AUTH_SESSION_MAX_AGE_SECONDS,
   },
   cookies: {
     sessionToken: {
-      name: `${isProduction ? "__Secure-" : ""}authjs.session-token`,
+      name: AUTH_SESSION_COOKIE_NAME,
       options: {
         httpOnly: true,
         sameSite: "lax",
@@ -149,13 +137,13 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         typeof token.accessToken !== "string" ||
         typeof token.refreshToken !== "string" ||
         typeof token.accessTokenExpiresAt !== "number" ||
-        Date.now() < token.accessTokenExpiresAt - REFRESH_SKEW_MS
+        Date.now() < token.accessTokenExpiresAt - BACKEND_TOKEN_REFRESH_SKEW_MS
       ) {
         return token;
       }
 
       try {
-        const rotated = await refreshOnce(token.refreshToken);
+        const rotated = await refreshBackendTokensOnce(token.refreshToken);
         return {
           ...token,
           accessToken: rotated.accessToken,

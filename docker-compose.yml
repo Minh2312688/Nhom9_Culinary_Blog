@@ -74,6 +74,7 @@ services:
       PORT: 3000
       HOSTNAME: 0.0.0.0
       API_INTERNAL_URL: http://api:8080
+      AUTH_SECRET: ${AUTH_SECRET}
     ports:
       - "3000:3000"
     depends_on:

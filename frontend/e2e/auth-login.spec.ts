@@ -1,5 +1,15 @@
 import { test, expect } from "@playwright/test";
 
+test("Auth.js session endpoint is mounted without exposing backend tokens", async ({ request }) => {
+  const response = await request.get("/api/auth/session");
+  expect(response.status()).toBe(200);
+  const session = (await response.json()) as Record<string, unknown> | null;
+  if (session !== null) {
+    expect(session).not.toHaveProperty("accessToken");
+    expect(session).not.toHaveProperty("refreshToken");
+  }
+});
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",

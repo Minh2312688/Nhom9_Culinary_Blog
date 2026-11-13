@@ -34,6 +34,7 @@ export default defineConfig({
       url: "http://127.0.0.1:3001",
       env: {
         API_INTERNAL_URL: "http://127.0.0.1:5055",
+        AUTH_SECRET: "playwright-test-only-auth-secret-not-for-production",
         NEXT_PUBLIC_API_URL: "http://127.0.0.1:5055",
       },
       reuseExistingServer: false,

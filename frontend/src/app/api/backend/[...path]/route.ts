@@ -19,6 +19,7 @@ const UPSTREAM_RESPONSE_HEADERS = [
 ] as const;
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+type RequestMethod = HttpMethod | "HEAD" | "OPTIONS";
 
 function isIdentifier(segment: string): boolean {
   return /^[A-Za-z0-9_-]+$/.test(segment) && segment !== "." && segment !== "..";
@@ -251,19 +252,19 @@ async function getValidAccessToken(
   }
 }
 
-async function proxy(request: Request, method: HttpMethod): Promise<Response> {
+async function proxy(request: Request, method: RequestMethod): Promise<Response> {
   const session = await getValidAccessToken(request);
   if (!session || !session.accessToken) {
     return jsonResponse(401, "Unauthorized", session?.cookies);
   }
 
   const segments = pathSegments(request);
-  if (!segments) return jsonResponse(404, "Not found");
+  if (!segments) return jsonResponse(404, "Not found", session.cookies);
 
   const methods = allowedMethods(segments);
-  if (!methods) return jsonResponse(404, "Not found");
-  if (!methods.includes(method)) {
-    const response = jsonResponse(405, "Method not allowed");
+  if (!methods) return jsonResponse(404, "Not found", session.cookies);
+  if (!methods.includes(method as HttpMethod)) {
+    const response = jsonResponse(405, "Method not allowed", session.cookies);
     response.headers.set("Allow", methods.join(", "));
     return response;
   }
@@ -271,7 +272,7 @@ async function proxy(request: Request, method: HttpMethod): Promise<Response> {
   if (method !== "GET") {
     const origin = request.headers.get("origin");
     if (!origin || origin !== new URL(request.url).origin) {
-      return jsonResponse(403, "Forbidden");
+      return jsonResponse(403, "Forbidden", session.cookies);
     }
   }
 
@@ -337,16 +338,10 @@ export async function DELETE(request: Request): Promise<Response> {
   return proxy(request, "DELETE");
 }
 
-export async function HEAD(): Promise<Response> {
-  return new Response(null, {
-    status: 405,
-    headers: { Allow: "GET, POST, PUT, PATCH, DELETE", "Cache-Control": "no-store" },
-  });
+export async function HEAD(request: Request): Promise<Response> {
+  return proxy(request, "HEAD");
 }
 
-export async function OPTIONS(): Promise<Response> {
-  return new Response(null, {
-    status: 405,
-    headers: { Allow: "GET, POST, PUT, PATCH, DELETE", "Cache-Control": "no-store" },
-  });
+export async function OPTIONS(request: Request): Promise<Response> {
+  return proxy(request, "OPTIONS");
 }

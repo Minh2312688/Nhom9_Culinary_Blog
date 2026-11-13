@@ -12,7 +12,7 @@ const navigation = [
 ];
 
 export function DashboardShell({ children }: Readonly<{ children: React.ReactNode }>) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
 
   return (
     <div className={styles.shell}>

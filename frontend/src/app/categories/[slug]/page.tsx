@@ -8,7 +8,8 @@ import { ErrorNotice, LoadingNotice, Pagination, RecipeCard, SitePage } from "..
 import styles from "../../site-ui.module.css";
 
 export default function CategoryDetailPage() {
-  const { slug } = useParams<{ slug: string }>();
+  const params = useParams<{ slug: string }>();
+  const slug = params?.slug;
   const [category, setCategory] = useState<RecipeCategory | null>(null);
   const [result, setResult] = useState<PaginatedResult<RecipeSummary> | null>(null);
   const [page, setPage] = useState(1);
@@ -24,13 +25,20 @@ export default function CategoryDetailPage() {
 
   useEffect(() => {
     if (!initialized) return;
+    if (!slug) {
+      setError("Không thể xác định danh mục.");
+      setLoading(false);
+      return;
+    }
+
+    const categorySlug = slug;
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    window.history.replaceState(null, "", page === 1 ? `/categories/${slug}` : `/categories/${slug}?page=${page}`);
+    window.history.replaceState(null, "", page === 1 ? `/categories/${categorySlug}` : `/categories/${categorySlug}?page=${page}`);
     async function load() {
       try {
-        const item = await getCategory(slug, controller.signal);
+        const item = await getCategory(categorySlug, controller.signal);
         setCategory(item);
         const query = new URLSearchParams({ categoryId: item.id, page: String(page), pageSize: "12" });
         setResult(await searchRecipes(query, controller.signal));

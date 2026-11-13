@@ -90,7 +90,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   const router = useRouter();
   const { showToast } = useFeedback();
   const params = useParams<{ id?: string }>();
-  const recipeId = params.id;
+  const recipeId = params?.id;
   const [token, setToken] = useState("");
   const [categories, setCategories] = useState<RecipeCategory[]>([]);
   const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
@@ -222,6 +222,12 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
       return;
     }
     setToken(accessToken);
+
+    if (editing && !recipeId) {
+      setError("Không thể xác định công thức cần chỉnh sửa.");
+      setLoading(false);
+      return;
+    }
 
     const controller = new AbortController();
     async function load(tok: string) {

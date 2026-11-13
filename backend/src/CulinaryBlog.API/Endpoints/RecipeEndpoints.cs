@@ -26,7 +26,10 @@ public static class RecipeEndpoints
             .WithName("GetRecipeBySlug").Produces<RecipeDetailDto>(200).ProducesProblem(403).ProducesProblem(404);
 
         group.MapPost("/", async (CreateRecipeCommand command, ISender sender, CancellationToken ct) =>
-            Results.Created($"/api/v1/recipes/{command.Title}", await sender.Send(command, ct)))
+        {
+            var recipe = await sender.Send(command, ct);
+            return Results.Created($"/api/v1/recipes/{recipe.Slug}", recipe);
+        })
             .RequireAuthorization().WithName("CreateRecipe").Produces<RecipeDetailDto>(201).ProducesProblem(400).ProducesProblem(403);
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateRecipeCommand command, ISender sender, CancellationToken ct) =>

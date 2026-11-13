@@ -16,6 +16,62 @@ const categories = [
 ];
 
 const recipesDb = new Map();
+const authAccounts = new Map();
+const accountsByAccessToken = new Map();
+const accountsByRefreshToken = new Map();
+let refreshRequestCount = 0;
+let logoutRequestCount = 0;
+let logoutRequestAuthorized = false;
+
+function createAuthAccount(email, options = {}) {
+  const suffix = options.suffix ?? "chef";
+  const account = {
+    profile: {
+      id: options.id ?? "user-chef",
+      email,
+      displayName: options.displayName ?? "Chef Example",
+      avatarUrl: null,
+      bio: null,
+      emailConfirmed: true,
+      createdAt: "2026-10-01T00:00:00Z",
+      roles: options.roles ?? ["Author"],
+    },
+    accessToken: `backend-access-${suffix}`,
+    refreshToken: `backend-refresh-${suffix}`,
+    expiresIn: options.expiresIn ?? 900,
+    refreshFails: options.refreshFails ?? false,
+    logoutFails: options.logoutFails ?? false,
+  };
+  authAccounts.set(email, account);
+  accountsByAccessToken.set(account.accessToken, account);
+  accountsByRefreshToken.set(account.refreshToken, account);
+  return account;
+}
+
+createAuthAccount("chef@example.com");
+createAuthAccount("expired-chef@example.com", {
+  suffix: "expired",
+  expiresIn: 0,
+});
+createAuthAccount("near-expiry-chef@example.com", {
+  suffix: "near-expiry",
+  expiresIn: 15,
+});
+createAuthAccount("refresh-failure-chef@example.com", {
+  suffix: "refresh-failure",
+  expiresIn: 0,
+  refreshFails: true,
+});
+createAuthAccount("logout-failure-chef@example.com", {
+  suffix: "logout-failure",
+  logoutFails: true,
+});
+createAuthAccount("google@example.com", {
+  suffix: "google",
+  id: "user-google",
+  displayName: "Google Chef",
+  roles: ["Member"],
+});
 
 function createInitialRecipe(overrides = {}) {
   const r = {
@@ -233,6 +289,164 @@ const server = createServer(async (request, response) => {
   if (url.pathname === "/health") {
     response.writeHead(200);
     response.end("ok");
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/__test/auth/reset") {
+    refreshRequestCount = 0;
+    logoutRequestCount = 0;
+    logoutRequestAuthorized = false;
+    response.writeHead(204);
+    response.end();
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/__test/auth/refresh-count") {
+    sendJson(response, 200, { count: refreshRequestCount });
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/__test/auth/logout-count") {
+    sendJson(response, 200, {
+      count: logoutRequestCount,
+      authorized: logoutRequestAuthorized,
+    });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/v1/auth/login") {
+    let credentials;
+    try {
+      credentials = JSON.parse((await readBody(request)).toString("utf-8"));
+    } catch {
+      sendJson(response, 400, { title: "Bad Request" });
+      return;
+    }
+
+    if (credentials.email === "locked-chef@example.com") {
+      sendJson(response, 423, {
+        status: 423,
+        title: "Locked",
+        detail: "The test account is locked.",
+      });
+      return;
+    }
+
+    const account = authAccounts.get(credentials.email);
+    if (!account || credentials.password !== "Password123!") {
+      sendJson(response, 401, {
+        status: 401,
+        title: "Unauthorized",
+        detail: "Invalid test credentials.",
+      });
+      return;
+    }
+
+    sendJson(response, 200, {
+      accessToken: account.accessToken,
+      refreshToken: account.refreshToken,
+      expiresIn: account.expiresIn,
+    });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/v1/auth/google") {
+    let body;
+    try {
+      body = JSON.parse((await readBody(request)).toString("utf-8"));
+    } catch {
+      sendJson(response, 400, { title: "Bad Request" });
+      return;
+    }
+
+    if (body.idToken !== "test-google-id-token") {
+      sendJson(response, 401, {
+        status: 401,
+        title: "Unauthorized",
+        detail: "Invalid Google test token.",
+      });
+      return;
+    }
+
+    const account = authAccounts.get("google@example.com");
+    sendJson(response, 200, {
+      accessToken: account.accessToken,
+      refreshToken: account.refreshToken,
+      expiresIn: account.expiresIn,
+    });
+    return;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/v1/auth/me") {
+    const accessToken = request.headers.authorization?.replace(/^Bearer\s+/i, "");
+    const account = accessToken ? accountsByAccessToken.get(accessToken) : undefined;
+    if (!account) {
+      sendJson(response, 401, { status: 401, title: "Unauthorized" });
+      return;
+    }
+
+    sendJson(response, 200, account.profile);
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/v1/auth/refresh") {
+    refreshRequestCount++;
+    let body;
+    try {
+      body = JSON.parse((await readBody(request)).toString("utf-8"));
+    } catch {
+      sendJson(response, 400, { title: "Bad Request" });
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const account = accountsByRefreshToken.get(body.refreshToken);
+    if (!account || account.refreshFails) {
+      sendJson(response, 401, { status: 401, title: "Unauthorized" });
+      return;
+    }
+
+    accountsByAccessToken.delete(account.accessToken);
+    accountsByRefreshToken.delete(account.refreshToken);
+    account.accessToken = `${account.accessToken}-rotated`;
+    account.refreshToken = `${account.refreshToken}-rotated`;
+    accountsByAccessToken.set(account.accessToken, account);
+    accountsByRefreshToken.set(account.refreshToken, account);
+
+    sendJson(response, 200, {
+      accessToken: account.accessToken,
+      refreshToken: account.refreshToken,
+      expiresIn: 900,
+    });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/v1/auth/logout") {
+    logoutRequestCount++;
+    let body;
+    try {
+      body = JSON.parse((await readBody(request)).toString("utf-8"));
+    } catch {
+      body = {};
+    }
+
+    const accessToken = request.headers.authorization?.replace(/^Bearer\s+/i, "");
+    const account = accessToken ? accountsByAccessToken.get(accessToken) : undefined;
+    logoutRequestAuthorized =
+      Boolean(account) &&
+      typeof body.refreshToken === "string" &&
+      body.refreshToken === account.refreshToken;
+    if (!logoutRequestAuthorized) {
+      sendJson(response, 401, { status: 401, title: "Unauthorized" });
+      return;
+    }
+    if (account.logoutFails) {
+      sendJson(response, 503, { status: 503, title: "Unavailable" });
+      return;
+    }
+
+    response.writeHead(204);
+    response.end();
     return;
   }
 

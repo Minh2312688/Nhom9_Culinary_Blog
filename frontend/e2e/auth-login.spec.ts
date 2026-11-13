@@ -1,241 +1,213 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
-test("Auth.js session endpoint is mounted without exposing backend tokens", async ({ request }) => {
-  const response = await request.get("/api/auth/session");
-  expect(response.status()).toBe(200);
-  const session = (await response.json()) as Record<string, unknown> | null;
-  if (session !== null) {
+const mockApiUrl = "http://127.0.0.1:5055";
+
+async function signIn(
+  page: Page,
+  provider: "email-password" | "google-id-token",
+  credentials: Record<string, string>,
+) {
+  const api = page.context().request;
+  const csrfResponse = await api.get("/api/auth/csrf");
+  expect(csrfResponse.ok()).toBe(true);
+  const { csrfToken } = (await csrfResponse.json()) as { csrfToken: string };
+
+  return api.post(`/api/auth/callback/${provider}`, {
+    form: { csrfToken, callbackUrl: "/", ...credentials },
+    maxRedirects: 0,
+  });
+}
+
+async function sessionFor(page: Page) {
+  const response = await page.context().request.get("/api/auth/session");
+  expect(response.ok()).toBe(true);
+  return response.json() as Promise<Record<string, any>>;
+}
+
+async function signOut(page: Page) {
+  const api = page.context().request;
+  const csrfResponse = await api.get("/api/auth/csrf");
+  expect(csrfResponse.ok()).toBe(true);
+  const { csrfToken } = (await csrfResponse.json()) as { csrfToken: string };
+  return api.post("/api/auth/signout", {
+    form: { csrfToken, callbackUrl: "/" },
+    maxRedirects: 0,
+  });
+}
+
+test.describe("Auth.js credentials and server-side token lifecycle", () => {
+  test.beforeEach(async ({ page }) => {
+    const resetResponse = await page.context().request.post(`${mockApiUrl}/__test/auth/reset`);
+    expect(resetResponse.status()).toBe(204);
+  });
+
+  test("email credentials expose only profile data and keep backend tokens out of browser storage", async ({ page }) => {
+    await page.goto("/");
+
+    await signIn(page, "email-password", {
+      email: "chef@example.com",
+      password: "Password123!",
+    });
+
+    const cookie = (await page.context().cookies()).find((item) => item.name.includes("session-token"));
+    expect(cookie?.httpOnly).toBe(true);
+    expect(cookie?.sameSite).toBe("Lax");
+
+    const session = await sessionFor(page);
+    expect(session.user).toEqual({
+      id: "user-chef",
+      email: "chef@example.com",
+      name: "Chef Example",
+      image: null,
+      roles: ["Author"],
+    });
+    expect(JSON.stringify(session)).not.toContain("backend-access-chef");
+    expect(JSON.stringify(session)).not.toContain("backend-refresh-chef");
     expect(session).not.toHaveProperty("accessToken");
     expect(session).not.toHaveProperty("refreshToken");
-  }
-});
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
-test.describe("FR-AUTH-002: Login Flow & Redirect E2E", () => {
-  test.beforeEach(async ({ page }) => {
-    // Mock GIS Google library if loaded
-    await page.addInitScript(() => {
-      (window as any).google = {
-        accounts: {
-          id: {
-            initialize: (config: any) => {
-              (window as any).__googleGisConfig = config;
-            },
-            renderButton: () => { },
-          },
-        },
-      };
-    });
+    expect(await page.evaluate(() => sessionStorage.getItem("culinary_access_token"))).toBeNull();
+    expect(await page.evaluate(() => sessionStorage.getItem("culinary_refresh_token"))).toBeNull();
+    expect(await page.evaluate(() => localStorage.getItem("culinary_access_token"))).toBeNull();
+    expect(await page.evaluate(() => localStorage.getItem("culinary_refresh_token"))).toBeNull();
   });
 
-  test("should login with email and password, save tokens, and redirect to homepage / with user name in navbar", async ({ page }) => {
-    // Intercept backend login call
-    await page.route("**/api/v1/auth/login", async (route) => {
-      if (route.request().method() === "OPTIONS") {
-        await route.fulfill({ status: 204, headers: CORS_HEADERS });
-        return;
-      }
-      await route.fulfill({
-        status: 200,
-        headers: CORS_HEADERS,
-        contentType: "application/json",
-        body: JSON.stringify({
-          accessToken: "sample_e2e_jwt_access_token",
-          refreshToken: "sample_e2e_refresh_token",
-          expiresIn: 900,
-        }),
-      });
+  test("Google ID-token credentials expose only the returned profile", async ({ page }) => {
+    await page.goto("/");
+
+    await signIn(page, "google-id-token", { idToken: "test-google-id-token" });
+
+    const cookie = (await page.context().cookies()).find((item) => item.name.includes("session-token"));
+    expect(cookie?.httpOnly).toBe(true);
+    expect(cookie?.sameSite).toBe("Lax");
+
+    const session = await sessionFor(page);
+    expect(session.user).toEqual({
+      id: "user-google",
+      email: "google@example.com",
+      name: "Google Chef",
+      image: null,
+      roles: ["Member"],
     });
+    expect(JSON.stringify(session)).not.toContain("backend-access-google");
+    expect(JSON.stringify(session)).not.toContain("backend-refresh-google");
+    expect(session).not.toHaveProperty("accessToken");
+    expect(session).not.toHaveProperty("refreshToken");
 
-    // Intercept profile call to return user details
-    await page.route("**/api/v1/auth/me", async (route) => {
-      if (route.request().method() === "OPTIONS") {
-        await route.fulfill({ status: 204, headers: CORS_HEADERS });
-        return;
-      }
-      await route.fulfill({
-        status: 200,
-        headers: CORS_HEADERS,
-        contentType: "application/json",
-        body: JSON.stringify({
-          id: "user-nam-123",
-          email: "chef@example.com",
-          displayName: "Nguyễn Phạm Phú Nam",
-          avatarUrl: null,
-          bio: "Đầu bếp ẩm thực Việt",
-          emailConfirmed: true,
-          createdAt: "2026-10-01T00:00:00Z",
-          roles: ["Author"],
-        }),
-      });
-    });
-
-    // 1. Open /auth/login
-    await page.goto("/auth/login");
-
-    // Verify initial header & guest state
-    await expect(page.getByRole("heading", { name: "Đăng nhập Culinary Blog" })).toBeVisible();
-
-    // 2. Fill valid account
-    await page.getByLabel("Địa chỉ Email").fill("chef@example.com");
-    await page.getByLabel("Mật khẩu *", { exact: true }).fill("Password123!");
-
-    // 3. Submit
-    await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
-
-    // 4. Verify automatic redirection to homepage /
-    await expect(page).toHaveURL("http://localhost:3000/", { timeout: 10000 });
-
-    // 5. Verify tokens stored in sessionStorage
-    const storedToken = await page.evaluate(() => sessionStorage.getItem("culinary_access_token"));
-    expect(storedToken).toBe("sample_e2e_jwt_access_token");
-
-    // 6. Verify navbar recognizes authenticated state and displays user name
-    await expect(page.getByTestId("nav-profile")).toBeVisible();
-    await expect(page.getByTestId("nav-profile")).toContainText("Nguyễn Phạm Phú Nam");
+    expect(await page.evaluate(() => sessionStorage.getItem("culinary_access_token"))).toBeNull();
+    expect(await page.evaluate(() => sessionStorage.getItem("culinary_refresh_token"))).toBeNull();
+    expect(await page.evaluate(() => localStorage.getItem("culinary_access_token"))).toBeNull();
+    expect(await page.evaluate(() => localStorage.getItem("culinary_refresh_token"))).toBeNull();
   });
 
-  test("should display error message and stay on /auth/login when credentials are invalid", async ({ page }) => {
-    await page.route("**/api/v1/auth/login", async (route) => {
-      if (route.request().method() === "OPTIONS") {
-        await route.fulfill({ status: 204, headers: CORS_HEADERS });
-        return;
-      }
-      await route.fulfill({
-        status: 401,
-        headers: CORS_HEADERS,
-        contentType: "application/json",
-        body: JSON.stringify({
-          status: 401,
-          title: "Unauthorized",
-          detail: "Email hoặc mật khẩu không chính xác.",
-        }),
-      });
+  test("invalid credentials do not create an authenticated session", async ({ page }) => {
+    await page.goto("/");
+
+    const response = await signIn(page, "email-password", {
+      email: "wrong@example.com",
+      password: "WrongPassword",
     });
 
-    await page.goto("/auth/login");
-    await page.getByLabel("Địa chỉ Email").fill("wrong@example.com");
-    await page.getByLabel("Mật khẩu *", { exact: true }).fill("WrongPassword");
-    await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
-
-    // Must stay on /auth/login and show error
-    await expect(page.getByText("Email hoặc mật khẩu không chính xác.")).toBeVisible();
-    await expect(page).toHaveURL(/.*\/auth\/login/);
-
-    // No token in sessionStorage
-    const storedToken = await page.evaluate(() => sessionStorage.getItem("culinary_access_token"));
-    expect(storedToken).toBeNull();
+    expect(response.headers().location).toContain("code=invalid-credentials");
+    expect(await sessionFor(page)).toBeNull();
   });
 
-  test("should not redirect if token saving fails in sessionStorage", async ({ page }) => {
-    await page.route("**/api/v1/auth/login", async (route) => {
-      if (route.request().method() === "OPTIONS") {
-        await route.fulfill({ status: 204, headers: CORS_HEADERS });
-        return;
-      }
-      await route.fulfill({
-        status: 200,
-        headers: CORS_HEADERS,
-        contentType: "application/json",
-        body: JSON.stringify({
-          accessToken: "sample_token",
-          refreshToken: "sample_refresh",
-          expiresIn: 900,
-        }),
-      });
+  test("locked accounts do not create an authenticated session", async ({ page }) => {
+    await page.goto("/");
+
+    const response = await signIn(page, "email-password", {
+      email: "locked-chef@example.com",
+      password: "Password123!",
     });
 
-    // Simulate quota exceeded error in sessionStorage
-    await page.addInitScript(() => {
-      const origSetItem = Storage.prototype.setItem;
-      Storage.prototype.setItem = function (key, value) {
-        if (key === "culinary_refresh_token") {
-          throw new DOMException("QuotaExceededError", "QuotaExceededError");
-        }
-        return origSetItem.apply(this, [key, value]);
-      };
-    });
-
-    await page.goto("/auth/login");
-    await page.getByLabel("Địa chỉ Email").fill("chef@example.com");
-    await page.getByLabel("Mật khẩu *", { exact: true }).fill("Password123!");
-    await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
-
-    // Must stay on login page and show error message
-    await expect(page.getByText("Không thể lưu phiên đăng nhập")).toBeVisible();
-    await expect(page).toHaveURL(/.*\/auth\/login/);
-
-    // Rollback atomic: both tokens should be null
-    const accessToken = await page.evaluate(() => sessionStorage.getItem("culinary_access_token"));
-    const refreshToken = await page.evaluate(() => sessionStorage.getItem("culinary_refresh_token"));
-    expect(accessToken).toBeNull();
-    expect(refreshToken).toBeNull();
+    expect(response.headers().location).toContain("code=account-locked");
+    expect(await sessionFor(page)).toBeNull();
   });
 
-  test("should login with Google callback, save tokens, and redirect to homepage / with user name in navbar", async ({ page }) => {
-    // Intercept Google login API
-    await page.route("**/api/v1/auth/google", async (route) => {
-      if (route.request().method() === "OPTIONS") {
-        await route.fulfill({ status: 204, headers: CORS_HEADERS });
-        return;
-      }
-      await route.fulfill({
-        status: 200,
-        headers: CORS_HEADERS,
-        contentType: "application/json",
-        body: JSON.stringify({
-          accessToken: "google_jwt_access_token_xyz",
-          refreshToken: "google_jwt_refresh_token_xyz",
-          expiresIn: 900,
-        }),
-      });
+  test("concurrent expired sessions share one refresh and return only the safe session", async ({ page }) => {
+    await page.goto("/");
+    await signIn(page, "email-password", {
+      email: "expired-chef@example.com",
+      password: "Password123!",
     });
 
-    // Intercept profile call for Google user
-    await page.route("**/api/v1/auth/me", async (route) => {
-      if (route.request().method() === "OPTIONS") {
-        await route.fulfill({ status: 204, headers: CORS_HEADERS });
-        return;
-      }
-      await route.fulfill({
-        status: 200,
-        headers: CORS_HEADERS,
-        contentType: "application/json",
-        body: JSON.stringify({
-          id: "google-nam-456",
-          email: "2312695@dlu.edu.vn",
-          displayName: "Nguyễn Phạm Phú Nam",
-          avatarUrl: null,
-          bio: null,
-          emailConfirmed: true,
-          createdAt: "2026-10-01T00:00:00Z",
-          roles: ["Member"],
-        }),
-      });
+    const api = page.context().request;
+    const [first, second] = await Promise.all([
+      api.get("/api/auth/session"),
+      api.get("/api/auth/session"),
+    ]);
+    expect(first.ok()).toBe(true);
+    expect(second.ok()).toBe(true);
+
+    const firstSession = await first.json();
+    const secondSession = await second.json();
+    expect(firstSession.user?.email).toBe("expired-chef@example.com");
+    expect(secondSession.user?.email).toBe("expired-chef@example.com");
+    expect(JSON.stringify([firstSession, secondSession])).not.toContain("backend-access-expired-rotated");
+    expect(JSON.stringify([firstSession, secondSession])).not.toContain("backend-refresh-expired-rotated");
+
+    const refreshCountResponse = await api.get(`${mockApiUrl}/__test/auth/refresh-count`);
+    expect(await refreshCountResponse.json()).toEqual({ count: 1 });
+
+    await signOut(page);
+    const logoutResponse = await api.get(`${mockApiUrl}/__test/auth/logout-count`);
+    expect(await logoutResponse.json()).toEqual({ count: 1, authorized: true });
+  });
+
+  test("refreshes before access-token expiry within the 30-second skew", async ({ page }) => {
+    await page.goto("/");
+    await signIn(page, "email-password", {
+      email: "near-expiry-chef@example.com",
+      password: "Password123!",
     });
 
-    await page.goto("/auth/login");
+    const session = await sessionFor(page);
+    expect(session.user?.email).toBe("near-expiry-chef@example.com");
 
-    // Wait for GIS configuration and trigger Google login callback
-    await page.waitForFunction(() => Boolean((window as any).__googleGisConfig?.callback));
-    await page.evaluate(async () => {
-      await (window as any).__googleGisConfig.callback({ credential: "mock_google_id_token_123" });
+    const refreshCountResponse = await page.context().request.get(`${mockApiUrl}/__test/auth/refresh-count`);
+    expect(await refreshCountResponse.json()).toEqual({ count: 1 });
+  });
+
+  test("failed refresh marks the Auth.js session as expired without exposing tokens", async ({ page }) => {
+    await page.goto("/");
+    await signIn(page, "email-password", {
+      email: "refresh-failure-chef@example.com",
+      password: "Password123!",
     });
 
-    // Verify automatic redirect to homepage /
-    await expect(page).toHaveURL("http://localhost:3000/", { timeout: 10000 });
+    const session = await sessionFor(page);
+    expect(session.error).toBe("RefreshTokenError");
+    expect(JSON.stringify(session)).not.toContain("backend-access-refresh-failure");
+    expect(JSON.stringify(session)).not.toContain("backend-refresh-refresh-failure");
+    expect(session).not.toHaveProperty("accessToken");
+    expect(session).not.toHaveProperty("refreshToken");
+  });
 
-    // Verify tokens stored
-    const storedToken = await page.evaluate(() => sessionStorage.getItem("culinary_access_token"));
-    expect(storedToken).toBe("google_jwt_access_token_xyz");
+  test("sign-out revokes backend tokens and clears the Auth.js session", async ({ page }) => {
+    await page.goto("/");
+    await signIn(page, "email-password", {
+      email: "chef@example.com",
+      password: "Password123!",
+    });
 
-    // Verify navbar displays actual user name
-    await expect(page.getByTestId("nav-profile")).toBeVisible();
-    await expect(page.getByTestId("nav-profile")).toContainText("Nguyễn Phạm Phú Nam");
+    await signOut(page);
+
+    expect(await sessionFor(page)).toBeNull();
+    const logoutResponse = await page.context().request.get(`${mockApiUrl}/__test/auth/logout-count`);
+    expect(await logoutResponse.json()).toEqual({ count: 1, authorized: true });
+  });
+
+  test("backend revoke failure does not prevent local sign-out", async ({ page }) => {
+    await page.goto("/");
+    await signIn(page, "email-password", {
+      email: "logout-failure-chef@example.com",
+      password: "Password123!",
+    });
+
+    await signOut(page);
+
+    expect(await sessionFor(page)).toBeNull();
+    const logoutResponse = await page.context().request.get(`${mockApiUrl}/__test/auth/logout-count`);
+    expect(await logoutResponse.json()).toEqual({ count: 1, authorized: true });
   });
 });

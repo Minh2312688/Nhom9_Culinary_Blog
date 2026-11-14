@@ -48,10 +48,11 @@ The backend remains the authorization boundary:
 - Admin retains the existing ability to manage Recipes regardless of author.
 
 The dashboard UI will align with those policies. The shared dashboard
-navigation will show the Category link only to Admin users. Direct navigation
-to `/dashboard/categories` by a signed-in non-Admin will redirect to
-`/dashboard`. The route guard is a presentation/access-control layer only; the
-API must continue returning 403 for non-Admin mutation requests.
+navigation and dashboard overview card will show the Category link only to
+Admin users. Direct navigation to `/dashboard/categories` by a signed-in
+non-Admin will redirect to `/dashboard`. The route guard is a
+presentation/access-control layer only; the API must continue returning 403 for
+non-Admin mutation requests.
 
 The Recipe dashboard list remains the current user's own Recipes, including for
 Admin accounts. This work does not introduce an Admin-wide Recipe list.
@@ -105,6 +106,8 @@ duplicate submissions.
   validation/navigation, review, and existing submit/image/concurrency flows.
 - `frontend/src/app/dashboard/dashboard-shell.tsx`: render Category navigation
   only for Admin.
+- `frontend/src/app/dashboard/page.tsx`: render the Category overview card only
+  for Admin.
 - `frontend/src/app/dashboard/layout.tsx` and/or
   `frontend/src/middleware.ts`: provide role-aware access to the Category
   dashboard route while retaining authentication protection for all dashboard

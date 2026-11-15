@@ -102,9 +102,60 @@
   font: 700 12px var(--font-body);
 }
 .buttonSecondary { color: var(--forest); border-color: var(--line); background: var(--color-surface); }
+.prominentActionButton { min-height: 46px; padding: 0 18px; font-size: 14px; }
 .button:hover, .button:focus-visible { background: var(--coral-700); border-color: var(--coral-700); }
 .buttonSecondary:hover, .buttonSecondary:focus-visible { border-color: var(--forest); background: var(--teal-50); }
 .button:disabled, .buttonSecondary:disabled { opacity: .55; cursor: wait; }
+.recipeEditorForm { padding-bottom: 12px; }
+.recipeWizardProgress { display: grid; gap: 10px; margin: 0 0 20px; }
+.recipeWizardProgressLabel { margin: 0; color: var(--forest); font: 700 14px var(--font-body); }
+.recipeWizardTrack { height: 8px; overflow: hidden; border-radius: 999px; background: var(--line); }
+.recipeWizardFill { display: block; height: 100%; border-radius: inherit; background: var(--forest); transition: width 180ms ease; }
+.recipeWizardSteps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.recipeWizardStep { display: grid; min-width: 0; gap: 4px; padding: 8px 10px; border-bottom: 2px solid var(--line); color: var(--muted); font: 600 12px/1.4 var(--font-body); }
+.recipeWizardStep[aria-current="step"] { border-color: var(--tomato); color: var(--forest); }
+.recipeWizardStep[data-completed="true"] { border-color: var(--forest); color: var(--forest); }
+.recipeWizardStepStatus { color: var(--forest); font-size: 10px; }
+.recipeWizardActions {
+  position: sticky;
+  z-index: 5;
+  bottom: 0;
+  width: 100%;
+  justify-content: center;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  box-shadow: 0 -4px 16px rgb(36 49 46 / 8%);
+}
+.tableActions { display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: 10px; white-space: nowrap; }
+.tableActions > a, .tableActions > button {
+  display: inline-flex;
+  min-width: 76px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.ingredientRows { display: grid; gap: 8px; }
+.ingredientRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(100px, .8fr) minmax(100px, .8fr) minmax(0, 1.5fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+.ingredientField { display: grid; min-width: 0; gap: 4px; }
+.ingredientInput { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; padding: 6px 10px; }
+.recipeEditorIconButton {
+  display: inline-flex;
+  width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: none;
+  font-size: 18px;
+}
+.recipeEditorDeleteButton { border-color: transparent; color: var(--color-error); font-size: 24px; }
 .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 17px; }
 .card {
   display: flex;
@@ -129,6 +180,8 @@
 .cardMeta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: auto; color: var(--color-muted); font: 11px var(--font-body); }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0 14px; }
 .toolbar h2 { margin: 0; color: var(--forest); font: 500 25px var(--font-display); }
+.emptyState { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
+.emptyState p { margin: 0; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 22px; color: var(--muted); font: 600 12px var(--font-body); }
 .notice, .error { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--muted); background: var(--color-surface); font: 13px/1.5 var(--font-body); }
 .error { border-left: 3px solid var(--tomato); color: var(--color-error); background: var(--color-error-surface); }
@@ -175,6 +228,7 @@
 .formStack { display: grid; gap: 16px; }
 .table { width: 100%; border-collapse: collapse; background: var(--color-surface); font: 13px var(--font-body); }
 .table th, .table td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+.table th:last-child { text-align: center; }
 .table th { color: var(--forest); background: var(--teal-50); }
 .table a { color: var(--forest); font-weight: 700; }
 .status { color: var(--color-muted); font-size: 11px; }
@@ -191,6 +245,10 @@
   .hero { padding: 52px 22px; }
   .content { padding: 32px 20px 48px; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .recipeWizardSteps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ingredientRow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .ingredientField:first-child { grid-column: 1 / -1; }
+  .ingredientRow > button { grid-column: 2; }
   .detail { padding: 32px 20px 48px; }
   .skeleton-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

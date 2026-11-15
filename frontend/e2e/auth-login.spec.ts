@@ -26,6 +26,62 @@ test.describe("Auth.js credentials and server-side token lifecycle", () => {
     expect(resetResponse.status()).toBe(204);
   });
 
+  test("centers the Culinary Blog brand at the top of the login card", async ({ page }) => {
+    await page.goto("/auth/login");
+
+    const brand = page.getByRole("link", { name: "Culinary Blog, trang chủ" });
+    const card = brand.locator("xpath=../..");
+    const brandBounds = await brand.boundingBox();
+    const cardBounds = await card.boundingBox();
+    expect(brandBounds).not.toBeNull();
+    expect(cardBounds).not.toBeNull();
+    expect(Math.abs(
+      brandBounds!.x + brandBounds!.width / 2 - cardBounds!.x - cardBounds!.width / 2,
+    )).toBeLessThan(3);
+    expect(brandBounds!.y - cardBounds!.y).toBeLessThan(80);
+  });
+
+  test("Google Identity Services callback signs in through the Auth.js UI", async ({ page }) => {
+    await page.addInitScript(() => {
+      const testWindow = window as typeof window & {
+        __gisCallback?: (response: { credential?: string }) => void;
+        google?: {
+          accounts: {
+            id: {
+              initialize: (options: { callback: (response: { credential?: string }) => void }) => void;
+              renderButton: () => void;
+            };
+          };
+        };
+      };
+      testWindow.google = {
+        accounts: {
+          id: {
+            initialize: ({ callback }) => {
+              testWindow.__gisCallback = callback;
+            },
+            renderButton: () => undefined,
+          },
+        },
+      };
+    });
+    await page.route("https://accounts.google.com/**", (route) => route.abort());
+    await page.goto("/auth/login?callbackUrl=%2Fprofile");
+
+    await expect.poll(() =>
+      page.evaluate(() => typeof (window as typeof window & { __gisCallback?: unknown }).__gisCallback),
+    ).toBe("function");
+    await page.evaluate(() =>
+      (window as typeof window & {
+        __gisCallback?: (response: { credential?: string }) => void;
+      }).__gisCallback?.({ credential: "test-google-id-token" }),
+    );
+
+    const callbackUrl = new URL(page.url()).origin + "/";
+    await expect(page).toHaveURL(callbackUrl, { timeout: 30_000 });
+    await expect(page.getByTestId("nav-profile")).toContainText("Google Chef");
+  });
+
   test("email credentials expose only profile data and keep backend tokens out of browser storage", async ({ page }) => {
     await page.goto("/");
 

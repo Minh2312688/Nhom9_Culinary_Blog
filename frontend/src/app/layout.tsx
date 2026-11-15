@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { getSiteUrl } from "@/lib/site-config";
 import { Providers } from "./providers";
+import "@fontsource/be-vietnam-pro/400.css";
+import "@fontsource/be-vietnam-pro/500.css";
+import "@fontsource/be-vietnam-pro/600.css";
+import "@fontsource/be-vietnam-pro/700.css";
 import "./globals.css";
 
 const siteUrl = getSiteUrl();

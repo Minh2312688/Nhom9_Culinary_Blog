@@ -17,15 +17,14 @@ public static class DockerPostgresEnvironment
             var process = Process.Start(new ProcessStartInfo
             {
                 FileName = "docker",
-                Arguments = "info",
+                Arguments = "info --format {{.ServerVersion}}",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             });
 
-            if (process == null) return false;
-            process.WaitForExit(3000);
+            if (process == null || !process.WaitForExit(10_000)) return false;
             return process.ExitCode == 0;
         }
         catch

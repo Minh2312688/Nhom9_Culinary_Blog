@@ -4,13 +4,13 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
+import { signIn, useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { loginApi, googleLoginApi, ApiError } from "@/lib/api";
-import { setAuthTokens, getAccessToken } from "@/lib/auth-store";
 import { Eye, EyeOff, Loader2, AlertCircle, ChefHat, CheckCircle2 } from "lucide-react";
 import { BrandLink } from "../../site-ui";
+import { getLoginCallbackUrl } from "@/lib/auth-redirect";
 
 const loginSchema = z.object({
   email: z.string().email("Địa chỉ email không hợp lệ."),
@@ -19,8 +19,17 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
+function credentialErrorMessage(code: string | undefined, fallback: string): string {
+  if (code === "invalid-credentials") return "Email hoặc mật khẩu không chính xác.";
+  if (code === "account-locked") {
+    return "Tài khoản tạm thời bị khóa do nhiều lần đăng nhập không thành công. Vui lòng thử lại sau 15 phút.";
+  }
+  return fallback;
+}
+
 export default function LoginPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [loginSuccess, setLoginSuccess] = useState(false);
@@ -29,10 +38,9 @@ export default function LoginPage() {
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim();
 
   useEffect(() => {
-    if (getAccessToken()) {
-      router.replace("/");
-    }
-  }, [router]);
+    if (session?.error === "RefreshTokenError") return;
+    if (status === "authenticated") router.replace(getLoginCallbackUrl());
+  }, [router, session?.error, status]);
 
   const {
     register,
@@ -45,23 +53,26 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormData) => {
     setServerError(null);
+    const redirectTo = getLoginCallbackUrl();
     try {
-      const response = await loginApi({
+      const result = await signIn("email-password", {
         email: data.email,
         password: data.password,
+        redirect: false,
+        redirectTo,
       });
-
-      const saved = setAuthTokens(response.accessToken, response.refreshToken);
-      if (!saved) {
-        setServerError("Không thể lưu phiên đăng nhập vào trình duyệt (sessionStorage bị tắt hoặc đầy bộ nhớ).");
+      if (result.error) {
+        setServerError(credentialErrorMessage(
+          result.code,
+          "Đăng nhập không thành công.",
+        ));
         return;
       }
 
       setLoginSuccess(true);
-      router.replace("/");
-    } catch (err) {
-      const apiErr = err as ApiError;
-      setServerError(apiErr.detail || "Đăng nhập không thành công.");
+      router.replace(redirectTo);
+    } catch {
+      setServerError("Đăng nhập không thành công.");
     }
   };
 
@@ -82,17 +93,22 @@ export default function LoginPage() {
             setServerError(null);
             setIsGoogleSubmitting(true);
             try {
-              const authResult = await googleLoginApi(response.credential);
-              const saved = setAuthTokens(authResult.accessToken, authResult.refreshToken);
-              if (!saved) {
-                setServerError("Không thể lưu phiên đăng nhập vào trình duyệt (sessionStorage bị tắt hoặc đầy bộ nhớ).");
+              const result = await signIn("google-id-token", {
+                idToken: response.credential,
+                redirect: false,
+                redirectTo: getLoginCallbackUrl(),
+              });
+              if (result.error) {
+                setServerError(credentialErrorMessage(
+                  result.code,
+                  "Xác thực với Google không thành công.",
+                ));
                 return;
               }
               setLoginSuccess(true);
-              router.replace("/");
-            } catch (err) {
-              const apiErr = err as ApiError;
-              setServerError(apiErr.detail || "Xác thực với Google không thành công.");
+              router.replace(getLoginCallbackUrl());
+            } catch {
+              setServerError("Xác thực với Google không thành công.");
             } finally {
               setIsGoogleSubmitting(false);
             }

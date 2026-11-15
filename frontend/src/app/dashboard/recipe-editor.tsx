@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useFieldArray, useForm } from "react-hook-form";
+import { z } from "zod";
 import {
   createRecipe,
-  getRecipe,
+  getPrivateRecipe,
   getRecipeCategories,
-  getRecipes,
   updateRecipe,
   uploadRecipeImage,
+  uploadRecipeStepImage,
   setPrimaryRecipeImage,
   deleteRecipeImage,
   type RecipeCategory,
@@ -23,13 +26,6 @@ import { getFormErrorDetails, useFeedback } from "../feedback";
 import { ErrorNotice, LoadingSkeleton, SectionTitle } from "../site-ui";
 import styles from "../site-ui.module.css";
 
-interface StructuredIngredient {
-  name: string;
-  quantity: string;
-  unit: string;
-  notes: string;
-}
-
 export interface StructuredStep {
   id?: string;
   stepNumber?: number;
@@ -37,30 +33,8 @@ export interface StructuredStep {
   description: string;
   durationMinutes: number | null;
   imageUrl: string | null;
-}
-
-function parseIngredientsText(text: string): StructuredIngredient[] {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [name, quantity, unit, notes] = line.split("|").map((p) => p.trim());
-      return {
-        name: name || "",
-        quantity: quantity || "",
-        unit: unit || "",
-        notes: notes || "",
-      };
-    });
-}
-
-function serializeIngredients(items: StructuredIngredient[]): string {
-  return items
-    .map((item) =>
-      [item.name, item.quantity, item.unit, item.notes].filter(Boolean).join(" | "),
-    )
-    .join("\n");
+  imageFile?: File | null;
+  imagePreviewUrl?: string | null;
 }
 
 function parseStepsText(text: string): StructuredStep[] {
@@ -74,6 +48,8 @@ function parseStepsText(text: string): StructuredStep[] {
       description,
       durationMinutes: null,
       imageUrl: null,
+      imageFile: null,
+      imagePreviewUrl: null,
     }));
 }
 
@@ -86,12 +62,87 @@ interface ImageEntry {
   orderIndex: number;
 }
 
+type RecipeWizardStep = "general" | "ingredients" | "steps" | "review";
+
+const wizardSteps: { id: RecipeWizardStep; label: string }[] = [
+  { id: "general", label: "Thông tin chung" },
+  { id: "ingredients", label: "Nguyên liệu" },
+  { id: "steps", label: "Các bước chế biến" },
+  { id: "review", label: "Xem lại" },
+];
+
+const generalFields = [
+  "title",
+  "description",
+  "categoryId",
+  "prepTime",
+  "cookTime",
+  "servings",
+  "difficulty",
+] as const;
+const ingredientFormFields = ["ingredients"] as const;
+
+const recipeEditorSchema = z.object({
+  title: z.string().trim().min(5, "Tiêu đề phải có ít nhất 5 ký tự.").max(200, "Tiêu đề không được vượt quá 200 ký tự."),
+  description: z.string().trim(),
+  categoryId: z.string().min(1, "Vui lòng chọn danh mục."),
+  prepTime: z.string().regex(/^\d+$/, "Thời gian chuẩn bị phải là số nguyên không âm."),
+  cookTime: z.string().regex(/^\d+$/, "Thời gian nấu phải là số nguyên không âm."),
+  servings: z.string().regex(/^[1-9]\d*$/, "Khẩu phần phải là số nguyên lớn hơn 0."),
+  difficulty: z.string().refine(
+    (value) => ["Easy", "Medium", "Hard", "Expert"].includes(value),
+    "Vui lòng chọn độ khó hợp lệ.",
+  ),
+  ingredients: z.array(z.object({
+    name: z.string().trim().min(1, "Vui lòng nhập tên nguyên liệu."),
+    quantity: z.string().trim().refine(
+      (value) => value === "" || (Number.isFinite(Number(value)) && Number(value) >= 0),
+      "Số lượng phải là số không âm.",
+    ),
+    unit: z.string(),
+    notes: z.string(),
+  })),
+  steps: z.string(),
+});
+
+type RecipeEditorFormValues = z.infer<typeof recipeEditorSchema>;
+
 export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   const router = useRouter();
   const { showToast } = useFeedback();
   const params = useParams<{ id?: string }>();
   const recipeId = params?.id;
-  const [token, setToken] = useState("");
+  const {
+    control,
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    setError: setFormError,
+    watch,
+    clearErrors,
+    trigger,
+    formState: { errors },
+  } = useForm<RecipeEditorFormValues>({
+    resolver: zodResolver(recipeEditorSchema),
+    mode: "onBlur",
+    defaultValues: {
+      title: "",
+      description: "",
+      categoryId: "",
+      prepTime: "0",
+      cookTime: "0",
+      servings: "2",
+      difficulty: "Easy",
+      ingredients: [],
+      steps: "",
+    },
+  });
+  const {
+    fields: ingredientFields,
+    append: appendIngredient,
+    remove: removeIngredient,
+  } = useFieldArray({ control, name: "ingredients" });
   const [categories, setCategories] = useState<RecipeCategory[]>([]);
   const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -99,16 +150,13 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [isConflict, setIsConflict] = useState(false);
+  const [activeStep, setActiveStep] = useState<RecipeWizardStep>("general");
+  const activeStepIndex = wizardSteps.findIndex((step) => step.id === activeStep);
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [prepTime, setPrepTime] = useState("0");
-  const [cookTime, setCookTime] = useState("0");
-  const [servings, setServings] = useState("2");
-  const [difficulty, setDifficulty] = useState("Easy");
-  const [ingredients, setIngredients] = useState("");
-  const [steps, setSteps] = useState("");
+  const steps = watch("steps");
+  const title = watch("title");
+  const categoryId = watch("categoryId");
+  const formValues = watch();
   const [structuredSteps, setStructuredSteps] = useState<StructuredStep[]>([]);
 
   // Nutrition state
@@ -131,8 +179,17 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   const [pendingImagePreviewUrl, setPendingImagePreviewUrl] = useState<string | null>(null);
   const [createdRecipeId, setCreatedRecipeId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const structuredIngredients = parseIngredientsText(ingredients);
+  const stepPreviewUrlsRef = useRef(new Set<string>());
+  const hasPendingImageUploads = Boolean(
+    pendingImageFile || structuredSteps.some((step) => step.imageFile),
+  );
+  const reviewSteps = structuredSteps.length > 0
+    ? structuredSteps
+    : parseStepsText(formValues.steps);
+  const reviewImageUrl = pendingImagePreviewUrl
+    ?? images.find((image) => image.isPrimary)?.originalUrl
+    ?? images[0]?.originalUrl
+    ?? null;
 
   useEffect(() => {
     if (!pendingImageFile) {
@@ -145,29 +202,45 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     return () => URL.revokeObjectURL(url);
   }, [pendingImageFile]);
 
-  async function loadRecipeData(accessToken: string, signal?: AbortSignal) {
+  useEffect(() => {
+    const currentUrls = new Set(
+      structuredSteps.flatMap((step) => step.imagePreviewUrl ? [step.imagePreviewUrl] : []),
+    );
+    for (const url of stepPreviewUrlsRef.current) {
+      if (!currentUrls.has(url)) URL.revokeObjectURL(url);
+    }
+    stepPreviewUrlsRef.current = currentUrls;
+  }, [structuredSteps]);
+
+  useEffect(() => () => {
+    for (const url of stepPreviewUrlsRef.current) URL.revokeObjectURL(url);
+  }, []);
+
+  async function loadRecipeData(signal?: AbortSignal) {
     const categoryItems = await getRecipeCategories(signal ?? new AbortController().signal);
     setCategories(categoryItems);
     if (editing && recipeId) {
-      const listed = await getRecipes(signal ?? new AbortController().signal, 50, accessToken);
-      const summary = listed.items.find((item) => item.id === recipeId);
-      if (!summary) throw new Error("Không tìm thấy công thức cần chỉnh sửa.");
-      const detail = await getRecipe(summary.slug, signal);
+      const detail = await getPrivateRecipe(recipeId, signal);
       setRecipe(detail);
-      setTitle(detail.title);
-      setDescription(detail.description ?? "");
-      setCategoryId(detail.categoryId);
-      setPrepTime(String(detail.prepTimeMinutes));
-      setCookTime(String(detail.cookTimeMinutes));
-      setServings(String(detail.servings));
-      setDifficulty(detail.difficulty);
-      setIngredients(
-        detail.ingredients
-          .map((item) =>
-            [item.name, item.quantity, item.unit, item.notes].filter(Boolean).join(" | "),
-          )
-          .join("\n"),
-      );
+      reset({
+        title: detail.title,
+        description: detail.description ?? "",
+        categoryId: detail.categoryId,
+        prepTime: String(detail.prepTimeMinutes),
+        cookTime: String(detail.cookTimeMinutes),
+        servings: String(detail.servings),
+        difficulty: detail.difficulty,
+        ingredients: detail.ingredients
+          .slice()
+          .sort((first, second) => first.orderIndex - second.orderIndex)
+          .map((item) => ({
+            name: item.name,
+            quantity: item.quantity === null ? "" : String(item.quantity),
+            unit: item.unit ?? "",
+            notes: item.notes ?? "",
+          })),
+        steps: "",
+      });
 
       if (detail.steps && detail.steps.length > 0) {
         const sorted = detail.steps
@@ -181,12 +254,14 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
             description: st.description ?? "",
             durationMinutes: st.durationMinutes ?? null,
             imageUrl: st.imageUrl ?? null,
+            imageFile: null,
+            imagePreviewUrl: null,
           })),
         );
-        setSteps(sorted.map((item) => item.description).join("\n"));
+        setValue("steps", sorted.map((item) => item.description).join("\n"));
       } else {
         setStructuredSteps([]);
-        setSteps("");
+        setValue("steps", "");
       }
 
       if (detail.nutrition) {
@@ -211,18 +286,11 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
         })),
       );
     } else if (categoryItems.length) {
-      setCategoryId(categoryItems[0].id);
+      setValue("categoryId", categoryItems[0].id);
     }
   }
 
   useEffect(() => {
-    const accessToken = sessionStorage.getItem("culinary_access_token");
-    if (!accessToken) {
-      router.replace("/auth/login");
-      return;
-    }
-    setToken(accessToken);
-
     if (editing && !recipeId) {
       setError("Không thể xác định công thức cần chỉnh sửa.");
       setLoading(false);
@@ -230,9 +298,9 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     }
 
     const controller = new AbortController();
-    async function load(tok: string) {
+    async function load() {
       try {
-        await loadRecipeData(tok, controller.signal);
+        await loadRecipeData(controller.signal);
       } catch (reason) {
         if (!controller.signal.aborted) {
           const message = reason instanceof Error ? reason.message : "Không thể tải dữ liệu.";
@@ -243,7 +311,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
         if (!controller.signal.aborted) setLoading(false);
       }
     }
-    void load(accessToken);
+    void load();
     return () => controller.abort();
   }, [editing, recipeId, router, showToast]);
 
@@ -253,7 +321,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     setError(null);
     setFieldErrors({});
     try {
-      await loadRecipeData(token);
+      await loadRecipeData();
       showToast("Đã tải lại dữ liệu mới nhất.", "success");
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "Không thể tải lại công thức.";
@@ -271,26 +339,32 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
       delete next[field];
       return next;
     });
+    switch (field) {
+      case "title":
+      case "description":
+      case "categoryId":
+      case "difficulty":
+      case "steps":
+        clearErrors(field);
+        break;
+      case "ingredients":
+        clearErrors("ingredients");
+        break;
+      case "prepTimeMinutes":
+        clearErrors("prepTime");
+        break;
+      case "cookTimeMinutes":
+        clearErrors("cookTime");
+        break;
+      case "servings":
+        clearErrors("servings");
+        break;
+    }
     setError(null);
   }
 
-  function updateIngredientRow(index: number, updated: Partial<StructuredIngredient>) {
-    const list = [...structuredIngredients];
-    if (!list[index]) return;
-    list[index] = { ...list[index], ...updated };
-    setIngredients(serializeIngredients(list));
-    clearFieldError("ingredients");
-  }
-
   function addIngredientRow() {
-    const list = [...structuredIngredients, { name: "", quantity: "", unit: "", notes: "" }];
-    setIngredients(serializeIngredients(list) + (ingredients ? "\nMới" : "Mới"));
-    clearFieldError("ingredients");
-  }
-
-  function removeIngredientRow(index: number) {
-    const list = structuredIngredients.filter((_, i) => i !== index);
-    setIngredients(serializeIngredients(list));
+    appendIngredient({ name: "", quantity: "", unit: "", notes: "" });
     clearFieldError("ingredients");
   }
 
@@ -304,6 +378,8 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
         description: "",
         durationMinutes: null,
         imageUrl: null,
+        imageFile: null,
+        imagePreviewUrl: null,
       },
     ]);
     clearFieldError("steps");
@@ -314,6 +390,23 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
       const next = prev.filter((_, i) => i !== index);
       return next.map((st, i) => ({ ...st, stepNumber: i + 1 }));
     });
+    clearFieldError("steps");
+  }
+
+  function handleStepImageSelection(index: number, event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (file && file.size > 5 * 1024 * 1024) {
+      event.target.value = "";
+      setError("Ảnh bước nấu không được vượt quá 5 MB.");
+      showToast("Ảnh bước nấu không được vượt quá 5 MB.", "error");
+      return;
+    }
+    const imagePreviewUrl = file ? URL.createObjectURL(file) : null;
+    setStructuredSteps((current) => current.map((step, stepIndex) =>
+      stepIndex === index
+        ? { ...step, imageFile: file ?? null, imagePreviewUrl }
+        : step,
+    ));
     clearFieldError("steps");
   }
 
@@ -352,6 +445,50 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     showToast("Đã đồng bộ các bước từ văn bản.", "success");
   }
 
+  async function advanceWizard() {
+    if (activeStep === "general") {
+      if (await trigger(generalFields, { shouldFocus: true })) {
+        setActiveStep("ingredients");
+      }
+      return;
+    }
+
+    if (activeStep === "ingredients") {
+      if (await trigger(ingredientFormFields, { shouldFocus: true })) {
+        setActiveStep("steps");
+      }
+      return;
+    }
+
+    if (activeStep === "steps") {
+      const invalidIndex = structuredSteps.findIndex((step) => !step.description.trim());
+      if (invalidIndex >= 0) {
+        setFormError("steps", {
+          type: "manual",
+          message: "Vui lòng nhập mô tả cho từng bước.",
+        });
+        document.getElementById(`step-desc-${invalidIndex}`)?.focus();
+        return;
+      }
+
+      const parsedSteps = parseStepsText(steps);
+      if (parsedSteps.some((step) => !step.description.trim())) {
+        setFormError("steps", {
+          type: "manual",
+          message: "Vui lòng nhập mô tả cho từng bước.",
+        });
+        document.getElementById("steps")?.focus();
+        return;
+      }
+      setActiveStep("review");
+    }
+  }
+
+  function goToPreviousStep() {
+    const index = wizardSteps.findIndex((step) => step.id === activeStep);
+    if (index > 0) setActiveStep(wizardSteps[index - 1].id);
+  }
+
   async function handleImageUpload(file: File) {
     if (!recipeId) {
       showToast("Hãy lưu bản nháp trước để có thể tải ảnh lên.", "error");
@@ -368,7 +505,6 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     setUploadingImage(true);
     try {
       const result = await uploadRecipeImage(
-        token,
         recipeId,
         file,
         imageSetPrimary,
@@ -404,7 +540,6 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     setUploadingImage(true);
     try {
       const result = await uploadRecipeImage(
-        token,
         targetRecipeId,
         pendingImageFile,
         imageSetPrimary,
@@ -419,7 +554,6 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
         orderIndex: current.length,
       }]);
       setPendingImageFile(null);
-      setCreatedRecipeId(null);
       setImageAltText("");
       setImageSetPrimary(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -443,17 +577,44 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     setError(null);
   }
 
+  async function uploadPendingStepImages(targetRecipeId: string, savedSteps?: RecipeStep[]) {
+    for (let index = 0; index < structuredSteps.length; index += 1) {
+      const step = structuredSteps[index];
+      if (!step.imageFile) continue;
+
+      const stepId = step.id ?? savedSteps?.[index]?.id;
+      if (!stepId) {
+        throw new Error(`Không xác định được bước ${index + 1} để tải ảnh lên.`);
+      }
+
+      const updatedStep = await uploadRecipeStepImage(targetRecipeId, stepId, step.imageFile);
+      setStructuredSteps((current) => current.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+            ...item,
+            id: stepId,
+            imageUrl: updatedStep.imageUrl,
+            imageFile: null,
+            imagePreviewUrl: null,
+          }
+          : item,
+      ));
+    }
+  }
+
   async function retryPendingImageUpload() {
     if (!createdRecipeId) return;
     setSaving(true);
     setError(null);
     try {
-      await uploadPendingImage(createdRecipeId);
+      if (pendingImageFile) await uploadPendingImage(createdRecipeId);
+      await uploadPendingStepImages(createdRecipeId);
+      setCreatedRecipeId(null);
       showToast("Ảnh đã được tải lên.", "success");
       router.push("/dashboard/recipes");
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "Không thể tải ảnh.";
-      setError(`Bản nháp đã lưu, nhưng ảnh chưa tải lên. ${message}`);
+      setError(`Công thức đã lưu, nhưng ảnh chưa tải lên. ${message}`);
       showToast(message, "error");
     } finally {
       setSaving(false);
@@ -463,7 +624,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   async function handleSetPrimary(imageId: string) {
     if (!recipeId) return;
     try {
-      await setPrimaryRecipeImage(token, recipeId, imageId);
+      await setPrimaryRecipeImage(recipeId, imageId);
       setImages((prev) => prev.map((img) => ({ ...img, isPrimary: img.id === imageId })));
       showToast("Đã đặt ảnh chính.", "success");
     } catch (reason) {
@@ -474,7 +635,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   async function handleDeleteImage(imageId: string) {
     if (!recipeId || !confirm("Xóa ảnh này?")) return;
     try {
-      await deleteRecipeImage(token, recipeId, imageId);
+      await deleteRecipeImage(recipeId, imageId);
       setImages((prev) => prev.filter((img) => img.id !== imageId));
       showToast("Đã xóa ảnh.", "success");
     } catch (reason) {
@@ -482,14 +643,20 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     }
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function onSubmit(values: RecipeEditorFormValues) {
+    if (editing && (!recipe || !recipeId)) {
+      const message = error ?? "Không thể lưu khi chưa tải được công thức cần chỉnh sửa.";
+      setError(message);
+      showToast(message, "error");
+      return;
+    }
+
     setSaving(true);
     setError(null);
     setFieldErrors({});
     setIsConflict(false);
 
-    if (createdRecipeId && pendingImageFile) {
+    if (createdRecipeId) {
       await retryPendingImageUpload();
       return;
     }
@@ -510,7 +677,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                   : null,
               imageUrl: st.imageUrl?.trim() || null,
             }))
-        : steps
+        : values.steps
             .split("\n")
             .map((desc) => desc.trim())
             .filter(Boolean)
@@ -523,48 +690,50 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
             }));
 
     const payload: RecipeInput = {
-      title: title.trim(),
-      description: description.trim() || null,
-      categoryId,
-      prepTimeMinutes: Number(prepTime),
-      cookTimeMinutes: Number(cookTime),
-      servings: Number(servings),
-      difficulty,
-      ingredients: ingredients
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((line, orderIndex) => {
-          const [name, quantityText, unit, notes] = line.split("|").map((part) => part.trim());
-          return {
-            name,
-            quantity:
-              quantityText && Number.isFinite(Number(quantityText)) ? Number(quantityText) : null,
-            unit: unit || null,
-            notes: notes || null,
-            orderIndex,
-          };
-        }),
+      title: values.title,
+      description: values.description || null,
+      categoryId: values.categoryId,
+      prepTimeMinutes: Number(values.prepTime),
+      cookTimeMinutes: Number(values.cookTime),
+      servings: Number(values.servings),
+      difficulty: values.difficulty,
+      ingredients: values.ingredients
+        .filter((ingredient) => ingredient.name.trim())
+        .map((ingredient, orderIndex) => ({
+          name: ingredient.name.trim(),
+          quantity: ingredient.quantity ? Number(ingredient.quantity) : null,
+          unit: ingredient.unit.trim() || null,
+          notes: ingredient.notes.trim() || null,
+          orderIndex,
+        })),
       steps: resolvedSteps,
       nutrition: includeNutrition ? nutrition : null,
     };
 
     try {
+      let savedRecipe: RecipeDetail;
       if (editing && recipe && recipeId) {
-        await updateRecipe(token, recipeId, { ...payload, rowVersion: recipe.rowVersion });
+        savedRecipe = await updateRecipe(recipeId, { ...payload, rowVersion: recipe.rowVersion });
       } else {
-        const createdRecipe = await createRecipe(token, payload);
-        if (pendingImageFile) {
-          setCreatedRecipeId(createdRecipe.id);
-          try {
-            await uploadPendingImage(createdRecipe.id);
-          } catch (reason) {
-            const message = reason instanceof Error ? reason.message : "Không thể tải ảnh.";
-            setError(`Bản nháp đã lưu, nhưng ảnh chưa tải lên. ${message}`);
-            showToast(message, "error");
-            setSaving(false);
-            return;
-          }
+        savedRecipe = await createRecipe(payload);
+      }
+
+      setStructuredSteps((current) => current.map((step, index) => ({
+        ...step,
+        id: savedRecipe.steps[index]?.id ?? step.id,
+      })));
+      if (hasPendingImageUploads) {
+        setCreatedRecipeId(savedRecipe.id);
+        try {
+          if (pendingImageFile) await uploadPendingImage(savedRecipe.id);
+          await uploadPendingStepImages(savedRecipe.id, savedRecipe.steps);
+          setCreatedRecipeId(null);
+        } catch (reason) {
+          const message = reason instanceof Error ? reason.message : "Không thể tải ảnh.";
+          setError(`Công thức đã lưu, nhưng ảnh chưa tải lên. ${message}`);
+          showToast(message, "error");
+          setSaving(false);
+          return;
         }
       }
       showToast(editing ? "Đã cập nhật công thức." : "Đã lưu bản nháp.", "success");
@@ -596,13 +765,26 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
       ]);
       setFieldErrors(details.fieldErrors);
       setError(details.summary);
+      const invalidFields = Object.keys(details.fieldErrors);
+      if (invalidFields.some((field) => field === "ingredients" || field.startsWith("ingredients."))) {
+        setActiveStep("ingredients");
+      } else if (invalidFields.includes("steps")) {
+        setActiveStep("steps");
+      } else if (invalidFields.length > 0) {
+        setActiveStep("general");
+      }
       showToast(reason instanceof Error ? reason.message : "Không thể lưu công thức.", "error");
       setSaving(false);
     }
   }
 
-  function renderFieldError(field: string) {
-    const message = fieldErrors[field]?.join(" ");
+  function renderFieldError(
+    field: keyof RecipeEditorFormValues | "prepTimeMinutes" | "cookTimeMinutes",
+  ) {
+    const formField = field === "prepTimeMinutes" ? "prepTime"
+      : field === "cookTimeMinutes" ? "cookTime"
+      : field;
+    const message = fieldErrors[field]?.join(" ") ?? errors[formField]?.message;
     return message ? (
       <span className={styles.fieldError} id={`${field}-error`} role="alert">
         {message}
@@ -651,24 +833,57 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
           </div>
         </div>
       )}
-      {!loading && (
-        <form className={styles.form} onSubmit={(e) => void onSubmit(e)} noValidate>
+      {!loading && (!editing || recipe !== null) && (
+        <form className={styles.recipeEditorForm} onSubmit={handleSubmit(onSubmit)} noValidate>
           {error && !isConflict && <ErrorNotice><span data-error-summary>{error}</span></ErrorNotice>}
 
+          <nav className={styles.recipeWizardProgress} aria-label="Tiến trình tạo công thức">
+            <p className={styles.recipeWizardProgressLabel} aria-live="polite">
+              Bước {activeStepIndex + 1} / {wizardSteps.length}: {wizardSteps[activeStepIndex].label}
+            </p>
+            <div
+              className={styles.recipeWizardTrack}
+              role="progressbar"
+              aria-label="Tiến độ công thức"
+              aria-valuemin={0}
+              aria-valuemax={wizardSteps.length}
+              aria-valuenow={activeStepIndex + 1}
+            >
+              <span
+                className={styles.recipeWizardFill}
+                style={{ width: `${((activeStepIndex + 1) / wizardSteps.length) * 100}%` }}
+              />
+            </div>
+            <ol className={styles.recipeWizardSteps}>
+              {wizardSteps.map((step, index) => (
+                <li
+                  key={step.id}
+                  aria-current={activeStep === step.id ? "step" : undefined}
+                  data-completed={index < activeStepIndex ? "true" : undefined}
+                  className={styles.recipeWizardStep}
+                  data-testid={`recipe-wizard-step-${step.id}`}
+                >
+                  <span>{index + 1}. {step.label}</span>
+                  {index < activeStepIndex && (
+                    <span className={styles.recipeWizardStepStatus}>Đã hoàn thành</span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </nav>
+
+          {activeStep === "general" && (
+            <section aria-label="Thông tin chung" style={{ display: "grid", gap: "16px" }}>
           <label className={styles.field}>
             Tiêu đề
             <input
               id="title"
-              aria-invalid={Boolean(fieldErrors.title)}
-              aria-describedby={fieldErrors.title ? "title-error" : undefined}
+              aria-invalid={Boolean(fieldErrors.title || errors.title)}
+              aria-describedby={fieldErrors.title || errors.title ? "title-error" : undefined}
               required
               minLength={5}
               maxLength={200}
-              value={title}
-              onChange={(event) => {
-                setTitle(event.target.value);
-                clearFieldError("title");
-              }}
+              {...register("title", { onChange: () => clearFieldError("title") })}
             />
             {renderFieldError("title")}
           </label>
@@ -676,13 +891,9 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
             Mô tả
             <textarea
               id="description"
-              aria-invalid={Boolean(fieldErrors.description)}
-              aria-describedby={fieldErrors.description ? "description-error" : undefined}
-              value={description}
-              onChange={(event) => {
-                setDescription(event.target.value);
-                clearFieldError("description");
-              }}
+              aria-invalid={Boolean(fieldErrors.description || errors.description)}
+              aria-describedby={fieldErrors.description || errors.description ? "description-error" : undefined}
+              {...register("description", { onChange: () => clearFieldError("description") })}
             />
             {renderFieldError("description")}
           </label>
@@ -691,14 +902,10 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
               Danh mục
               <select
                 id="categoryId"
-                aria-invalid={Boolean(fieldErrors.categoryId)}
-                aria-describedby={fieldErrors.categoryId ? "categoryId-error" : undefined}
+                aria-invalid={Boolean(fieldErrors.categoryId || errors.categoryId)}
+                aria-describedby={fieldErrors.categoryId || errors.categoryId ? "categoryId-error" : undefined}
                 required
-                value={categoryId}
-                onChange={(event) => {
-                  setCategoryId(event.target.value);
-                  clearFieldError("categoryId");
-                }}
+                {...register("categoryId", { onChange: () => clearFieldError("categoryId") })}
               >
                 <option value="">Chọn danh mục</option>
                 {categories.map((item) => (
@@ -713,13 +920,9 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
               Độ khó
               <select
                 id="difficulty"
-                aria-invalid={Boolean(fieldErrors.difficulty)}
-                aria-describedby={fieldErrors.difficulty ? "difficulty-error" : undefined}
-                value={difficulty}
-                onChange={(event) => {
-                  setDifficulty(event.target.value);
-                  clearFieldError("difficulty");
-                }}
+                aria-invalid={Boolean(fieldErrors.difficulty || errors.difficulty)}
+                aria-describedby={fieldErrors.difficulty || errors.difficulty ? "difficulty-error" : undefined}
+                {...register("difficulty", { onChange: () => clearFieldError("difficulty") })}
               >
                 <option value="Easy">Dễ</option>
                 <option value="Medium">Trung bình</option>
@@ -732,16 +935,12 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
               Thời gian chuẩn bị (phút)
               <input
                 id="prepTimeMinutes"
-                aria-invalid={Boolean(fieldErrors.prepTimeMinutes)}
-                aria-describedby={fieldErrors.prepTimeMinutes ? "prepTimeMinutes-error" : undefined}
+                aria-invalid={Boolean(fieldErrors.prepTimeMinutes || errors.prepTime)}
+                aria-describedby={fieldErrors.prepTimeMinutes || errors.prepTime ? "prepTimeMinutes-error" : undefined}
                 type="number"
                 min="0"
                 required
-                value={prepTime}
-                onChange={(event) => {
-                  setPrepTime(event.target.value);
-                  clearFieldError("prepTimeMinutes");
-                }}
+                {...register("prepTime", { onChange: () => clearFieldError("prepTimeMinutes") })}
               />
               {renderFieldError("prepTimeMinutes")}
             </label>
@@ -749,16 +948,12 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
               Thời gian nấu (phút)
               <input
                 id="cookTimeMinutes"
-                aria-invalid={Boolean(fieldErrors.cookTimeMinutes)}
-                aria-describedby={fieldErrors.cookTimeMinutes ? "cookTimeMinutes-error" : undefined}
+                aria-invalid={Boolean(fieldErrors.cookTimeMinutes || errors.cookTime)}
+                aria-describedby={fieldErrors.cookTimeMinutes || errors.cookTime ? "cookTimeMinutes-error" : undefined}
                 type="number"
                 min="0"
                 required
-                value={cookTime}
-                onChange={(event) => {
-                  setCookTime(event.target.value);
-                  clearFieldError("cookTimeMinutes");
-                }}
+                {...register("cookTime", { onChange: () => clearFieldError("cookTimeMinutes") })}
               />
               {renderFieldError("cookTimeMinutes")}
             </label>
@@ -766,125 +961,112 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
               Khẩu phần
               <input
                 id="servings"
-                aria-invalid={Boolean(fieldErrors.servings)}
-                aria-describedby={fieldErrors.servings ? "servings-error" : undefined}
+                aria-invalid={Boolean(fieldErrors.servings || errors.servings)}
+                aria-describedby={fieldErrors.servings || errors.servings ? "servings-error" : undefined}
                 type="number"
                 min="1"
                 required
-                value={servings}
-                onChange={(event) => {
-                  setServings(event.target.value);
-                  clearFieldError("servings");
-                }}
+                {...register("servings", { onChange: () => clearFieldError("servings") })}
               />
               {renderFieldError("servings")}
             </label>
           </div>
+            </section>
+          )}
 
-          <label className={styles.field}>
-            Nguyên liệu (mỗi dòng: tên | số lượng | đơn vị | ghi chú)
-            <textarea
-              id="ingredients"
-              aria-invalid={Boolean(fieldErrors.ingredients)}
-              aria-describedby={fieldErrors.ingredients ? "ingredients-error" : undefined}
-              value={ingredients}
-              onChange={(event) => {
-                setIngredients(event.target.value);
-                clearFieldError("ingredients");
-              }}
-              placeholder={"Thịt bò | 300 | g\nHành lá"}
-            />
-            {renderFieldError("ingredients")}
-          </label>
-
-          {structuredIngredients.length > 0 && (
-            <div
-              style={{
-                display: "grid",
-                gap: "8px",
-                background: "var(--color-surface)",
-                padding: "12px",
-                borderRadius: "6px",
-                border: "1px solid var(--line)",
-              }}
-            >
-              <div
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+          {activeStep === "ingredients" && (
+          <section aria-labelledby="ingredients-heading">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+              <h2 id="ingredients-heading" style={{ fontSize: "16px" }}>Nguyên liệu</h2>
+              <button
+                type="button"
+                className={`${styles.buttonSecondary} ${styles.prominentActionButton}`}
+                onClick={addIngredientRow}
               >
-                <span
-                  style={{ fontWeight: 600, fontSize: "12px", color: "var(--forest)" }}
-                >
-                  Bảng chi tiết nguyên liệu ({structuredIngredients.length})
-                </span>
-                <button
-                  type="button"
-                  className={styles.buttonSecondary}
-                  style={{ minHeight: "30px", fontSize: "11px", padding: "0 8px" }}
-                  onClick={addIngredientRow}
-                >
-                  + Thêm dòng
-                </button>
-              </div>
-              {structuredIngredients.map((ing, idx) => (
+                Thêm nguyên liệu
+              </button>
+            </div>
+            {ingredientFields.length === 0 && (
+              <p className={styles.notice}>Chưa có nguyên liệu. Thêm dòng để bắt đầu.</p>
+            )}
+            <div
+              className={styles.ingredientRows}
+              aria-invalid={Boolean(fieldErrors.ingredients || errors.ingredients)}
+              aria-describedby={fieldErrors.ingredients || errors.ingredients ? "ingredients-error" : undefined}
+            >
+              {ingredientFields.map((field, index) => (
                 <div
-                  key={idx}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "2fr 1fr 1fr 2fr auto",
-                    gap: "8px",
-                    alignItems: "center",
-                  }}
+                  key={field.id}
+                  data-testid={`ingredient-row-${index}`}
+                  className={styles.ingredientRow}
                 >
-                  <input
-                    aria-label={`Tên nguyên liệu ${idx + 1}`}
-                    placeholder="Tên nguyên liệu"
-                    value={ing.name}
-                    onChange={(e) => updateIngredientRow(idx, { name: e.target.value })}
-                    style={{ minHeight: "34px", padding: "4px 8px", fontSize: "12px" }}
-                  />
-                  <input
-                    aria-label={`Định lượng ${idx + 1}`}
-                    placeholder="Số lượng"
-                    value={ing.quantity}
-                    onChange={(e) => updateIngredientRow(idx, { quantity: e.target.value })}
-                    style={{ minHeight: "34px", padding: "4px 8px", fontSize: "12px" }}
-                  />
-                  <input
-                    aria-label={`Đơn vị ${idx + 1}`}
-                    placeholder="Đơn vị"
-                    value={ing.unit}
-                    onChange={(e) => updateIngredientRow(idx, { unit: e.target.value })}
-                    style={{ minHeight: "34px", padding: "4px 8px", fontSize: "12px" }}
-                  />
-                  <input
-                    aria-label={`Ghi chú ${idx + 1}`}
-                    placeholder="Ghi chú"
-                    value={ing.notes}
-                    onChange={(e) => updateIngredientRow(idx, { notes: e.target.value })}
-                    style={{ minHeight: "34px", padding: "4px 8px", fontSize: "12px" }}
-                  />
+                  <div className={styles.ingredientField}>
+                    <input
+                      className={styles.ingredientInput}
+                      aria-label={`Tên nguyên liệu ${index + 1}`}
+                      aria-invalid={Boolean(errors.ingredients?.[index]?.name)}
+                      aria-describedby={errors.ingredients?.[index]?.name ? `ingredient-name-${index}-error` : undefined}
+                      placeholder="Tên nguyên liệu"
+                      {...register(`ingredients.${index}.name`, {
+                        onChange: () => clearFieldError("ingredients"),
+                      })}
+                    />
+                    {errors.ingredients?.[index]?.name?.message && (
+                      <span
+                        className={styles.fieldError}
+                        id={`ingredient-name-${index}-error`}
+                        role="alert"
+                      >
+                        {errors.ingredients[index]?.name?.message}
+                      </span>
+                    )}
+                  </div>
+                  <div className={styles.ingredientField}>
+                    <input
+                      className={styles.ingredientInput}
+                      aria-label={`Số lượng nguyên liệu ${index + 1}`}
+                      placeholder="Số lượng"
+                      inputMode="decimal"
+                      {...register(`ingredients.${index}.quantity`, {
+                        onChange: () => clearFieldError("ingredients"),
+                      })}
+                    />
+                  </div>
+                  <div className={styles.ingredientField}>
+                    <input
+                      className={styles.ingredientInput}
+                      aria-label={`Đơn vị nguyên liệu ${index + 1}`}
+                      placeholder="Đơn vị"
+                      {...register(`ingredients.${index}.unit`)}
+                    />
+                  </div>
+                  <div className={styles.ingredientField}>
+                    <input
+                      className={styles.ingredientInput}
+                      aria-label={`Ghi chú nguyên liệu ${index + 1}`}
+                      placeholder="Ghi chú"
+                      {...register(`ingredients.${index}.notes`)}
+                    />
+                  </div>
                   <button
                     type="button"
-                    title="Xóa dòng"
-                    aria-label={`Xóa nguyên liệu ${idx + 1}`}
-                    style={{
-                      color: "var(--color-error)",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      fontSize: "16px",
-                      padding: "4px",
-                    }}
-                    onClick={() => removeIngredientRow(idx)}
+                    className={`${styles.buttonSecondary} ${styles.prominentActionButton}`}
+                    aria-label={`Xóa nguyên liệu ${index + 1}`}
+                    onClick={() => removeIngredient(index)}
                   >
-                    ×
+                    Xóa
                   </button>
                 </div>
               ))}
             </div>
+            {renderFieldError("ingredients")}
+          </section>
           )}
 
           {/* Structured Steps Section */}
+          {activeStep === "steps" && (
+          <section aria-labelledby="cooking-steps-heading" style={{ display: "grid", gap: "12px" }}>
+          <h2 id="cooking-steps-heading" style={{ fontSize: "16px" }}>Các bước chế biến</h2>
           <div
             style={{
               display: "grid",
@@ -934,8 +1116,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                 <button
                   id="add-step-button"
                   type="button"
-                  className={styles.buttonSecondary}
-                  style={{ minHeight: "30px", fontSize: "11px", padding: "0 10px" }}
+                  className={`${styles.buttonSecondary} ${styles.prominentActionButton}`}
                   onClick={addStepRow}
                 >
                   + Thêm bước nấu
@@ -981,18 +1162,14 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                     <button
                       type="button"
                       data-testid={`step-move-up-${idx}`}
+                      className={styles.recipeEditorIconButton}
                       title="Di chuyển lên"
                       aria-label={`Di chuyển bước ${idx + 1} lên`}
                       disabled={idx === 0}
                       onClick={() => moveStep(idx, -1)}
                       style={{
-                        padding: "2px 8px",
-                        fontSize: "12px",
                         cursor: idx === 0 ? "not-allowed" : "pointer",
                         opacity: idx === 0 ? 0.3 : 1,
-                        border: "1px solid var(--line)",
-                        borderRadius: "4px",
-                        background: "none",
                       }}
                     >
                       ↑
@@ -1000,18 +1177,14 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                     <button
                       type="button"
                       data-testid={`step-move-down-${idx}`}
+                      className={styles.recipeEditorIconButton}
                       title="Di chuyển xuống"
                       aria-label={`Di chuyển bước ${idx + 1} xuống`}
                       disabled={idx === structuredSteps.length - 1}
                       onClick={() => moveStep(idx, 1)}
                       style={{
-                        padding: "2px 8px",
-                        fontSize: "12px",
                         cursor: idx === structuredSteps.length - 1 ? "not-allowed" : "pointer",
                         opacity: idx === structuredSteps.length - 1 ? 0.3 : 1,
-                        border: "1px solid var(--line)",
-                        borderRadius: "4px",
-                        background: "none",
                       }}
                     >
                       ↓
@@ -1019,16 +1192,9 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                     <button
                       type="button"
                       data-testid={`step-delete-${idx}`}
+                      className={`${styles.recipeEditorIconButton} ${styles.recipeEditorDeleteButton}`}
                       title="Xóa bước"
                       aria-label={`Xóa bước ${idx + 1}`}
-                      style={{
-                        color: "var(--color-error)",
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        fontSize: "16px",
-                        padding: "2px 6px",
-                      }}
                       onClick={() => removeStepRow(idx)}
                     >
                       ×
@@ -1076,6 +1242,8 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                   id={`step-desc-${idx}`}
                   data-testid={`step-desc-${idx}`}
                   aria-label={`Nội dung bước ${idx + 1}`}
+                  aria-invalid={Boolean(fieldErrors.steps || errors.steps)}
+                  aria-describedby={fieldErrors.steps || errors.steps ? "steps-error" : undefined}
                   placeholder="Mô tả chi tiết các thao tác thực hiện trong bước này..."
                   required
                   rows={2}
@@ -1084,15 +1252,23 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                   style={{ padding: "6px 8px", fontSize: "12px" }}
                 />
 
-                <input
-                  id={`step-image-${idx}`}
-                  data-testid={`step-image-${idx}`}
-                  aria-label={`URL hình ảnh bước ${idx + 1}`}
-                  placeholder="URL ảnh minh họa bước nấu (tùy chọn)"
-                  value={st.imageUrl ?? ""}
-                  onChange={(e) => updateStepField(idx, "imageUrl", e.target.value || null)}
-                  style={{ minHeight: "32px", padding: "4px 8px", fontSize: "12px" }}
-                />
+                <label className={styles.field} htmlFor={`step-image-file-${idx}`}>
+                  Ảnh bước nấu {idx + 1}
+                  <input
+                    id={`step-image-file-${idx}`}
+                    data-testid={`step-image-file-${idx}`}
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => handleStepImageSelection(idx, event)}
+                  />
+                </label>
+                {(st.imagePreviewUrl || st.imageUrl) && (
+                  <img
+                    className={styles.recipeImage}
+                    src={st.imagePreviewUrl ?? st.imageUrl ?? undefined}
+                    alt={`Ảnh bước nấu ${idx + 1}`}
+                  />
+                )}
               </div>
             ))}
 
@@ -1101,19 +1277,19 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                 Nhập nhanh các bước chế biến (mỗi bước một dòng)
                 <textarea
                   id="steps"
-                  aria-invalid={Boolean(fieldErrors.steps)}
-                  aria-describedby={fieldErrors.steps ? "steps-error" : undefined}
-                  value={steps}
-                  onChange={(event) => {
-                    setSteps(event.target.value);
-                    clearFieldError("steps");
-                  }}
+                  aria-invalid={Boolean(fieldErrors.steps || errors.steps)}
+                  aria-describedby={fieldErrors.steps || errors.steps ? "steps-error" : undefined}
+                  {...register("steps", { onChange: () => clearFieldError("steps") })}
                   placeholder={"Sơ chế nguyên liệu.\nNấu và nêm nếm.\nTrình bày ra đĩa."}
                 />
               </label>
             )}
           </div>
+          </section>
+          )}
 
+          {activeStep === "general" && (
+          <section aria-label="Thông tin chung" style={{ display: "grid", gap: "16px" }}>
           {/* Nutrition section */}
           <div
             style={{
@@ -1405,7 +1581,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                 />
               )}
               {uploadingImage && <span role="status">Đang tải ảnh lên...</span>}
-              {createdRecipeId && pendingImageFile && (
+              {createdRecipeId && hasPendingImageUploads && (
                 <button
                   className={styles.buttonSecondary}
                   type="button"
@@ -1420,11 +1596,123 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
               </p>
             </section>
           )}
+          </section>
+          )}
 
-          <div className={styles.actions}>
-            <button className={styles.button} type="submit" disabled={saving || !categoryId}>
-              {saving ? "Đang lưu..." : "Lưu bản nháp"}
-            </button>
+          {activeStep === "review" && (
+            <section aria-labelledby="recipe-review-heading" style={{ display: "grid", gap: "12px" }}>
+              <h2 id="recipe-review-heading" style={{ fontSize: "18px" }}>Xem lại công thức</h2>
+              <dl style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "8px 12px" }}>
+                <dt>Tiêu đề</dt><dd>{formValues.title}</dd>
+                <dt>Mô tả</dt><dd>{formValues.description || "—"}</dd>
+                <dt>Danh mục</dt>
+                <dd>{categories.find((item) => item.id === formValues.categoryId)?.name ?? "—"}</dd>
+                <dt>Độ khó</dt><dd>{formValues.difficulty}</dd>
+                <dt>Thời gian chuẩn bị</dt><dd>{formValues.prepTime} phút</dd>
+                <dt>Thời gian nấu</dt><dd>{formValues.cookTime} phút</dd>
+                <dt>Khẩu phần</dt><dd>{formValues.servings}</dd>
+              </dl>
+
+              <section aria-labelledby="review-ingredients-heading">
+                <h3 id="review-ingredients-heading">Nguyên liệu</h3>
+                {formValues.ingredients.filter((ingredient) => ingredient.name.trim()).length > 0 ? (
+                  <ul>
+                    {formValues.ingredients
+                      .filter((ingredient) => ingredient.name.trim())
+                      .map((ingredient, index) => (
+                        <li key={`${ingredient.name}-${index}`}>
+                          {[ingredient.quantity, ingredient.unit, ingredient.name]
+                            .filter(Boolean)
+                            .join(" ")}
+                          {ingredient.notes.trim() ? ` (${ingredient.notes.trim()})` : ""}
+                        </li>
+                      ))}
+                  </ul>
+                ) : <p>Chưa có nguyên liệu.</p>}
+              </section>
+
+              <section aria-labelledby="review-steps-heading">
+                <h3 id="review-steps-heading">Các bước chế biến</h3>
+                {reviewSteps.length > 0 ? (
+                  <ol>
+                    {reviewSteps.map((step, index) => (
+                      <li key={`${step.id ?? "step"}-${index}`}>
+                        {step.title.trim() && <strong>{step.title.trim()}: </strong>}
+                        {step.description}
+                      </li>
+                    ))}
+                  </ol>
+                ) : <p>Chưa có bước chế biến.</p>}
+              </section>
+
+              <section aria-labelledby="review-nutrition-heading">
+                <h3 id="review-nutrition-heading">Dinh dưỡng</h3>
+                {includeNutrition ? (
+                  <p>
+                    {nutrition.calories} kcal · {nutrition.protein} g protein ·{" "}
+                    {nutrition.carbohydrates} g carbs · {nutrition.fat} g chất béo ·{" "}
+                    {nutrition.fiber} g chất xơ · {nutrition.sodium} mg natri
+                  </p>
+                ) : <p>Không bao gồm thông tin dinh dưỡng.</p>}
+              </section>
+
+              <section aria-labelledby="review-image-heading">
+                <h3 id="review-image-heading">Ảnh công thức</h3>
+                {reviewImageUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    className={styles.recipeImage}
+                    src={reviewImageUrl}
+                    alt={imageAltText || images.find((image) => image.isPrimary)?.altText || formValues.title}
+                  />
+                ) : <p>Chưa chọn ảnh.</p>}
+              </section>
+              {createdRecipeId && hasPendingImageUploads && (
+                <button
+                  className={styles.buttonSecondary}
+                  type="button"
+                  onClick={() => void retryPendingImageUpload()}
+                  disabled={saving || uploadingImage}
+                >
+                  Thử tải ảnh lại
+                </button>
+              )}
+            </section>
+          )}
+
+          <div className={`${styles.actions} ${styles.recipeWizardActions}`}>
+            {activeStep !== "general" && (
+              <button
+                className={styles.buttonSecondary}
+                type="button"
+                onClick={goToPreviousStep}
+              >
+                Quay lại
+              </button>
+            )}
+            {(activeStep === "general" || activeStep === "ingredients") && (
+              <button
+                className={styles.button}
+                type="button"
+                onClick={() => void advanceWizard()}
+              >
+                Tiếp theo
+              </button>
+            )}
+            {activeStep === "steps" && (
+              <button
+                className={styles.button}
+                type="button"
+                onClick={() => void advanceWizard()}
+              >
+                Xem lại
+              </button>
+            )}
+            {activeStep === "review" && (
+              <button className={styles.button} type="submit" disabled={saving || !categoryId}>
+                {saving ? "Đang lưu..." : editing ? "Cập nhật công thức" : "Tạo bản nháp"}
+              </button>
+            )}
             <Link className={styles.buttonSecondary} href="/dashboard/recipes">
               Hủy
             </Link>

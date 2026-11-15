@@ -19,6 +19,10 @@ public sealed class RecipeStepEndpointsTests : IClassFixture<CustomAuthWebApplic
         var recipeId = Guid.NewGuid();
         var stepId = Guid.NewGuid();
         var body = StepRequest();
+        using var imageContent = new MultipartFormDataContent();
+        using var image = new ByteArrayContent([1, 2, 3]);
+        image.Headers.ContentType = new MediaTypeHeaderValue("image/webp");
+        imageContent.Add(image, "file", "step.webp");
 
         Assert.Equal(HttpStatusCode.Unauthorized,
             (await client.PostAsJsonAsync($"/api/v1/recipes/{recipeId}/steps", body)).StatusCode);
@@ -26,6 +30,8 @@ public sealed class RecipeStepEndpointsTests : IClassFixture<CustomAuthWebApplic
             (await client.PutAsJsonAsync($"/api/v1/recipes/{recipeId}/steps/{stepId}", body)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized,
             (await client.DeleteAsync($"/api/v1/recipes/{recipeId}/steps/{stepId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await client.PostAsync($"/api/v1/recipes/{recipeId}/steps/{stepId}/image", imageContent)).StatusCode);
     }
 
     [Fact]

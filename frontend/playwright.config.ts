@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 1,
   reporter: "line",
   use: {
-    baseURL: "http://127.0.0.1:3001",
+    baseURL: "http://localhost:3001",
     trace: "on-first-retry",
     headless: false, // Per prompt: run visibly so user sees browser execution
     launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
@@ -35,6 +35,7 @@ export default defineConfig({
       env: {
         API_INTERNAL_URL: "http://127.0.0.1:5055",
         AUTH_SECRET: "playwright-test-only-auth-secret-not-for-production",
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: "playwright-test-client-id",
         NEXT_PUBLIC_API_URL: "http://127.0.0.1:5055",
       },
       reuseExistingServer: false,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { RecipeDetail } from "./recipes-api";
-import { buildRecipeMetadata } from "./recipe-metadata.ts";
+import { buildRecipeMetadata } from "./recipe-metadata";
 
 function recipe(overrides: Partial<RecipeDetail> = {}): RecipeDetail {
   return {

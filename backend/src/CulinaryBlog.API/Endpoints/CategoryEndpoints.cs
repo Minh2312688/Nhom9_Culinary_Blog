@@ -35,7 +35,7 @@ public static class CategoryEndpoints
         group.MapPost("/", async (CreateCategoryCommand command, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(command, ct);
-            return Results.Created($"/api/v1/categories/{result.Slug}", result);
+            return Results.Created($"/api/v1/categories/{Uri.EscapeDataString(result.Slug)}", result);
         })
             .RequireAuthorization(policy => policy.RequireRole(AppRoles.Admin))
             .WithName("CreateCategory")

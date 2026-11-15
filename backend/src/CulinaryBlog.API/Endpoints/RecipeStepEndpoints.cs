@@ -43,6 +43,41 @@ public static class RecipeStepEndpoints
             .RequireAuthorization().WithName("DeleteRecipeStep")
             .Produces(204).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
 
+        group.MapPost("/{id:guid}/steps/{stepId:guid}/image", async (
+            Guid id,
+            Guid stepId,
+            HttpRequest request,
+            ISender sender,
+            CancellationToken ct) =>
+        {
+            if (!request.HasFormContentType)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["file"] = ["A multipart/form-data request is required."]
+                });
+            }
+
+            var form = await request.ReadFormAsync(ct);
+            var file = form.Files.GetFile("file");
+            if (file is null)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["file"] = ["The file field is required."]
+                });
+            }
+
+            using var content = file.OpenReadStream();
+            var result = await sender.Send(new UploadRecipeStepImageCommand(
+                id, stepId, content, file.FileName, file.ContentType, file.Length), ct);
+            return Results.Ok(result);
+        })
+            .RequireAuthorization().WithName("UploadRecipeStepImage")
+            .Accepts<IFormFile>("multipart/form-data")
+            .Produces<RecipeStepDto>(200).ProducesValidationProblem(400)
+            .ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(503);
+
         return endpoints;
     }
 }

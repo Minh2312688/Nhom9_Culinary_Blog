@@ -71,7 +71,8 @@ public class RecipeConfiguration : IEntityTypeConfiguration<Recipe>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Property(r => r.RowVersion)
-            .IsRowVersion();
+            .IsConcurrencyToken()
+            .ValueGeneratedNever();
 
         builder.HasQueryFilter(r => !r.IsDeleted);
     }

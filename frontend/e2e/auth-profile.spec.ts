@@ -1,199 +1,129 @@
-import { test, expect, Route } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { signInAs, signInAsByApi } from "./support/auth";
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+const mockApiUrl = "http://127.0.0.1:5055";
+
+type TestProfile = {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  emailConfirmed: boolean;
+  createdAt: string;
+  roles: string[];
 };
 
-async function fulfillMock(route: Route, status: number, body?: object) {
-  if (route.request().method() === "OPTIONS") {
-    await route.fulfill({ status: 204, headers: CORS_HEADERS });
-    return;
-  }
-  await route.fulfill({
-    status,
-    headers: CORS_HEADERS,
-    contentType: body ? "application/json" : undefined,
-    body: body ? JSON.stringify(body) : undefined,
+async function setProfile(page: Page, email: string, profile: TestProfile) {
+  const response = await page.context().request.post(`${mockApiUrl}/__test/auth/profile`, {
+    data: { email, profile },
   });
+  expect(response.ok()).toBe(true);
 }
 
-test.describe("FR-AUTH-006 & FR-AUTH-005: Profile & Logout E2E", () => {
-  test("should redirect unauthenticated user to /auth/login", async ({ page }) => {
-    // Navigate directly to /profile with empty sessionStorage
-    await page.goto("/profile");
+test.beforeEach(async ({ page }) => {
+  const reset = await page.context().request.post(`${mockApiUrl}/__test/auth/reset`);
+  expect(reset.status()).toBe(204);
+  const cleared = await page.context().request.delete(`${mockApiUrl}/__test__/requests`);
+  expect(cleared.status()).toBe(204);
+});
 
-    // Must be redirected to /auth/login
-    await expect(page).toHaveURL(/.*\/auth\/login/);
+test.describe("Auth.js Profile and logout", () => {
+  test("redirects unauthenticated users to login", async ({ page }) => {
+    await page.goto("/profile");
+    await expect(page).toHaveURL(/\/auth\/login\?callbackUrl=/);
   });
 
-  test("should render profile for authenticated user", async ({ page }) => {
-    // Intercept GET /api/v1/auth/me with CORS headers
-    await page.route("**/api/v1/auth/me", async (route) => {
-      await fulfillMock(route, 200, {
-        id: "chef-123",
-        email: "chef@example.com",
-        displayName: "Master Chef Nam",
-        avatarUrl: null,
-        bio: "Passionate Vietnamese culinary artist",
-        emailConfirmed: true,
-        createdAt: "2026-01-15T00:00:00Z",
-        roles: ["Author"],
-      });
-    });
-
-    // Seed sessionStorage with access token before loading page
-    await page.addInitScript(() => {
-      sessionStorage.setItem("culinary_access_token", "mock_access_token_123");
-      sessionStorage.setItem("culinary_refresh_token", "mock_refresh_token_123");
-    });
-
+  test("UI sign-in shows the session user's name and keeps a protected page after reload", async ({ page }) => {
     await page.goto("/profile");
+    await expect(page).toHaveURL(/\/auth\/login\?callbackUrl=/);
 
-    // Verify rendered profile elements
-    await expect(page.getByRole("heading", { name: "Master Chef Nam" })).toBeVisible();
-    await expect(page.getByText("chef@example.com")).toBeVisible();
-    await expect(page.getByText("Author")).toBeVisible();
-    await expect(page.getByText("Passionate Vietnamese culinary artist")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Đăng xuất" })).toBeVisible();
+    await signInAs(page);
+
+    await expect(page).toHaveURL(new URL("/", page.url()).toString());
+    await expect(page.getByTestId("nav-profile")).toBeVisible();
+    const profileAfterAccountClick = page.waitForResponse((response) =>
+      response.url().includes("/api/backend/auth/me") &&
+      response.request().method() === "GET",
+    );
+    await page.getByTestId("nav-profile").click();
+    expect((await profileAfterAccountClick).status()).toBe(200);
+    await expect(page).toHaveURL(/\/profile$/);
+    await expect(page.getByRole("heading", { name: "Chef Example" })).toBeVisible();
+
+    await page.goto(new URL("/", page.url()).toString());
+    await expect(page.getByTestId("nav-profile")).toContainText("Chef Example");
+    await page.goto(new URL("/profile", page.url()).toString());
+    const reloadedProfileResponse = page.waitForResponse((response) =>
+      response.url().includes("/api/backend/auth/me") &&
+      response.request().method() === "GET",
+    );
+    await page.reload();
+
+    expect((await reloadedProfileResponse).status()).toBe(200);
+    await expect(page).toHaveURL(/\/profile$/);
+    await expect(page.getByRole("heading", { name: "Chef Example" })).toBeVisible();
+
+    const recordsResponse = await page.context().request.get(`${mockApiUrl}/__test__/requests`);
+    const records = await recordsResponse.json();
+    expect(records).toContainEqual(expect.objectContaining({
+      method: "GET",
+      path: "/api/v1/auth/me",
+      authorizationPresent: true,
+    }));
   });
 
-  test("should rotate token on 401 and retry successfully", async ({ page }) => {
-    let meCallCount = 0;
+  test("signed-in users have a direct link to their recipe dashboard", async ({ page }) => {
+    await signInAs(page);
+    await page.goto("/");
 
-    await page.route("**/api/v1/auth/me", async (route) => {
-      if (route.request().method() === "OPTIONS") {
-        await fulfillMock(route, 204);
-        return;
-      }
-      meCallCount++;
-      if (meCallCount === 1) {
-        // First attempt: token expired
-        await fulfillMock(route, 401, {
-          title: "Unauthorized",
-          detail: "Token expired",
-        });
-      } else {
-        // Second attempt after refresh: success
-        await fulfillMock(route, 200, {
-          id: "chef-123",
-          email: "chef@example.com",
-          displayName: "Master Chef Nam",
-          avatarUrl: null,
-          bio: "Refreshed session user",
-          emailConfirmed: true,
-          createdAt: "2026-01-15T00:00:00Z",
-          roles: ["Author"],
-        });
-      }
-    });
-
-    await page.route("**/api/v1/auth/refresh", async (route) => {
-      await fulfillMock(route, 200, {
-        accessToken: "new_rotated_access_token",
-        refreshToken: "new_rotated_refresh_token",
-        expiresIn: 900,
-      });
-    });
-
-    await page.addInitScript(() => {
-      sessionStorage.setItem("culinary_access_token", "expired_access_token");
-      sessionStorage.setItem("culinary_refresh_token", "valid_refresh_token");
-    });
-
-    await page.goto("/profile");
-
-    // Profile should render after automatic refresh-and-retry
-    await expect(page.getByRole("heading", { name: "Master Chef Nam" })).toBeVisible();
-    await expect(page.getByText("Refreshed session user")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Công thức của tôi" }))
+      .toHaveAttribute("href", "/dashboard/recipes");
   });
 
-  test("should logout and redirect to /auth/login", async ({ page }) => {
-    await page.route("**/api/v1/auth/me", async (route) => {
-      await fulfillMock(route, 200, {
-        id: "chef-123",
-        email: "chef@example.com",
-        displayName: "Master Chef Nam",
-        avatarUrl: null,
-        bio: null,
-        emailConfirmed: true,
-        createdAt: "2026-01-15T00:00:00Z",
-        roles: ["Author"],
-      });
-    });
+  test("admins see Admin instead of the recipe link label", async ({ page }) => {
+    await signInAsByApi(page, "admin@example.com");
+    await page.goto("/");
 
-    let logoutCalled = false;
-    await page.route("**/api/v1/auth/logout", async (route) => {
-      logoutCalled = true;
-      await fulfillMock(route, 204);
-    });
-
-    await page.addInitScript(() => {
-      sessionStorage.setItem("culinary_access_token", "mock_access_token");
-      sessionStorage.setItem("culinary_refresh_token", "mock_refresh_token");
-    });
-
-    await page.goto("/profile");
-
-    // Click logout
-    const logoutBtn = page.getByRole("button", { name: "Đăng xuất" });
-    await expect(logoutBtn).toBeVisible();
-    await logoutBtn.click();
-
-    // Verify redirected to /auth/login and logout was called
-    await expect(page).toHaveURL(/.*\/auth\/login/);
-    expect(logoutCalled).toBe(true);
-
-    // Verify tokens were cleared from sessionStorage
-    const token = await page.evaluate(() => sessionStorage.getItem("culinary_access_token"));
-    expect(token).toBeNull();
+    await expect(page.getByTestId("nav-my-recipes"))
+      .toHaveText("Admin");
+    await expect(page.getByTestId("nav-my-recipes"))
+      .toHaveAttribute("href", "/dashboard/recipes");
   });
 
-  test("should display error and not redirect when clearAuthTokens fails during logout", async ({ page }) => {
-    await page.route("**/api/v1/auth/me", async (route) => {
-      await fulfillMock(route, 200, {
-        id: "chef-123",
-        email: "chef@example.com",
-        displayName: "Master Chef Nam",
-        avatarUrl: null,
-        bio: null,
-        emailConfirmed: true,
-        createdAt: "2026-01-15T00:00:00Z",
-        roles: ["Author"],
-      });
-    });
+  test("UI sign-out clears the Auth.js cookie when backend logout returns 503", async ({ page }) => {
+    await signInAs(page, "logout-failure-chef@example.com");
+    await page.getByTestId("nav-profile").click();
+    await expect(page).toHaveURL(/\/profile$/);
+    const homeUrl = new URL("/", page.url()).toString();
+    const cookieBefore = (await page.context().cookies()).find((cookie) =>
+      cookie.name.includes("session-token"),
+    );
+    expect(cookieBefore?.httpOnly).toBe(true);
 
-    await page.route("**/api/v1/auth/logout", async (route) => {
-      await fulfillMock(route, 204);
-    });
+    await page.getByRole("button", { name: /đăng xuất/i }).click();
 
-    await page.addInitScript(() => {
-      sessionStorage.setItem("culinary_access_token", "mock_access_token");
-      sessionStorage.setItem("culinary_refresh_token", "mock_refresh_token");
-      Storage.prototype.removeItem = () => {
-        throw new Error("SecurityError: Access is denied for this document");
-      };
-    });
-
-    await page.goto("/profile");
-
-    const logoutBtn = page.getByRole("button", { name: "Đăng xuất" });
-    await expect(logoutBtn).toBeVisible();
-    await logoutBtn.click();
-
-    // Verify NOT redirected to login
-    await expect(page).not.toHaveURL(/.*\/auth\/login/);
-
-    // Verify error message is displayed
-    await expect(page.getByText("Không thể xóa phiên đăng nhập trên thiết bị. Vui lòng thử lại.")).toBeVisible();
-
-    // Verify logout button is re-enabled for retry
-    await expect(logoutBtn).toBeEnabled();
+    await expect(page).toHaveURL(homeUrl);
+    const sessionResponse = await page.context().request.get("/api/auth/session");
+    expect(await sessionResponse.json()).toBeNull();
+    expect((await page.context().cookies()).some((cookie) =>
+      cookie.name.includes("session-token"),
+    )).toBe(false);
+    const logoutCount = await page.context().request.get(`${mockApiUrl}/__test/auth/logout-count`);
+    expect(await logoutCount.json()).toEqual({ count: 1, authorized: true });
   });
 
-  test("should allow editing profile and save changes successfully (FR-AUTH-007)", async ({ page }) => {
-    let currentProfile = {
+  test("loads an expired backend token through BFF refresh before rendering Profile", async ({ page }) => {
+    await signInAs(page, "expired-chef@example.com");
+    await page.goto("/profile");
+
+    await expect(page.getByRole("heading", { name: "Chef Example" })).toBeVisible();
+    const refreshCount = await page.context().request.get(`${mockApiUrl}/__test/auth/refresh-count`);
+    expect(await refreshCount.json()).toEqual({ count: 1 });
+  });
+
+  test("loads and updates Profile through the authenticated BFF", async ({ page }) => {
+    const profile: TestProfile = {
       id: "chef-123",
       email: "chef@example.com",
       displayName: "Master Chef Nam",
@@ -203,115 +133,61 @@ test.describe("FR-AUTH-006 & FR-AUTH-005: Profile & Logout E2E", () => {
       createdAt: "2026-01-15T00:00:00Z",
       roles: ["Author"],
     };
-
-    await page.route("**/api/v1/auth/me", async (route) => {
-      if (route.request().method() === "OPTIONS") {
-        await fulfillMock(route, 204);
-        return;
-      }
-      if (route.request().method() === "GET") {
-        await fulfillMock(route, 200, currentProfile);
-      } else if (route.request().method() === "PATCH") {
-        const payload = route.request().postDataJSON();
-        currentProfile = {
-          ...currentProfile,
-          displayName: payload.displayName || currentProfile.displayName,
-          avatarUrl: payload.avatarUrl !== undefined ? payload.avatarUrl : currentProfile.avatarUrl,
-          bio: payload.bio !== undefined ? payload.bio : currentProfile.bio,
-        };
-        await fulfillMock(route, 200, currentProfile);
-      }
-    });
-
-    await page.addInitScript(() => {
-      sessionStorage.setItem("culinary_access_token", "mock_access_token");
-      sessionStorage.setItem("culinary_refresh_token", "mock_refresh_token");
-    });
-
+    await setProfile(page, "chef@example.com", profile);
+    await signInAs(page);
+    const profileResponse = page.waitForResponse((response) =>
+      response.url().includes("/api/backend/auth/me") &&
+      response.request().method() === "GET",
+    );
     await page.goto("/profile");
 
-    // 1. Enter edit mode
-    const editBtn = page.getByRole("button", { name: "Chỉnh sửa" });
-    await expect(editBtn).toBeVisible();
-    await editBtn.click();
+    expect((await profileResponse).status()).toBe(200);
+    await expect(page.getByRole("heading", { name: "Master Chef Nam" })).toBeVisible();
+    await expect(page.getByText("chef@example.com")).toBeVisible();
+    await expect(page.getByText("Initial culinary bio")).toBeVisible();
+    await page.getByRole("button", { name: "Chỉnh sửa" }).click();
+    await page.locator("#edit-display-name").fill("Master Chef Phu Nam");
+    await page.locator("#edit-bio").fill("Refined master of traditional Vietnamese spices.");
+    const updateResponse = page.waitForResponse((response) =>
+      response.url().includes("/api/backend/auth/me") &&
+      response.request().method() === "PATCH",
+    );
+    await page.locator("#save-profile-button").click();
+    expect((await updateResponse).status()).toBe(200);
 
-    // 2. Form should be visible and prefilled
-    const displayNameInput = page.locator("#edit-display-name");
-    await expect(displayNameInput).toHaveValue("Master Chef Nam");
-
-    // 3. Edit DisplayName and Bio
-    await displayNameInput.fill("Master Chef Phu Nam");
-    const bioInput = page.locator("#edit-bio");
-    await bioInput.fill("Refined master of traditional Vietnamese spices.");
-
-    // 4. Submit save
-    const saveBtn = page.locator("#save-profile-button");
-    await saveBtn.click();
-
-    // 5. Verify success feedback and updated profile content rendered
     await expect(page.getByText("Cập nhật hồ sơ thành công!")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Master Chef Phu Nam" })).toBeVisible();
     await expect(page.getByText("Refined master of traditional Vietnamese spices.")).toBeVisible();
   });
 
-  test("should show validation error when invalid avatar URL is entered (FR-AUTH-007)", async ({ page }) => {
-    await page.route("**/api/v1/auth/me", async (route) => {
-      await fulfillMock(route, 200, {
-        id: "chef-123",
-        email: "chef@example.com",
-        displayName: "Master Chef Nam",
-        avatarUrl: null,
-        bio: null,
-        emailConfirmed: true,
-        createdAt: "2026-01-15T00:00:00Z",
-        roles: ["Author"],
-      });
-    });
-
-    await page.addInitScript(() => {
-      sessionStorage.setItem("culinary_access_token", "mock_access_token");
-      sessionStorage.setItem("culinary_refresh_token", "mock_refresh_token");
-    });
-
+  test("validates an invalid avatar URL before sending a Profile update", async ({ page }) => {
+    await signInAs(page);
     await page.goto("/profile");
     await page.getByRole("button", { name: "Chỉnh sửa" }).click();
-
-    // Fill invalid avatar URL
     await page.locator("#edit-avatar-url").fill("ftp://invalid-avatar-url.jpg");
     await page.locator("#save-profile-button").click();
 
-    // Must show validation error and stay in edit form
     await expect(page.getByText(/URL ảnh đại diện phải có giao thức http:\/\/ hoặc https:\/\//)).toBeVisible();
     await expect(page.locator("#save-profile-button")).toBeVisible();
   });
 
-  test("should cancel edit mode and retain original values without saving (FR-AUTH-007)", async ({ page }) => {
-    await page.route("**/api/v1/auth/me", async (route) => {
-      await fulfillMock(route, 200, {
-        id: "chef-123",
-        email: "chef@example.com",
-        displayName: "Original Chef Name",
-        avatarUrl: null,
-        bio: "Original Bio",
-        emailConfirmed: true,
-        createdAt: "2026-01-15T00:00:00Z",
-        roles: ["Author"],
-      });
+  test("cancels Profile editing without changing the saved value", async ({ page }) => {
+    await setProfile(page, "chef@example.com", {
+      id: "chef-123",
+      email: "chef@example.com",
+      displayName: "Original Chef Name",
+      avatarUrl: null,
+      bio: "Original Bio",
+      emailConfirmed: true,
+      createdAt: "2026-01-15T00:00:00Z",
+      roles: ["Author"],
     });
-
-    await page.addInitScript(() => {
-      sessionStorage.setItem("culinary_access_token", "mock_access_token");
-      sessionStorage.setItem("culinary_refresh_token", "mock_refresh_token");
-    });
-
+    await signInAs(page);
     await page.goto("/profile");
     await page.getByRole("button", { name: "Chỉnh sửa" }).click();
-
-    // Modify field then cancel
     await page.locator("#edit-display-name").fill("Discarded Name");
     await page.locator("#cancel-edit-button").click();
 
-    // Edit form should close and original display name remains
     await expect(page.locator("#save-profile-button")).not.toBeVisible();
     await expect(page.getByRole("heading", { name: "Original Chef Name" })).toBeVisible();
   });

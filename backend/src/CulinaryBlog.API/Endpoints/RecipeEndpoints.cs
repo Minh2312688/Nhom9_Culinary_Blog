@@ -21,12 +21,26 @@ public static class RecipeEndpoints
             Results.Ok(await sender.Send(query, ct)))
             .WithName("GetRecipes").Produces<PaginatedResult<RecipeSummaryDto>>(200);
 
+        group.MapGet("/mine", async (int? page, int? pageSize, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new GetRecipesQuery(
+                Page: page ?? 1, PageSize: pageSize ?? 12, OnlyMine: true), ct)))
+            .RequireAuthorization().WithName("GetMyRecipes").Produces<PaginatedResult<RecipeSummaryDto>>(200)
+            .ProducesProblem(401);
+
+        group.MapGet("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
+            Results.Ok(await sender.Send(new GetPrivateRecipeByIdQuery(id), ct)))
+            .RequireAuthorization().WithName("GetPrivateRecipeById")
+            .Produces<RecipeDetailDto>(200).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404);
+
         group.MapGet("/{slug}", async (string slug, ISender sender, CancellationToken ct) =>
             Results.Ok(await sender.Send(new GetRecipeBySlugQuery(slug), ct)))
             .WithName("GetRecipeBySlug").Produces<RecipeDetailDto>(200).ProducesProblem(403).ProducesProblem(404);
 
         group.MapPost("/", async (CreateRecipeCommand command, ISender sender, CancellationToken ct) =>
-            Results.Created($"/api/v1/recipes/{command.Title}", await sender.Send(command, ct)))
+        {
+            var result = await sender.Send(command, ct);
+            return Results.Created($"/api/v1/recipes/{Uri.EscapeDataString(result.Slug)}", result);
+        })
             .RequireAuthorization().WithName("CreateRecipe").Produces<RecipeDetailDto>(201).ProducesProblem(400).ProducesProblem(403);
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateRecipeCommand command, ISender sender, CancellationToken ct) =>

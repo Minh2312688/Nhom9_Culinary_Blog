@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signInAs } from "./support/auth";
 
 const brandedRoutes = [
   "/",
@@ -21,9 +22,7 @@ const brandedRoutes = [
 test("uses the Culinary Blog brand across existing app routes", async ({ page }) => {
   test.setTimeout(60_000);
   await page.route("https://accounts.google.com/**", (route) => route.abort());
-  await page.addInitScript(() => {
-    sessionStorage.setItem("culinary_access_token", "brand-acceptance-token");
-  });
+  await signInAs(page);
 
   for (const route of brandedRoutes) {
     await page.goto(route, { waitUntil: "domcontentloaded" });
@@ -89,12 +88,13 @@ test("keeps the shared brand color pairs readable", async ({ page }) => {
   expect(contrastRatios[5]).toBeGreaterThanOrEqual(4.5);
 });
 
-test("renders the profile's alpha-tinted brand gradient", async ({ page }) => {
-  await page.addInitScript(() => {
-    sessionStorage.setItem("culinary_access_token", "brand-acceptance-token");
-  });
+test("renders the Profile brand and alpha-tinted gradient", async ({ page }) => {
+  await signInAs(page);
   await page.goto("/profile", { waitUntil: "domcontentloaded" });
-  const backgroundImage = await page.locator(".bg-gradient-to-br").evaluate((element) =>
+  await expect(page.getByRole("link", { name: "Culinary Blog, trang chủ" })).toBeVisible();
+  const profileBackground = page.locator(".min-h-screen.bg-gradient-to-br");
+  await expect(profileBackground).toHaveCount(1);
+  const backgroundImage = await profileBackground.evaluate((element) =>
     getComputedStyle(element).backgroundImage,
   );
 
@@ -135,9 +135,7 @@ test("disables the homepage hero entrance motion for reduced motion", async ({ p
 });
 
 test("avoids horizontal overflow at supported viewport widths", async ({ page }) => {
-  await page.addInitScript(() => {
-    sessionStorage.setItem("culinary_access_token", "brand-acceptance-token");
-  });
+  await signInAs(page);
 
   for (const route of [
     "/",

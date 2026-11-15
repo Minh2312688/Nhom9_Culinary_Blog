@@ -191,6 +191,25 @@ if (app.Environment.IsDevelopment())
     if (db.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory")
     {
         await db.Database.MigrateAsync();
+        if (app.Configuration.GetValue("AdminSeed:Enabled", false))
+        {
+            var adminEmail = app.Configuration["AdminSeed:Email"];
+            var adminPassword = app.Configuration["AdminSeed:Password"];
+            if (string.IsNullOrWhiteSpace(adminEmail) || string.IsNullOrWhiteSpace(adminPassword))
+            {
+                throw new InvalidOperationException(
+                    "Admin seeding is enabled but AdminSeed:Email or AdminSeed:Password is missing.");
+            }
+
+            var roleManager = scope.ServiceProvider
+                .GetRequiredService<Microsoft.AspNetCore.Identity.RoleManager<Microsoft.AspNetCore.Identity.IdentityRole>>();
+            await CulinaryBlog.Infrastructure.Persistence.Seed.AdminAccountSeeder.SeedAsync(
+                userManager,
+                roleManager,
+                adminEmail,
+                adminPassword);
+        }
+
         if (app.Configuration.GetValue("Seed:Enabled", true))
         {
             var sampleDataDirectory = app.Configuration["Seed:SampleDataPath"] ??

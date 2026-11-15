@@ -26,8 +26,8 @@
   --muted-foreground: var(--color-muted);
   --border: var(--color-border);
 
-  --font-body: "Trebuchet MS", Arial, sans-serif;
-  --font-display: Georgia, "Times New Roman", serif;
+  --font-body: "Be Vietnam Pro", Arial, sans-serif;
+  --font-display: "Be Vietnam Pro", Arial, sans-serif;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
@@ -115,6 +115,10 @@ textarea {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  [data-brand-motion] {
+    transform: none !important;
+  }
+
   *,
   *::before,
   *::after {

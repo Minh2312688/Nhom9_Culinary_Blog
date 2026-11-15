@@ -54,9 +54,7 @@ namespace CulinaryBlog.Infrastructure.Persistence.Migrations
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasDefaultValueSql("decode('00', 'hex')");
+                        .HasColumnType("bytea");
 
                     b.Property<string>("Slug")
                         .IsRequired()
@@ -94,9 +92,6 @@ namespace CulinaryBlog.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTimeOffset?>("PublishedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -112,12 +107,13 @@ namespace CulinaryBlog.Infrastructure.Persistence.Migrations
                     b.Property<int>("PrepTimeMinutes")
                         .HasColumnType("integer");
 
+                    b.Property<DateTimeOffset?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasDefaultValueSql("decode('00', 'hex')");
+                        .HasColumnType("bytea");
 
                     b.Property<NpgsqlTsVector>("SearchVector")
                         .IsRequired()
@@ -196,9 +192,7 @@ namespace CulinaryBlog.Infrastructure.Persistence.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bytea")
-                        .HasDefaultValueSql("decode('00', 'hex')");
+                        .HasColumnType("bytea");
 
                     b.Property<string>("ThumbnailUrl")
                         .HasMaxLength(500)
@@ -255,9 +249,7 @@ namespace CulinaryBlog.Infrastructure.Persistence.Migrations
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasDefaultValueSql("decode('00', 'hex')");
+                        .HasColumnType("bytea");
 
                     b.Property<string>("Unit")
                         .HasMaxLength(50)
@@ -309,9 +301,7 @@ namespace CulinaryBlog.Infrastructure.Persistence.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bytea")
-                        .HasDefaultValueSql("decode('00', 'hex')");
+                        .HasColumnType("bytea");
 
                     b.Property<decimal>("Sodium")
                         .HasPrecision(8, 2)
@@ -357,9 +347,7 @@ namespace CulinaryBlog.Infrastructure.Persistence.Migrations
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasDefaultValueSql("decode('00', 'hex')");
+                        .HasColumnType("bytea");
 
                     b.Property<int>("StepNumber")
                         .HasColumnType("integer");

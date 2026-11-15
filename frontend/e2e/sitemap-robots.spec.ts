@@ -8,7 +8,7 @@ test("sitemap.xml returns valid XML containing public static and published recip
 
   // Published recipe routes from mock API
   expect(body).toContain("/recipes/recipe-with-author");
-  expect(body).toContain("/recipes/citrus-lentil-salad");
+  expect(body).toContain("/recipes/canh-chua-ca-loc");
 
   // Public static routes
   expect(body).toContain("/recipes");

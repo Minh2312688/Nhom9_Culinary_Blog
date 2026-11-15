@@ -6,6 +6,7 @@ using CulinaryBlog.Domain.Entities;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Security.Cryptography;
 using System.Text;
@@ -21,7 +22,8 @@ public sealed record GetRecipesQuery(
     int? MinServings = null,
     string? SortBy = null,
     string? SortOrder = null,
-    string? Search = null) : IRequest<PaginatedResult<RecipeSummaryDto>>;
+    string? Search = null,
+    bool OnlyMine = false) : IRequest<PaginatedResult<RecipeSummaryDto>>;
 
 public sealed class GetRecipesQueryValidator : AbstractValidator<GetRecipesQuery>
 {
@@ -39,6 +41,10 @@ public sealed class GetRecipesQueryValidator : AbstractValidator<GetRecipesQuery
             .When(x => !string.IsNullOrWhiteSpace(x.Difficulty))
             .WithMessage("difficulty must be Easy, Medium, or Hard.");
         RuleFor(x => x.Search).MaximumLength(100).When(x => x.Search is not null);
+        RuleFor(x => x.Search)
+            .Null()
+            .When(x => x.OnlyMine)
+            .WithMessage("Search is not supported for the owner-only recipe list.");
         RuleFor(x => x.SortBy)
             .Must(value => value is not null && SortFields.Contains(value.ToLowerInvariant()))
             .When(x => x.SortBy is not null)
@@ -58,6 +64,7 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
 {
     private static readonly TimeSpan PopularityWindow = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan SearchResultTtl = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan ListResultTtl = TimeSpan.FromSeconds(60);
     private const int PopularityThreshold = 3;
     private readonly IRecipeRepository recipes;
     private readonly ICurrentUserService currentUser;
@@ -108,11 +115,29 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
             }
         }
 
+        var listCacheKey = string.IsNullOrWhiteSpace(request.Search)
+            ? BuildListCacheKey(request)
+            : null;
+        if (listCacheKey is not null && cache is not null)
+        {
+            var cached = await cache.GetAsync<PaginatedResult<RecipeSummaryDto>>(listCacheKey, cancellationToken);
+            if (cached is not null) return cached;
+        }
+
         var query = recipes.Query.AsNoTracking();
-        query = currentUser.IsAdmin
-            ? query
-            : query.Where(x => x.Status == RecipeStatus.Published ||
-                (currentUser.UserId != null && x.AuthorId == currentUser.UserId));
+        if (request.OnlyMine)
+        {
+            query = currentUser.UserId is null
+                ? query.Where(_ => false)
+                : query.Where(x => x.AuthorId == currentUser.UserId);
+        }
+        else
+        {
+            query = currentUser.IsAdmin
+                ? query
+                : query.Where(x => x.Status == RecipeStatus.Published ||
+                    (currentUser.UserId != null && x.AuthorId == currentUser.UserId));
+        }
 
         if (request.CategoryId.HasValue) query = query.Where(x => x.CategoryId == request.CategoryId);
         if (!string.IsNullOrWhiteSpace(request.Difficulty))
@@ -136,7 +161,13 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
         var totalCount = await query.CountAsync(cancellationToken);
         var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
         if (request.Page > totalPages)
-            return new PaginatedResult<RecipeSummaryDto>(Array.Empty<RecipeSummaryDto>(), totalCount, request.Page, request.PageSize);
+        {
+            var emptyPage = new PaginatedResult<RecipeSummaryDto>(
+                Array.Empty<RecipeSummaryDto>(), totalCount, request.Page, request.PageSize);
+            if (listCacheKey is not null && cache is not null)
+                await cache.SetAsync(listCacheKey, emptyPage, ListResultTtl, cancellationToken);
+            return emptyPage;
+        }
 
         var rows = await query.Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
@@ -156,7 +187,10 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
             x.AuthorId, x.PublishedAt, x.PrimaryImage?.OriginalUrl, x.PrimaryImage?.AltText,
             x.RowVersion)).ToList();
 
-        return new PaginatedResult<RecipeSummaryDto>(items, totalCount, request.Page, request.PageSize);
+        var result = new PaginatedResult<RecipeSummaryDto>(items, totalCount, request.Page, request.PageSize);
+        if (listCacheKey is not null && cache is not null)
+            await cache.SetAsync(listCacheKey, result, ListResultTtl, cancellationToken);
+        return result;
     }
 
     private static RecipeDifficulty? NormalizeDifficulty(string? difficulty) =>
@@ -167,8 +201,27 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
     private string BuildSearchCacheKey(string normalized, GetRecipesQuery request)
     {
         var scope = currentUser.IsAdmin ? "admin" : currentUser.UserId is null ? "guest" : $"user:{currentUser.UserId}";
-        var material = $"v2|{normalized}|{request.Page}|{request.PageSize}|{request.SortBy?.ToLowerInvariant() ?? "relevance"}|{request.SortOrder?.ToLowerInvariant() ?? "desc"}|{scope}";
+        var material = $"v2|{normalized}|{request.Page}|{request.PageSize}|{request.SortBy?.ToLowerInvariant() ?? "relevance"}|{request.SortOrder?.ToLowerInvariant() ?? "desc"}|{request.OnlyMine}|{scope}";
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material))).ToLowerInvariant();
         return $"recipes:search:result:{hash}";
+    }
+
+    private string BuildListCacheKey(GetRecipesQuery request)
+    {
+        var scope = currentUser.IsAdmin ? "admin" : currentUser.UserId is null ? "guest" : $"user:{currentUser.UserId}";
+        var material = string.Join('|',
+            "v1",
+            request.Page.ToString(CultureInfo.InvariantCulture),
+            request.PageSize.ToString(CultureInfo.InvariantCulture),
+            request.CategoryId?.ToString("N") ?? string.Empty,
+            request.Difficulty?.Trim().ToLowerInvariant() ?? string.Empty,
+            request.MaxCookTime?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            request.MinServings?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            request.SortBy?.Trim().ToLowerInvariant() ?? "createdat",
+            request.SortOrder?.Trim().ToLowerInvariant() ?? "desc",
+            request.OnlyMine.ToString(),
+            scope);
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material))).ToLowerInvariant();
+        return $"recipes:list:{hash}";
     }
 }

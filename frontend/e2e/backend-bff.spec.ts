@@ -57,6 +57,41 @@ test("signed-in requests reach the backend with server-side authorization", asyn
   });
 });
 
+test("my-recipes requests use the authenticated owner-only backend route", async ({ page }) => {
+  await page.goto("/");
+  await signInWithCredentials(page, "email-password", {
+    email: "chef@example.com",
+    password: "Password123!",
+  });
+  await clearBackendRequests(page.context().request);
+
+  const response = await page.context().request.get("/api/backend/recipes/mine?page=2&pageSize=12");
+
+  expect(response.status()).toBe(200);
+  const recordsResponse = await page.context().request.get(`${mockApiUrl}/__test__/requests`);
+  expect(await recordsResponse.json()).toContainEqual({
+    method: "GET",
+    path: "/api/v1/recipes/mine",
+    query: "?page=2&pageSize=12",
+    authorizationPresent: true,
+  });
+});
+
+test("my-recipes BFF route does not allow recipe mutations", async ({ page }) => {
+  await page.goto("/");
+  await signInWithCredentials(page, "email-password", {
+    email: "chef@example.com",
+    password: "Password123!",
+  });
+  await clearBackendRequests(page.context().request);
+
+  const response = await page.context().request.delete("/api/backend/recipes/mine");
+
+  expect(response.status()).toBe(405);
+  const recordsResponse = await page.context().request.get(`${mockApiUrl}/__test__/requests`);
+  expect(await recordsResponse.json()).toEqual([]);
+});
+
 test("state-changing requests reject a non-matching Origin", async ({ page }) => {
   await page.goto("/");
   await signInWithCredentials(page, "email-password", {
@@ -157,6 +192,57 @@ test("a rejected Auth.js refresh makes the next private BFF call unauthorized", 
 
   const response = await page.context().request.get("/api/backend/recipes");
   expect(response.status()).toBe(401);
+  expect(response.headers()["set-cookie"]).toContain("Max-Age=0");
+});
+
+test("retries a private request once when the backend rejects an expired access token", async ({ page }) => {
+  await page.goto("/");
+  await signInWithCredentials(page, "email-password", {
+    email: "chef@example.com",
+    password: "Password123!",
+  });
+  const api = page.context().request;
+  const forcedResponse = await api.post(`${mockApiUrl}/__test/responses`, {
+    data: {
+      method: "GET",
+      path: "/api/v1/recipes/mine",
+      status: 401,
+      body: { status: 401, title: "Unauthorized" },
+    },
+  });
+  expect(forcedResponse.status()).toBe(201);
+
+  const response = await api.get("/api/backend/recipes/mine");
+
+  expect(response.status()).toBe(200);
+  const refreshCountResponse = await api.get(`${mockApiUrl}/__test/auth/refresh-count`);
+  expect(await refreshCountResponse.json()).toEqual({ count: 1 });
+  const recordsResponse = await api.get(`${mockApiUrl}/__test__/requests`);
+  expect((await recordsResponse.json()).filter(
+    (record: { path: string }) => record.path === "/api/v1/recipes/mine",
+  )).toHaveLength(2);
+});
+
+test("expired private sessions redirect to login and return to the requested recipe page", async ({ page }) => {
+  await page.goto("/");
+  await signInWithCredentials(page, "email-password", {
+    email: "refresh-failure-chef@example.com",
+    password: "Password123!",
+  });
+
+  await page.goto("/dashboard/recipes");
+
+  await expect(page).toHaveURL(/\/auth\/login\?callbackUrl=/);
+  await expect(page.getByRole("heading", { name: "Đăng nhập Culinary Blog" })).toBeVisible();
+  await expect(page.getByText("Unauthorized")).toHaveCount(0);
+  expect((await page.context().cookies()).some(({ name }) => name.startsWith("authjs.session-token"))).toBe(false);
+  await page.waitForLoadState("networkidle");
+
+  await page.getByLabel(/địa chỉ email/i).fill("chef@example.com");
+  await page.locator("#password").fill("Password123!");
+  await page.locator('form button[type="submit"]').click();
+
+  await expect(page).toHaveURL(/\/dashboard\/recipes(?:\?.*)?$/);
 });
 
 test("a successful refresh forwards the rotated access token", async ({ page }) => {

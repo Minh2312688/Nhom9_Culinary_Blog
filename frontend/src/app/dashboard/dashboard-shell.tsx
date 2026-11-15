@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { BrandLink } from "../site-ui";
 import styles from "./dashboard.module.css";
 
@@ -13,13 +14,18 @@ const navigation = [
 
 export function DashboardShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname() ?? "";
+  const { data: session } = useSession();
+  const isAdmin = session?.user.roles?.includes("Admin") ?? false;
+  const visibleNavigation = navigation.filter(({ href }) =>
+    href !== "/dashboard/categories" || isAdmin,
+  );
 
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
         <BrandLink />
         <nav className={styles.navigation} aria-label="Điều hướng bảng điều khiển">
-          {navigation.map(({ href, label }) => (
+          {visibleNavigation.map(({ href, label }) => (
             <Link
               href={href}
               key={href}

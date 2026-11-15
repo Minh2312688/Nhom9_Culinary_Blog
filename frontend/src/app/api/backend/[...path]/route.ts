@@ -31,6 +31,9 @@ function allowedMethods(segments: string[]): HttpMethod[] | null {
   if (segments.length === 1 && resource === "recipes") return ["GET", "POST"];
   if (segments.length === 1 && resource === "categories") return ["GET", "POST"];
 
+  if (resource === "recipes" && segments.length === 2 && first === "mine") {
+    return ["GET"];
+  }
   if (resource === "recipes" && segments.length === 2 && isIdentifier(first)) {
     return ["GET", "PUT", "DELETE"];
   }
@@ -75,6 +78,16 @@ function allowedMethods(segments: string[]): HttpMethod[] | null {
     isIdentifier(third)
   ) {
     return ["DELETE"];
+  }
+  if (
+    resource === "recipes" &&
+    segments.length === 5 &&
+    isIdentifier(first) &&
+    second === "steps" &&
+    isIdentifier(third) &&
+    segments[4] === "image"
+  ) {
+    return ["POST"];
   }
   if (
     resource === "recipes" &&
@@ -130,6 +143,26 @@ function pathSegments(request: Request): string[] | null {
   return segments;
 }
 
+function hasSameOrigin(request: Request, origin: string | null): boolean {
+  if (!origin) return false;
+
+  const host = request.headers.get("host");
+  if (!host) return false;
+
+  const requestUrl = new URL(request.url);
+  const forwardedProtocol = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const protocol = forwardedProtocol || requestUrl.protocol.slice(0, -1);
+  if (protocol !== "http" && protocol !== "https") return false;
+
+  try {
+    const originUrl = new URL(origin);
+    const requestOrigin = new URL(`${protocol}://${host}`).origin;
+    return originUrl.origin === origin && originUrl.origin === requestOrigin;
+  } catch {
+    return false;
+  }
+}
+
 function serializedSessionCookie(name: string, value: string, secure: boolean): string {
   return [
     `${name}=${value}`,
@@ -139,6 +172,24 @@ function serializedSessionCookie(name: string, value: string, secure: boolean): 
     "SameSite=Lax",
     secure ? "Secure" : "",
   ].filter(Boolean).join("; ");
+}
+
+function existingSessionCookieNames(request: Request): string[] {
+  return (request.headers.get("cookie") ?? "")
+    .split(";")
+    .map((item) => item.trim().split("=", 1)[0])
+    .filter((name) =>
+      name === AUTH_SESSION_COOKIE_NAME ||
+      new RegExp(`^${AUTH_SESSION_COOKIE_NAME.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\.\\d+$`).test(name),
+    );
+}
+
+function expiredSessionCookieHeaders(request: Request): string[] {
+  const secure = AUTH_SESSION_COOKIE_NAME.startsWith("__Secure-");
+  const names = existingSessionCookieNames(request);
+  return (names.length ? names : [AUTH_SESSION_COOKIE_NAME]).map(
+    (name) => `${name}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`,
+  );
 }
 
 function sessionCookieHeaders(request: Request, value: string): string[] {
@@ -153,15 +204,8 @@ function sessionCookieHeaders(request: Request, value: string): string[] {
       chunks.length === 1 ? AUTH_SESSION_COOKIE_NAME : `${AUTH_SESSION_COOKIE_NAME}.${index}`,
     ),
   );
-  const existingCookieNames = (request.headers.get("cookie") ?? "")
-    .split(";")
-    .map((item) => item.trim().split("=", 1)[0])
-    .filter((name) =>
-      name === AUTH_SESSION_COOKIE_NAME ||
-      new RegExp(`^${AUTH_SESSION_COOKIE_NAME.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\.\\d+$`).test(name),
-    );
 
-  const headers = existingCookieNames
+  const headers = existingSessionCookieNames(request)
     .filter((name) => !nextCookieNames.has(name))
     .map((name) => `${name}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`);
   headers.push(...chunks.map((chunk, index) =>
@@ -196,17 +240,22 @@ function jsonResponse(status: number, message: string, cookies: string[] = []): 
 
 async function getValidAccessToken(
   request: Request,
-): Promise<{ accessToken: string; cookies: string[] } | null> {
+  forceRefresh = false,
+  currentToken?: JWT,
+): Promise<{ accessToken: string; cookies: string[]; token: JWT } | null> {
   const secret = process.env.AUTH_SECRET;
   if (!secret) return null;
 
-  const token = await getToken({
+  const token = currentToken ?? await getToken({
     req: request,
     secret,
     cookieName: AUTH_SESSION_COOKIE_NAME,
     salt: AUTH_SESSION_COOKIE_NAME,
   });
-  if (!token || !token.sub || token.error === "RefreshTokenError") return null;
+  if (!token) return null;
+  if (!token.sub || token.error === "RefreshTokenError") {
+    return { accessToken: "", cookies: expiredSessionCookieHeaders(request), token };
+  }
 
   const accessToken = token.accessToken;
   const refreshToken = token.refreshToken;
@@ -216,10 +265,10 @@ async function getValidAccessToken(
     typeof refreshToken !== "string" ||
     typeof expiresAt !== "number"
   ) {
-    return null;
+    return { accessToken: "", cookies: expiredSessionCookieHeaders(request), token };
   }
-  if (Date.now() < expiresAt - BACKEND_TOKEN_REFRESH_SKEW_MS) {
-    return { accessToken, cookies: [] };
+  if (!forceRefresh && Date.now() < expiresAt - BACKEND_TOKEN_REFRESH_SKEW_MS) {
+    return { accessToken, cookies: [], token };
   }
 
   try {
@@ -231,23 +280,19 @@ async function getValidAccessToken(
       accessTokenExpiresAt: Date.now() + rotated.expiresIn * 1000,
     };
     const encoded = await encodeSessionToken(updatedToken);
-    if (!encoded) return null;
+    if (!encoded) {
+      return { accessToken: "", cookies: expiredSessionCookieHeaders(request), token: updatedToken };
+    }
     return {
       accessToken: rotated.accessToken,
       cookies: sessionCookieHeaders(request, encoded),
+      token: updatedToken,
     };
   } catch {
-    const failedToken: JWT = {
-      ...token,
-      accessToken: undefined,
-      refreshToken: undefined,
-      accessTokenExpiresAt: 0,
-      error: "RefreshTokenError",
-    };
-    const encoded = await encodeSessionToken(failedToken);
     return {
       accessToken: "",
-      cookies: encoded ? sessionCookieHeaders(request, encoded) : [],
+      cookies: expiredSessionCookieHeaders(request),
+      token,
     };
   }
 }
@@ -271,7 +316,7 @@ async function proxy(request: Request, method: RequestMethod): Promise<Response>
 
   if (method !== "GET") {
     const origin = request.headers.get("origin");
-    if (!origin || origin !== new URL(request.url).origin) {
+    if (!hasSameOrigin(request, origin)) {
       return jsonResponse(403, "Forbidden", session.cookies);
     }
   }
@@ -285,36 +330,53 @@ async function proxy(request: Request, method: RequestMethod): Promise<Response>
   }
   upstreamUrl.search = new URL(request.url).search;
 
-  const headers = new Headers({
-    Authorization: `Bearer ${session.accessToken}`,
-  });
-  const contentType = request.headers.get("content-type");
-  if (contentType) headers.set("Content-Type", contentType);
-  const accept = request.headers.get("accept");
-  if (accept) headers.set("Accept", accept);
-
+  let responseCookies = session.cookies;
   try {
     const body = method === "GET" ? undefined : await request.arrayBuffer();
-    const upstream = await fetch(upstreamUrl, {
-      method,
-      headers,
-      body,
-      cache: "no-store",
-      redirect: "manual",
-    });
+    const sendToBackend = (accessToken: string) => {
+      const headers = new Headers({ Authorization: `Bearer ${accessToken}` });
+      const contentType = request.headers.get("content-type");
+      if (contentType) headers.set("Content-Type", contentType);
+      const accept = request.headers.get("accept");
+      if (accept) headers.set("Accept", accept);
+
+      return fetch(upstreamUrl, {
+        method,
+        headers,
+        body,
+        cache: "no-store",
+        redirect: "manual",
+      });
+    };
+
+    let upstream = await sendToBackend(session.accessToken);
+    if (upstream.status === 401) {
+      const refreshed = await getValidAccessToken(request, true, session.token);
+      responseCookies = [...responseCookies, ...(refreshed?.cookies ?? [])];
+      if (!refreshed?.accessToken) {
+        if (!refreshed) responseCookies.push(...expiredSessionCookieHeaders(request));
+        return jsonResponse(401, "Unauthorized", responseCookies);
+      }
+
+      upstream = await sendToBackend(refreshed.accessToken);
+      if (upstream.status === 401) {
+        responseCookies.push(...expiredSessionCookieHeaders(request));
+      }
+    }
+
     const responseHeaders = new Headers({ "Cache-Control": "no-store" });
     for (const name of UPSTREAM_RESPONSE_HEADERS) {
       const value = upstream.headers.get(name);
       if (value) responseHeaders.set(name, value);
     }
-    for (const cookie of session.cookies) responseHeaders.append("Set-Cookie", cookie);
+    for (const cookie of responseCookies) responseHeaders.append("Set-Cookie", cookie);
 
     return new Response(upstream.body, {
       status: upstream.status,
       headers: responseHeaders,
     });
   } catch {
-    return jsonResponse(502, "Backend unavailable", session.cookies);
+    return jsonResponse(502, "Backend unavailable", responseCookies);
   }
 }
 

@@ -15,14 +15,14 @@
 .searchBand { color: var(--color-on-coral); background: var(--forest); position: relative; overflow: hidden; }
 .searchBand::after { content: ""; position: absolute; right: -24px; top: -115px; width: 310px; height: 310px; border: 1px solid rgb(255 255 255 / 12%); border-radius: 50%; box-shadow: 0 0 0 35px rgb(255 255 255 / 5%), 0 0 0 70px rgb(255 255 255 / 3%); pointer-events: none; }
 .searchInner { max-width: 1120px; margin: 0 auto; padding: 48px 28px 42px; position: relative; z-index: 1; }
-.eyebrow, .eyebrowDark { margin: 0 0 10px; font: 700 10px "Trebuchet MS", sans-serif; letter-spacing: 1.4px; }
+.eyebrow, .eyebrowDark { margin: 0 0 10px; font: 700 10px var(--font-body); letter-spacing: 1.4px; }
 .eyebrow { color: var(--color-turmeric); }
 .searchInner h1 { margin: 0; font: 500 38px/1.12 var(--font-display); letter-spacing: 0; }
 .intro { margin: 10px 0 24px; color: var(--color-dark-muted); font: 15px/1.5 var(--font-body); }
 .searchBox { height: 58px; max-width: 820px; padding: 0 14px 0 18px; display: flex; align-items: center; gap: 13px; border: 1px solid rgb(255 255 255 / 32%); border-radius: 4px; color: var(--forest); background: var(--color-surface); }
 .searchBox input { min-width: 0; flex: 1; border: 0; outline: 0; color: var(--color-ink); background: transparent; font: 16px var(--font-body); }
 .searchBox input::placeholder { color: var(--color-muted); }
-.searchHint { color: var(--color-muted); white-space: nowrap; font: 600 9px var(--font-body); letter-spacing: 0.7px; }
+.searchHint { color: var(--color-muted); white-space: nowrap; font: 600 9px var(--font-body); }
 .clearSearch { display: grid; place-items: center; padding: 5px; border: 0; color: var(--color-teal); background: transparent; cursor: pointer; }
 
 .content { max-width: 1120px; margin: 0 auto; padding: 30px 28px 70px; }

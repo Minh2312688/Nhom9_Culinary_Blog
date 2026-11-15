@@ -1,4 +1,7 @@
 .shell {
+  --line: var(--color-border);
+  --forest: var(--color-teal);
+  --tomato: var(--color-coral);
   min-height: 100vh;
   color: var(--color-ink);
   background: var(--color-cream);
@@ -18,7 +21,7 @@
   display: flex;
   flex: 1;
   flex-wrap: wrap;
-  gap: var(--space-5);
+  gap: var(--space-6);
 }
 
 .navigation a,

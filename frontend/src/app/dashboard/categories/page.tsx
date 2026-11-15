@@ -1,7 +1,6 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   createCategory,
   deleteCategory,
@@ -15,9 +14,7 @@ import { ErrorNotice, LoadingNotice, SectionTitle } from "../../site-ui";
 import styles from "../../site-ui.module.css";
 
 export default function DashboardCategoriesPage() {
-  const router = useRouter();
   const { showToast } = useFeedback();
-  const [token, setToken] = useState("");
   const [categories, setCategories] = useState<RecipeCategory[]>([]);
   const [selected, setSelected] = useState<RecipeCategory | null>(null);
   const [name, setName] = useState("");
@@ -58,16 +55,10 @@ export default function DashboardCategoriesPage() {
   }, [showToast]);
 
   useEffect(() => {
-    const accessToken = sessionStorage.getItem("culinary_access_token");
-    if (!accessToken) {
-      router.replace("/auth/login");
-      return;
-    }
-    setToken(accessToken);
     const controller = new AbortController();
     void loadCategories(controller.signal);
     return () => controller.abort();
-  }, [loadCategories, router]);
+  }, [loadCategories]);
 
   function startEdit(category: RecipeCategory) {
     setSelected(category);
@@ -106,7 +97,7 @@ export default function DashboardCategoriesPage() {
 
     setUploadingImage(true);
     try {
-      await uploadCategoryImage(token, categoryId, pendingImageFile);
+      await uploadCategoryImage(categoryId, pendingImageFile);
       setPendingUploadCategoryId(null);
       resetForm();
       showToast(selected ? "Đã cập nhật danh mục." : "Đã tạo danh mục.", "success");
@@ -147,14 +138,14 @@ export default function DashboardCategoriesPage() {
 
       let savedCategory: RecipeCategory;
       if (selected) {
-        savedCategory = await updateCategory(token, selected.id, {
+        savedCategory = await updateCategory(selected.id, {
           name: name.trim(),
           description: description.trim() || null,
           imageUrl: selected.imageUrl ?? null,
           orderIndex: selected.orderIndex ?? 0,
         });
       } else {
-        savedCategory = await createCategory(token, { name: name.trim(), description: description.trim() || null });
+        savedCategory = await createCategory({ name: name.trim(), description: description.trim() || null });
       }
 
       if (pendingImageFile) {
@@ -179,7 +170,7 @@ export default function DashboardCategoriesPage() {
   async function handleDelete(category: RecipeCategory) {
     if (!window.confirm(`Xóa danh mục "${category.name}"?`)) return;
     try {
-      await deleteCategory(token, category.id);
+      await deleteCategory(category.id);
       showToast("Đã xóa danh mục.", "success");
       await loadCategories();
     } catch (reason) {
@@ -211,7 +202,7 @@ export default function DashboardCategoriesPage() {
           )}
           {uploadingImage && <p role="status">Đang tải ảnh danh mục lên...</p>}
           <div className={styles.actions}>
-            <button className={styles.button} type="submit" disabled={saving || Boolean(pendingUploadCategoryId)}>{saving ? "Đang lưu..." : selected ? "Cập nhật" : "Tạo danh mục"}</button>
+            <button className={`${styles.button} ${styles.prominentActionButton}`} type="submit" disabled={saving || Boolean(pendingUploadCategoryId)}>{saving ? "Đang lưu..." : selected ? "Cập nhật" : "Tạo danh mục"}</button>
             {pendingUploadCategoryId && <button className={styles.button} type="button" onClick={() => void finishImageUpload(pendingUploadCategoryId)} disabled={saving}>Thử tải ảnh lại</button>}
             {selected && <button className={styles.buttonSecondary} type="button" onClick={resetForm} disabled={Boolean(pendingUploadCategoryId)}>Hủy sửa</button>}
           </div>
@@ -225,9 +216,9 @@ export default function DashboardCategoriesPage() {
             <tbody>{categories.map((category) => (
               <tr key={category.id}>
                 <td><strong>{category.name}</strong></td><td>{category.slug}</td><td>{category.recipeCount ?? 0}</td>
-                <td><div className={styles.actions}>
-                  <button type="button" onClick={() => startEdit(category)}>Sửa</button>
-                  <button type="button" onClick={() => void handleDelete(category)}>Xóa</button>
+                <td><div className={`${styles.actions} ${styles.tableActions}`}>
+                  <button className={`${styles.buttonSecondary} ${styles.prominentActionButton}`} type="button" onClick={() => startEdit(category)}>Sửa</button>
+                  <button className={`${styles.buttonSecondary} ${styles.prominentActionButton}`} type="button" onClick={() => void handleDelete(category)}>Xóa</button>
                 </div></td>
               </tr>
             ))}</tbody>

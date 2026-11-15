@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { signInAsByApi } from "./support/auth";
 
 interface ViolationSummary {
   id: string;
@@ -109,6 +110,7 @@ test.describe("Automated Accessibility Checks", () => {
   });
 
   test("accessibility check for route /dashboard", async ({ page }) => {
+    await signInAsByApi(page);
     await page.goto("/dashboard");
     await page.locator("main").waitFor({ state: "visible" });
     await page.waitForLoadState("domcontentloaded");

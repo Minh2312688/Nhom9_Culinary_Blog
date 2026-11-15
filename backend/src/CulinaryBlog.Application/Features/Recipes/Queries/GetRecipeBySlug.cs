@@ -43,7 +43,7 @@ public sealed class GetRecipeBySlugQueryHandler : IRequestHandler<GetRecipeBySlu
         if (cached is not null && CanView(cached.Status, cached.AuthorId))
             return await IncludePublicAuthorAsync(cached with { Author = null }, cancellationToken);
 
-        var recipe = await recipes.Query.AsNoTracking()
+        var recipe = await recipes.Query.AsNoTracking().AsSplitQuery()
             .Include(x => x.Ingredients)
             .Include(x => x.Steps)
             .Include(x => x.Images)

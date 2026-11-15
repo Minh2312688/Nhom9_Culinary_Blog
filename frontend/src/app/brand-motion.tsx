@@ -8,6 +8,7 @@ export function BrandMotion({ children }: Readonly<{ children: ReactNode }>) {
 
   return (
     <motion.div
+      data-brand-motion=""
       initial={reduceMotion ? false : { opacity: 1, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduceMotion ? 0 : 0.2 }}

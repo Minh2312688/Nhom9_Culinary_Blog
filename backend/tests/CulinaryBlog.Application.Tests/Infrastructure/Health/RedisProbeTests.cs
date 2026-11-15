@@ -1,5 +1,7 @@
 using CulinaryBlog.Infrastructure.Health;
+using CulinaryBlog.Infrastructure;
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
 using Xunit;
@@ -19,6 +21,27 @@ namespace CulinaryBlog.Application.Tests.Infrastructure.Health;
 /// </summary>
 public sealed class RedisProbeTests
 {
+    [Fact]
+    public void AddInfrastructure_RedisConfigured_RegistersMultiplexerForReadinessProbe()
+    {
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Postgres"] =
+                    "Host=localhost;Database=redis_wiring_test;Username=test;Password=test",
+                ["Redis:ConnectionString"] = "localhost:6379",
+                ["Jwt:Key"] = "RedisWiringTestSecretKey_MustBeAtLeast256BitsLong!"
+            })
+            .Build();
+
+        services.AddInfrastructure(configuration);
+
+        services.Should().ContainSingle(descriptor =>
+            descriptor.ServiceType == typeof(IConnectionMultiplexer) &&
+            descriptor.Lifetime == ServiceLifetime.Singleton);
+    }
+
     [Fact]
     public async Task ProbeAsync_RedisNotConfigured_ReturnsFalse()
     {

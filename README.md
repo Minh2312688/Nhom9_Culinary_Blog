@@ -157,9 +157,13 @@ Cấu trúc có thể được bổ sung khi các module mới được tích h�
 
 ### Backend và dịch vụ nền
 
-1. Sao chép `.env.example` thành `.env`; thay các placeholder bằng secrets riêng cho local.
+1. Sao chép `.env.example` thành `.env`; thay các placeholder bằng secrets riêng cho local. Compose đọc `.env`, không tự đọc `.env.example`.
 2. Chạy `docker compose up --build -d` từ thư mục gốc.
 3. API lắng nghe tại `http://localhost:5000`; PostgreSQL, Redis và MinIO được khởi chạy cùng Compose.
+
+Để seed tài khoản Admin cho môi trường local, đặt `ADMIN_SEED_ENABLED=true`, `ADMIN_SEED_EMAIL` và `ADMIN_SEED_PASSWORD` trong `.env` trước khi khởi chạy API. Không đưa credential thật vào `.env.example`, image hoặc Git; triển khai web nên lấy chúng từ secret manager của nền tảng.
+
+`FRONTEND_BASE_URL` là địa chỉ frontend mà trình duyệt truy cập được; Compose dùng nó cho Auth.js redirect và liên kết đặt lại mật khẩu. Khi triển khai web, đặt biến này thành origin HTTPS thực tế, không dùng `0.0.0.0` (địa chỉ bind nội bộ).
 
 `JWT_SECRET` là bắt buộc. Nếu không có biến này, API dừng khi khởi tạo cấu hình JWT. Redis có thể bỏ cấu hình để dùng cache trong bộ nhớ; khi Redis đã cấu hình nhưng tạm thời không truy cập được, cache bỏ qua lỗi và tiếp tục đọc database.
 

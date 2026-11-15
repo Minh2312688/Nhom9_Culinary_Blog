@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signInAsByApi } from "./support/auth";
 
 const viewports = [
   { name: "Desktop 1280x800", width: 1280, height: 800 },
@@ -13,6 +14,7 @@ test.describe("Responsive – no horizontal overflow", () => {
     for (const route of routes) {
       test(`${route} @ ${vp.name}`, async ({ page }) => {
         await page.setViewportSize({ width: vp.width, height: vp.height });
+        if (route === "/dashboard") await signInAsByApi(page);
         await page.goto(route);
         await page.locator("main").waitFor({ state: "visible" });
         await page.waitForLoadState("domcontentloaded");

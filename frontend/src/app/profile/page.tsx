@@ -1,25 +1,15 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { ApiError } from "@/lib/api";
+import { signOut } from "next-auth/react";
+import type { ApiError } from "@/lib/api";
 import {
-  UserProfile,
   getProfileApi,
-  refreshTokenApi,
-  logoutApi,
   updateProfileApi,
-  UpdateProfileRequest,
   changePasswordApi,
+  type UpdateProfileRequest,
+  type UserProfile,
 } from "@/lib/auth-api";
-import {
-  getAccessToken,
-  getRefreshToken,
-  setAuthTokens,
-  clearAuthTokens,
-  setStoredUser,
-} from "@/lib/auth-store";
 import {
   ChefHat,
   LogOut,
@@ -38,14 +28,13 @@ import {
   Lock,
   ArrowLeft,
 } from "lucide-react";
+import { BrandLink } from "../site-ui";
 
 export default function ProfilePage() {
-  const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Edit Mode States (FR-AUTH-007)
   const [isEditing, setIsEditing] = useState(false);
@@ -71,75 +60,19 @@ export default function ProfilePage() {
   const fetchProfileWithRetry = useCallback(async () => {
     setError(null);
     setLoading(true);
-
-    if (typeof window === "undefined") return;
-
-    const accessToken = getAccessToken();
-    const refreshToken = getRefreshToken();
-
-    if (!accessToken && !refreshToken) {
-      router.push("/auth/login");
-      return;
-    }
-
     try {
-      if (accessToken) {
-        try {
-          const data = await getProfileApi(accessToken);
-          setProfile(data);
-          setStoredUser({
-            displayName: data.displayName,
-            email: data.email,
-            avatarUrl: data.avatarUrl,
-          });
-          setLoading(false);
-          return;
-        } catch (err) {
-          const apiErr = err as ApiError;
-          if (apiErr.status !== 401) {
-            throw apiErr;
-          }
-        }
-      }
-
-      // 401 or no access token: attempt refresh token rotation ONCE
-      if (refreshToken) {
-        setIsRefreshing(true);
-        try {
-          const newAuth = await refreshTokenApi(refreshToken);
-          const saved = setAuthTokens(newAuth.accessToken, newAuth.refreshToken);
-          if (!saved) {
-            clearAuthTokens();
-            router.push("/auth/login");
-            return;
-          }
-
-          const retryData = await getProfileApi(newAuth.accessToken);
-          setProfile(retryData);
-          setStoredUser({
-            displayName: retryData.displayName,
-            email: retryData.email,
-            avatarUrl: retryData.avatarUrl,
-          });
-          setLoading(false);
-          setIsRefreshing(false);
-          return;
-        } catch {
-          clearAuthTokens();
-          router.push("/auth/login");
-          return;
-        }
-      }
-
-      clearAuthTokens();
-      router.push("/auth/login");
+      setProfile(await getProfileApi());
+      setLoading(false);
     } catch (err) {
       const apiErr = err as ApiError;
+      if (apiErr.status === 401) {
+        await signOut({ redirectTo: "/auth/login" });
+        return;
+      }
       setError(apiErr.detail || "Không thể tải thông tin hồ sơ. Vui lòng thử lại.");
       setLoading(false);
-      setIsRefreshing(false);
     }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     fetchProfileWithRetry();
@@ -150,27 +83,11 @@ export default function ProfilePage() {
     setLogoutError(null);
     setIsLoggingOut(true);
 
-    const accessToken = getAccessToken();
-    const refreshToken = getRefreshToken();
-
     try {
-      if (accessToken && refreshToken) {
-        try {
-          await logoutApi(accessToken, refreshToken);
-        } catch (apiErr) {
-          console.warn("Backend logout notification warning:", apiErr);
-        }
-      }
-    } finally {
-      const cleared = clearAuthTokens();
+      await signOut({ redirectTo: "/" });
+    } catch {
+      setLogoutError("Không thể kết thúc phiên đăng nhập. Vui lòng thử lại.");
       setIsLoggingOut(false);
-      if (cleared) {
-        router.push("/auth/login");
-      } else {
-        setLogoutError(
-          "Không thể xóa phiên đăng nhập trên thiết bị. Vui lòng thử lại."
-        );
-      }
     }
   };
 
@@ -228,63 +145,29 @@ export default function ProfilePage() {
       return;
     }
 
-    let token = getAccessToken();
-    const refreshToken = getRefreshToken();
-
-    if (!token && !refreshToken) {
-      clearAuthTokens();
-      router.push("/auth/login");
-      return;
-    }
-
     setIsSavingPassword(true);
 
     try {
-      if (token) {
-        try {
-          await changePasswordApi(token, {
-            currentPassword,
-            newPassword,
-            confirmPassword,
-          });
-          setPasswordSuccess("Đổi mật khẩu thành công!");
-          setIsChangingPassword(false);
-          setIsSavingPassword(false);
-          return;
-        } catch (err) {
-          const apiErr = err as ApiError;
-          if (apiErr.status === 401 && refreshToken) {
-            // Attempt token rotation
-            const newAuth = await refreshTokenApi(refreshToken);
-            const saved = setAuthTokens(newAuth.accessToken, newAuth.refreshToken);
-            if (!saved) {
-              clearAuthTokens();
-              router.push("/auth/login");
-              return;
-            }
-            token = newAuth.accessToken;
-
-            await changePasswordApi(token, {
-              currentPassword,
-              newPassword,
-              confirmPassword,
-            });
-            setPasswordSuccess("Đổi mật khẩu thành công!");
-            setIsChangingPassword(false);
-            setIsSavingPassword(false);
-            return;
-          }
-          throw apiErr;
-        }
-      }
+      await changePasswordApi({
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
+      setPasswordSuccess("Đổi mật khẩu thành công!");
+      setIsChangingPassword(false);
     } catch (err) {
       const apiErr = err as ApiError;
+      if (apiErr.status === 401) {
+        await signOut({ redirectTo: "/auth/login" });
+        return;
+      }
       if (apiErr.errors) {
         const detailList = Object.values(apiErr.errors).flat().join(" ");
         setPasswordError(detailList || apiErr.detail || "Không thể đổi mật khẩu.");
       } else {
         setPasswordError(apiErr.detail || "Không thể đổi mật khẩu. Vui lòng kiểm tra lại mật khẩu hiện tại.");
       }
+    } finally {
       setIsSavingPassword(false);
     }
   };
@@ -324,66 +207,26 @@ export default function ProfilePage() {
       bio: trimmedBio || null,
     };
 
-    let token = getAccessToken();
-    const refreshToken = getRefreshToken();
-
-    if (!token && !refreshToken) {
-      clearAuthTokens();
-      router.push("/auth/login");
-      return;
-    }
-
     setIsSaving(true);
 
     try {
-      if (token) {
-        try {
-          const updated = await updateProfileApi(token, payload);
-          setProfile(updated);
-          setStoredUser({
-            displayName: updated.displayName,
-            email: updated.email,
-            avatarUrl: updated.avatarUrl,
-          });
-          setIsEditing(false);
-          setEditSuccess("Cập nhật hồ sơ thành công!");
-          setIsSaving(false);
-          return;
-        } catch (err) {
-          const apiErr = err as ApiError;
-          if (apiErr.status === 401 && refreshToken) {
-            const newAuth = await refreshTokenApi(refreshToken);
-            const saved = setAuthTokens(newAuth.accessToken, newAuth.refreshToken);
-            if (!saved) {
-              clearAuthTokens();
-              router.push("/auth/login");
-              return;
-            }
-            token = newAuth.accessToken;
-
-            const updated = await updateProfileApi(token, payload);
-            setProfile(updated);
-            setStoredUser({
-              displayName: updated.displayName,
-              email: updated.email,
-              avatarUrl: updated.avatarUrl,
-            });
-            setIsEditing(false);
-            setEditSuccess("Cập nhật hồ sơ thành công!");
-            setIsSaving(false);
-            return;
-          }
-          throw apiErr;
-        }
-      }
+      const updated = await updateProfileApi(payload);
+      setProfile(updated);
+      setIsEditing(false);
+      setEditSuccess("Cập nhật hồ sơ thành công!");
     } catch (err) {
       const apiErr = err as ApiError;
+      if (apiErr.status === 401) {
+        await signOut({ redirectTo: "/auth/login" });
+        return;
+      }
       if (apiErr.errors) {
         const detailList = Object.values(apiErr.errors).flat().join(" ");
         setEditError(detailList || apiErr.detail || "Dữ liệu không hợp lệ.");
       } else {
         setEditError(apiErr.detail || "Không thể cập nhật hồ sơ. Vui lòng thử lại.");
       }
+    } finally {
       setIsSaving(false);
     }
   };
@@ -405,18 +248,15 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-amber-50/50 via-white to-orange-50/40">
       <div className="w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+        <div className="px-5 pt-4 sm:px-8 sm:pt-5">
+          <BrandLink />
+        </div>
         {/* Top Decorative Banner */}
         <div className="h-32 sm:h-40 bg-gradient-to-r from-teal-800 via-teal-700 to-orange-600 relative p-4 sm:p-6 flex items-start justify-between">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/20 backdrop-blur-sm text-xs font-medium text-white/90">
             <ChefHat className="w-3.5 h-3.5 text-orange-300" />
             <span>Hồ sơ thành viên</span>
           </div>
-          <Link
-            href="/"
-            className="text-xs font-semibold text-white/90 hover:text-white bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full transition"
-          >
-            Về trang chủ
-          </Link>
         </div>
 
         {/* Content Container */}
@@ -536,7 +376,7 @@ export default function ProfilePage() {
             <div className="py-12 flex flex-col items-center justify-center space-y-3" role="status">
               <Loader2 className="w-8 h-8 text-orange-600 animate-spin" />
               <p className="text-sm text-gray-500 font-medium">
-                {isRefreshing ? "Đang làm mới phiên làm việc..." : "Đang tải thông tin hồ sơ..."}
+                Đang tải thông tin hồ sơ...
               </p>
             </div>
           ) : error ? (
@@ -584,7 +424,7 @@ export default function ProfilePage() {
               <div className="space-y-1">
                 <label
                   htmlFor="edit-display-name"
-                  className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                  className="block text-xs font-semibold text-gray-700 uppercase"
                 >
                   Tên hiển thị <span className="text-red-500">*</span>
                 </label>
@@ -604,7 +444,7 @@ export default function ProfilePage() {
               <div className="space-y-1">
                 <label
                   htmlFor="edit-avatar-url"
-                  className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                  className="block text-xs font-semibold text-gray-700 uppercase"
                 >
                   Avatar URL (Liên kết ảnh)
                 </label>
@@ -622,7 +462,7 @@ export default function ProfilePage() {
               <div className="space-y-1">
                 <label
                   htmlFor="edit-bio"
-                  className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                  className="block text-xs font-semibold text-gray-700 uppercase"
                 >
                   Tiểu sử cá nhân
                 </label>
@@ -693,7 +533,7 @@ export default function ProfilePage() {
               <div className="space-y-1">
                 <label
                   htmlFor="current-password"
-                  className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                  className="block text-xs font-semibold text-gray-700 uppercase"
                 >
                   Mật khẩu hiện tại <span className="text-red-500">*</span>
                 </label>
@@ -711,7 +551,7 @@ export default function ProfilePage() {
               <div className="space-y-1">
                 <label
                   htmlFor="new-password"
-                  className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                  className="block text-xs font-semibold text-gray-700 uppercase"
                 >
                   Mật khẩu mới <span className="text-red-500">*</span>
                 </label>
@@ -729,7 +569,7 @@ export default function ProfilePage() {
               <div className="space-y-1">
                 <label
                   htmlFor="confirm-password"
-                  className="block text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                  className="block text-xs font-semibold text-gray-700 uppercase"
                 >
                   Xác nhận mật khẩu mới <span className="text-red-500">*</span>
                 </label>

@@ -12,6 +12,10 @@ services:
       ASPNETCORE_URLS: http://+:8080
       Seed__Enabled: "true"
       Seed__SampleDataPath: /app/sample-data
+      # Seed an Admin only when explicitly enabled with deployment-specific credentials.
+      AdminSeed__Enabled: ${ADMIN_SEED_ENABLED:-true}
+      AdminSeed__Email: ${ADMIN_SEED_EMAIL:-admin@example.com}
+      AdminSeed__Password: ${ADMIN_SEED_PASSWORD:-Admin123!}
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       Redis__ConnectionString: redis:6379
       MinIO__Endpoint: minio:9000
@@ -26,13 +30,13 @@ services:
       Frontend__BaseUrl: ${FRONTEND_BASE_URL:-http://localhost:3000}
       # FR-JOB-001 (SRS-AUDIT sec-12-4): Defaults to MailHog inside Compose for offline demo.
       # To send real transactional emails (e.g., Brevo on port 587), set SMTP_* in local .env.
-      Smtp__Host: ${SMTP_HOST:-mailhog}
-      Smtp__Port: ${SMTP_PORT:-1025}
-      Smtp__UseSsl: ${SMTP_USE_SSL:-false}
-      Smtp__Username: ${SMTP_USERNAME:-}
-      Smtp__Password: ${SMTP_PASSWORD:-}
-      Smtp__FromAddress: ${SMTP_FROM_ADDRESS:-no-reply@culinaryblog.local}
-      Smtp__FromName: ${SMTP_FROM_NAME:-Culinary Blog}
+      #Smtp__Host: ${SMTP_HOST:-mailhog}
+      #Smtp__Port: ${SMTP_PORT:-1025}
+      #Smtp__UseSsl: ${SMTP_USE_SSL:-false}
+      #Smtp__Username: ${SMTP_USERNAME:-}
+      #Smtp__Password: ${SMTP_PASSWORD:-}
+      #Smtp__FromAddress: ${SMTP_FROM_ADDRESS:-no-reply@culinaryblog.local}
+      #Smtp__FromName: ${SMTP_FROM_NAME:-Culinary Blog}
       # Seq logging/ingestion
       Seq__ServerUrl: http://seq:5341
     ports:
@@ -72,8 +76,12 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      # Bind inside the container so the published port is reachable from the host/web proxy.
       HOSTNAME: 0.0.0.0
       API_INTERNAL_URL: http://api:8080
+      # Use the browser-facing URL for Auth.js redirects, not the container bind address.
+      AUTH_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
+      #FRONTEND_BASE_URL thành địa chỉ người dùng truy cập, ví dụ https://ten-mien-cua-ban.com
       AUTH_SECRET: ${AUTH_SECRET}
     ports:
       - "3000:3000"

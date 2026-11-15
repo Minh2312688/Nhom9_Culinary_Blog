@@ -10,6 +10,103 @@ namespace CulinaryBlog.Integration.Tests.Endpoints;
 public sealed class RecipePrivateDetailEndpointTests
 {
     [Fact]
+    public async Task UpdateRemovesNutrition_WhenNutritionIsNotIncluded_AndCanBeAddedAgain()
+    {
+        await using var factory = new CategoryWebApplicationFactory();
+        var recipeId = Guid.NewGuid();
+        var nutritionId = Guid.NewGuid();
+
+        await factory.SeedAsync(async db =>
+        {
+            var category = Category.Create("Test category");
+            db.Categories.Add(category);
+            db.Recipes.Add(new Recipe
+            {
+                Id = recipeId,
+                Title = "Recipe with nutrition",
+                Slug = "recipe-with-nutrition",
+                CategoryId = category.Id,
+                AuthorId = "test-author",
+                PrepTimeMinutes = 10,
+                CookTimeMinutes = 20,
+                Servings = 2,
+                Difficulty = RecipeDifficulty.Easy,
+                Nutrition = new RecipeNutrition
+                {
+                    Id = nutritionId,
+                    Calories = 300,
+                    Protein = 10,
+                    Carbohydrates = 20,
+                    Fat = 5,
+                    Fiber = 3,
+                    Sodium = 100
+                }
+            });
+            await db.SaveChangesAsync();
+        });
+
+        var client = factory.CreateClientAs("Author");
+        var endpoint = $"/api/v1/recipes/{recipeId}";
+        var detailResponse = await client.GetAsync(endpoint);
+        Assert.Equal(HttpStatusCode.OK, detailResponse.StatusCode);
+        var recipe = await detailResponse.Content.ReadFromJsonAsync<RecipeDetailDto>();
+        Assert.NotNull(recipe);
+        Assert.NotNull(recipe.Nutrition);
+
+        var removeResponse = await client.PutAsJsonAsync(
+            endpoint,
+            CreateUpdatePayload(recipe, "Recipe without nutrition"));
+
+        Assert.True(
+            removeResponse.StatusCode == HttpStatusCode.OK,
+            await removeResponse.Content.ReadAsStringAsync());
+        var removedRecipe = await removeResponse.Content.ReadFromJsonAsync<RecipeDetailDto>();
+        Assert.NotNull(removedRecipe);
+        Assert.Null(removedRecipe.Nutrition);
+
+        var removedRecords = factory.Query(db => db.RecipeNutritions
+            .IgnoreQueryFilters()
+            .Where(item => item.RecipeId == recipeId)
+            .Select(item => new { item.Id, item.IsDeleted })
+            .ToArray());
+        var removedRecord = Assert.Single(removedRecords);
+        Assert.Equal(nutritionId, removedRecord.Id);
+        Assert.True(removedRecord.IsDeleted);
+
+        var restoreResponse = await client.PutAsJsonAsync(
+            endpoint,
+            CreateUpdatePayload(
+                removedRecipe,
+                "Recipe with nutrition again",
+                nutrition: new
+                {
+                    calories = 350,
+                    protein = 12,
+                    carbohydrates = 24,
+                    fat = 6,
+                    fiber = 4,
+                    sodium = 110
+                }));
+
+        Assert.True(
+            restoreResponse.StatusCode == HttpStatusCode.OK,
+            await restoreResponse.Content.ReadAsStringAsync());
+        var restoredRecipe = await restoreResponse.Content.ReadFromJsonAsync<RecipeDetailDto>();
+        Assert.NotNull(restoredRecipe);
+        Assert.NotNull(restoredRecipe.Nutrition);
+        Assert.Equal(350, restoredRecipe.Nutrition.Calories);
+
+        var restoredRecords = factory.Query(db => db.RecipeNutritions
+            .IgnoreQueryFilters()
+            .Where(item => item.RecipeId == recipeId)
+            .Select(item => new { item.Id, item.IsDeleted })
+            .ToArray());
+        var restoredRecord = Assert.Single(restoredRecords);
+        Assert.Equal(nutritionId, restoredRecord.Id);
+        Assert.False(restoredRecord.IsDeleted);
+    }
+
+    [Fact]
     public async Task UpdateAddsNutrition_WhenRecipeDoesNotHaveNutrition()
     {
         await using var factory = new CategoryWebApplicationFactory();

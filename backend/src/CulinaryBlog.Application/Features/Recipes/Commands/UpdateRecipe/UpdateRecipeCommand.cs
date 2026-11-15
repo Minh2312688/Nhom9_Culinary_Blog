@@ -41,6 +41,7 @@ public sealed class UpdateRecipeCommandHandler : IRequestHandler<UpdateRecipeCom
         var title = request.Title.Trim();
         var titleSlug = RecipeCommandSlug.Slugify(title);
         var previousTitleSlug = RecipeCommandSlug.Slugify(recipe.Title);
+        var removedNutrition = request.Nutrition is null ? recipe.Nutrition : null;
         context.SetOriginalRowVersion(recipe, request.RowVersion);
         recipe.Title = title; recipe.Description = request.Description?.Trim(); recipe.CategoryId = request.CategoryId;
         recipe.PrepTimeMinutes = request.PrepTimeMinutes; recipe.CookTimeMinutes = request.CookTimeMinutes;
@@ -68,12 +69,29 @@ public sealed class UpdateRecipeCommandHandler : IRequestHandler<UpdateRecipeCom
                 DurationMinutes = item.DurationMinutes, ImageUrl = item.ImageUrl?.Trim()
             });
         }
-        if (request.Nutrition is not null)
+        if (request.Nutrition is null)
+        {
+            if (removedNutrition is not null)
+                removedNutrition.IsDeleted = true;
+        }
+        else
         {
             if (recipe.Nutrition is null)
             {
-                recipe.Nutrition = new RecipeNutrition { RecipeId = recipe.Id };
-                context.RecipeNutritions.Add(recipe.Nutrition);
+                var existingNutrition = await context.RecipeNutritions
+                    .IgnoreQueryFilters()
+                    .SingleOrDefaultAsync(item => item.RecipeId == recipe.Id, cancellationToken);
+
+                if (existingNutrition is null)
+                {
+                    recipe.Nutrition = new RecipeNutrition { RecipeId = recipe.Id };
+                    context.RecipeNutritions.Add(recipe.Nutrition);
+                }
+                else
+                {
+                    existingNutrition.IsDeleted = false;
+                    recipe.Nutrition = existingNutrition;
+                }
             }
 
             var nutrition = recipe.Nutrition;
@@ -86,6 +104,8 @@ public sealed class UpdateRecipeCommandHandler : IRequestHandler<UpdateRecipeCom
         }
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateConcurrencyException) { throw new ConcurrencyException(); }
+        if (removedNutrition is not null)
+            recipe.Nutrition = null;
         await cache.RemoveAsync($"recipes:slug:{previousSlug.ToLowerInvariant()}", cancellationToken);
         if (!string.Equals(previousSlug, recipe.Slug, StringComparison.OrdinalIgnoreCase))
             await cache.RemoveAsync($"recipes:slug:{recipe.Slug.ToLowerInvariant()}", cancellationToken);

@@ -112,7 +112,7 @@
 .recipeWizardTrack { height: 8px; overflow: hidden; border-radius: 999px; background: var(--line); }
 .recipeWizardFill { display: block; height: 100%; border-radius: inherit; background: var(--forest); transition: width 180ms ease; }
 .recipeWizardSteps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
-.recipeWizardStep { display: grid; min-width: 0; gap: 4px; padding: 8px 10px; border-bottom: 2px solid var(--line); color: var(--muted); font: 600 12px/1.4 var(--font-body); }
+.recipeWizardStep { display: grid; min-width: 0; gap: 4px; padding: 8px 10px; border-bottom: 2px solid var(--line); color: var(--color-muted); font: 600 12px/1.4 var(--font-body); }
 .recipeWizardStep[aria-current="step"] { border-color: var(--tomato); color: var(--forest); }
 .recipeWizardStep[data-completed="true"] { border-color: var(--forest); color: var(--forest); }
 .recipeWizardStepStatus { color: var(--forest); font-size: 10px; }

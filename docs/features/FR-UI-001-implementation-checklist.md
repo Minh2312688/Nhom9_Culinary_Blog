@@ -52,10 +52,15 @@
 - [x] `/dashboard/**` có shell quản trị riêng, active route/return link; auth token, payload và handlers giữ nguyên.
 - [x] Loading skeletons và feedback status/alert; HTTP Problem Details được map vào field hoặc error summary.
 - [x] Submit khóa khi lưu; publish lỗi giữ nguyên bản nháp; delete vẫn yêu cầu xác nhận.
-- [x] Keyboard focus, accessible names, labels, alt text, một main landmark và responsive routes được kiểm chứng.
-- [x] Route/UI regression 24/24 pass (SRS, UI acceptance, author profile và brand); production build/type/lint pass.
+- [x] Responsive E2E: 12 public/dashboard routes × 5 viewport boundaries (320, 767, 768, 1199, 1200 px), no horizontal overflow; 60/60 pass on Chromium.
+- [x] Keyboard navigation smoke test trên trang chủ; axe scans dùng tags WCAG 2.1 A/AA.
+- [x] Axe/keyboard automation 13/13 pass trên 12 route; đã thêm label cho `#imageFile` ở create/edit và sửa màu chữ các bước Wizard để đạt tương phản.
+- [ ] Manual WCAG 2.1 AA review với keyboard/screen reader chưa thực hiện; không kết luận toàn hệ thống đạt chứng nhận WCAG AA.
+- [x] Route/UI regression 24/24 pass (SRS, UI acceptance, author profile và brand; kết quả baseline trước lần rà soát này).
 
 > Build còn warning `<img>` đã có trong recipe detail. Recipe-detail SRS fixture được bổ sung vào mock API server để khớp với SSR data fetching.
+
+> **Kiểm chứng bổ sung 15/11/2026:** Responsive E2E — 60/60 pass sau khi ổn định chờ điều hướng và locator landmark. Axe/keyboard — 13/13 pass sau khi sửa label và contrast cho Recipe Editor. Lượt chạy toàn bộ 133 E2E chưa hoàn tất (timeout ở các suite ngoài phạm vi); không dùng kết quả đó để xác nhận pass.
 
 ## 6. Tài liệu, regression và chạy ứng dụng
 

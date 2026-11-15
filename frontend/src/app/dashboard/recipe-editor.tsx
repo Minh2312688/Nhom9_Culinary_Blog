@@ -62,6 +62,13 @@ interface ImageEntry {
   orderIndex: number;
 }
 
+interface PendingGalleryImage {
+  id: string;
+  file: File;
+  previewUrl: string;
+  altText: string | null;
+}
+
 type RecipeWizardStep = "general" | "ingredients" | "steps" | "review";
 
 const wizardSteps: { id: RecipeWizardStep; label: string }[] = [
@@ -172,6 +179,9 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
 
   // Image state
   const [images, setImages] = useState<ImageEntry[]>([]);
+  const [pendingGalleryImages, setPendingGalleryImages] = useState<PendingGalleryImage[]>([]);
+  const [pendingImageDeletes, setPendingImageDeletes] = useState<string[]>([]);
+  const [pendingPrimaryImageId, setPendingPrimaryImageId] = useState<string | null>(null);
   const [imageAltText, setImageAltText] = useState("");
   const [imageSetPrimary, setImageSetPrimary] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -179,7 +189,22 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   const [pendingImagePreviewUrl, setPendingImagePreviewUrl] = useState<string | null>(null);
   const [createdRecipeId, setCreatedRecipeId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryPreviewUrlsRef = useRef(new Set<string>());
   const stepPreviewUrlsRef = useRef(new Set<string>());
+  const visibleImages = [
+    ...images.filter((image) => !pendingImageDeletes.includes(image.id)),
+    ...pendingGalleryImages.map((image, index) => ({
+      id: image.id,
+      originalUrl: image.previewUrl,
+      thumbnailUrl: image.previewUrl,
+      altText: image.altText,
+      isPrimary: false,
+      orderIndex: images.length + index,
+    })),
+  ].map((image) => ({ ...image, isPrimary: image.id === pendingPrimaryImageId }));
+  const hasPendingGalleryChanges = pendingGalleryImages.length > 0
+    || pendingImageDeletes.length > 0
+    || pendingPrimaryImageId !== (images.find((image) => image.isPrimary)?.id ?? null);
   const hasPendingImageUploads = Boolean(
     pendingImageFile || structuredSteps.some((step) => step.imageFile),
   );
@@ -187,8 +212,8 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     ? structuredSteps
     : parseStepsText(formValues.steps);
   const reviewImageUrl = pendingImagePreviewUrl
-    ?? images.find((image) => image.isPrimary)?.originalUrl
-    ?? images[0]?.originalUrl
+    ?? visibleImages.find((image) => image.isPrimary)?.originalUrl
+    ?? visibleImages[0]?.originalUrl
     ?? null;
 
   useEffect(() => {
@@ -203,6 +228,14 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   }, [pendingImageFile]);
 
   useEffect(() => {
+    const currentUrls = new Set(pendingGalleryImages.map((image) => image.previewUrl));
+    for (const url of galleryPreviewUrlsRef.current) {
+      if (!currentUrls.has(url)) URL.revokeObjectURL(url);
+    }
+    galleryPreviewUrlsRef.current = currentUrls;
+  }, [pendingGalleryImages]);
+
+  useEffect(() => {
     const currentUrls = new Set(
       structuredSteps.flatMap((step) => step.imagePreviewUrl ? [step.imagePreviewUrl] : []),
     );
@@ -213,6 +246,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   }, [structuredSteps]);
 
   useEffect(() => () => {
+    for (const url of galleryPreviewUrlsRef.current) URL.revokeObjectURL(url);
     for (const url of stepPreviewUrlsRef.current) URL.revokeObjectURL(url);
   }, []);
 
@@ -285,6 +319,9 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
           orderIndex: img.orderIndex,
         })),
       );
+      setPendingGalleryImages([]);
+      setPendingImageDeletes([]);
+      setPendingPrimaryImageId(detail.images.find((image) => image.isPrimary)?.id ?? null);
     } else if (categoryItems.length) {
       setValue("categoryId", categoryItems[0].id);
     }
@@ -489,49 +526,30 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     if (index > 0) setActiveStep(wizardSteps[index - 1].id);
   }
 
-  async function handleImageUpload(file: File) {
-    if (!recipeId) {
-      showToast("Hãy lưu bản nháp trước để có thể tải ảnh lên.", "error");
-      return;
-    }
+  function handlePendingGalleryImageSelection(file: File | undefined) {
+    if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
       showToast("File quá lớn (tối đa 5MB).", "error");
-      return;
-    }
-    if (images.length >= 10) {
-      showToast("Đã đạt giới hạn 10 ảnh.", "error");
-      return;
-    }
-    setUploadingImage(true);
-    try {
-      const result = await uploadRecipeImage(
-        recipeId,
-        file,
-        imageSetPrimary,
-        imageAltText || undefined,
-      );
-      const newImg: ImageEntry = {
-        id: result.imageId,
-        originalUrl: result.originalUrl,
-        thumbnailUrl: result.thumbnailUrl,
-        altText: result.altText,
-        isPrimary: result.isPrimary,
-        orderIndex: images.length,
-      };
-      setImages((prev) =>
-        imageSetPrimary
-          ? prev.map((img) => ({ ...img, isPrimary: false })).concat(newImg)
-          : [...prev, newImg],
-      );
-      setImageAltText("");
-      setImageSetPrimary(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
-      showToast("Ảnh đã được tải lên.", "success");
-    } catch (reason) {
-      showToast(reason instanceof Error ? reason.message : "Không thể tải ảnh.", "error");
-    } finally {
-      setUploadingImage(false);
+      return;
     }
+    if (visibleImages.length >= 10) {
+      showToast("Đã đạt giới hạn 10 ảnh.", "error");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    const pendingImage: PendingGalleryImage = {
+      id: `pending-${crypto.randomUUID()}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+      altText: imageAltText.trim() || null,
+    };
+    const makePrimary = imageSetPrimary || visibleImages.length === 0;
+    setPendingGalleryImages((current) => [...current, pendingImage]);
+    if (makePrimary) setPendingPrimaryImageId(pendingImage.id);
+    setImageAltText("");
+    setImageSetPrimary(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function uploadPendingImage(targetRecipeId: string) {
@@ -575,6 +593,73 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     }
     setPendingImageFile(file);
     setError(null);
+  }
+
+  async function applyPendingGalleryChanges(targetRecipeId: string): Promise<boolean> {
+    const deletesLastImage = pendingImageDeletes.length > 0
+      && pendingImageDeletes.length === images.length
+      && pendingGalleryImages.length === 0;
+    let primaryImageId = pendingPrimaryImageId;
+    let currentImages = [...images];
+
+    for (const pendingImage of pendingGalleryImages) {
+      setUploadingImage(true);
+      try {
+        const result = await uploadRecipeImage(
+          targetRecipeId,
+          pendingImage.file,
+          false,
+          pendingImage.altText ?? undefined,
+        );
+        if (primaryImageId === pendingImage.id) {
+          primaryImageId = result.imageId;
+          setPendingPrimaryImageId(result.imageId);
+        }
+        const uploadedImage: ImageEntry = {
+          id: result.imageId,
+          originalUrl: result.originalUrl,
+          thumbnailUrl: result.thumbnailUrl,
+          altText: result.altText,
+          isPrimary: result.isPrimary,
+          orderIndex: currentImages.length,
+        };
+        currentImages = result.isPrimary
+          ? currentImages.map((image) => ({ ...image, isPrimary: false })).concat(uploadedImage)
+          : [...currentImages, uploadedImage];
+        setImages(currentImages);
+        setPendingGalleryImages((current) =>
+          current.filter((image) => image.id !== pendingImage.id),
+        );
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+
+    for (const imageId of pendingImageDeletes) {
+      await deleteRecipeImage(targetRecipeId, imageId);
+      const deletedImage = currentImages.find((image) => image.id === imageId);
+      currentImages = currentImages.filter((image) => image.id !== imageId);
+      if (deletedImage?.isPrimary && currentImages.length > 0) {
+        currentImages = currentImages.map((image, index) => ({
+          ...image,
+          isPrimary: index === 0,
+        }));
+      }
+      setImages(currentImages);
+      setPendingImageDeletes((current) => current.filter((id) => id !== imageId));
+    }
+
+    const currentPrimaryImageId = currentImages.find((image) => image.isPrimary)?.id ?? null;
+    if (primaryImageId && primaryImageId !== currentPrimaryImageId) {
+      await setPrimaryRecipeImage(targetRecipeId, primaryImageId);
+      currentImages = currentImages.map((image) => ({
+        ...image,
+        isPrimary: image.id === primaryImageId,
+      }));
+      setImages(currentImages);
+    }
+    setPendingPrimaryImageId(primaryImageId);
+    return deletesLastImage;
   }
 
   async function uploadPendingStepImages(targetRecipeId: string, savedSteps?: RecipeStep[]) {
@@ -621,25 +706,21 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     }
   }
 
-  async function handleSetPrimary(imageId: string) {
-    if (!recipeId) return;
-    try {
-      await setPrimaryRecipeImage(recipeId, imageId);
-      setImages((prev) => prev.map((img) => ({ ...img, isPrimary: img.id === imageId })));
-      showToast("Đã đặt ảnh chính.", "success");
-    } catch (reason) {
-      showToast(reason instanceof Error ? reason.message : "Không thể đặt ảnh chính.", "error");
-    }
+  function handleSetPrimary(imageId: string) {
+    setPendingPrimaryImageId(imageId);
   }
 
   async function handleDeleteImage(imageId: string) {
-    if (!recipeId || !confirm("Xóa ảnh này?")) return;
-    try {
-      await deleteRecipeImage(recipeId, imageId);
-      setImages((prev) => prev.filter((img) => img.id !== imageId));
-      showToast("Đã xóa ảnh.", "success");
-    } catch (reason) {
-      showToast(reason instanceof Error ? reason.message : "Không thể xóa ảnh.", "error");
+    if (!recipeId || !confirm("Đánh dấu ảnh này để xóa khi cập nhật công thức?")) return;
+    const remainingImages = visibleImages.filter((image) => image.id !== imageId);
+    setPendingGalleryImages((current) => current.filter((image) => image.id !== imageId));
+    if (images.some((image) => image.id === imageId)) {
+      setPendingImageDeletes((current) =>
+        current.includes(imageId) ? current : [...current, imageId],
+      );
+    }
+    if (pendingPrimaryImageId === imageId) {
+      setPendingPrimaryImageId(remainingImages[0]?.id ?? null);
     }
   }
 
@@ -717,12 +798,25 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
       } else {
         savedRecipe = await createRecipe(payload);
       }
+      if (editing) setRecipe(savedRecipe);
 
       setStructuredSteps((current) => current.map((step, index) => ({
         ...step,
         id: savedRecipe.steps[index]?.id ?? step.id,
       })));
-      if (hasPendingImageUploads) {
+      let deletedLastImage = false;
+      if (editing && hasPendingGalleryChanges) {
+        try {
+          deletedLastImage = await applyPendingGalleryChanges(savedRecipe.id);
+        } catch (reason) {
+          const message = reason instanceof Error ? reason.message : "Không thể cập nhật ảnh.";
+          setError(`Công thức đã được cập nhật, nhưng thay đổi ảnh chưa hoàn tất. ${message}`);
+          showToast(message, "error");
+          setSaving(false);
+          return;
+        }
+      }
+      if (!editing && hasPendingImageUploads) {
         setCreatedRecipeId(savedRecipe.id);
         try {
           if (pendingImageFile) await uploadPendingImage(savedRecipe.id);
@@ -736,7 +830,16 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
           return;
         }
       }
-      showToast(editing ? "Đã cập nhật công thức." : "Đã lưu bản nháp.", "success");
+      showToast(
+        deletedLastImage
+          ? "Đã xóa ảnh cuối; công thức hiện không có ảnh."
+          : editing && hasPendingGalleryChanges
+            ? "Đã cập nhật công thức và ảnh."
+            : editing
+              ? "Đã cập nhật công thức."
+              : "Đã lưu bản nháp.",
+        "success",
+      );
       router.push("/dashboard/recipes");
     } catch (reason) {
       if (
@@ -1390,14 +1493,16 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                 Quản lý ảnh công thức
               </span>
               <div
+                role="radiogroup"
+                aria-label="Chọn ảnh chính của công thức"
                 style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "12px" }}
               >
-                {images.length === 0 && (
+                {visibleImages.length === 0 && (
                   <span style={{ color: "var(--color-muted)", fontSize: "13px" }}>
                     Chưa có ảnh.
                   </span>
                 )}
-                {images.map((img) => (
+                {visibleImages.map((img, index) => (
                   <div
                     key={img.id}
                     data-testid={`image-card-${img.id}`}
@@ -1433,28 +1538,26 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                       </span>
                     )}
                     <div style={{ display: "flex", gap: "2px", padding: "4px" }}>
-                      {!img.isPrimary && (
-                        <button
-                          type="button"
-                          data-testid={`btn-set-primary-${img.id}`}
-                          title="Đặt làm ảnh chính"
-                          style={{
-                            flex: 1,
-                            fontSize: "10px",
-                            padding: "2px",
-                            cursor: "pointer",
-                            border: "1px solid var(--line)",
-                            borderRadius: "3px",
-                            background: "none",
+                      <label style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "10px" }}>
+                        <input
+                          type="radio"
+                          name="primaryRecipeImage"
+                          aria-label={`Đặt ảnh ${index + 1} làm ảnh chính`}
+                          checked={img.isPrimary}
+                          onChange={(event) => {
+                            if (event.target.checked) void handleSetPrimary(img.id);
                           }}
-                          onClick={() => void handleSetPrimary(img.id)}
-                        >
-                          ⭐
-                        </button>
-                      )}
+                          style={{
+                            accentColor: "var(--forest)",
+                            cursor: "pointer",
+                          }}
+                        />
+                        Ảnh chính
+                      </label>
                       <button
                         type="button"
                         data-testid={`btn-delete-image-${img.id}`}
+                        aria-label={`Xóa ảnh ${index + 1}`}
                         title="Xóa ảnh"
                         style={{
                           flex: 1,
@@ -1474,10 +1577,20 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                   </div>
                 ))}
               </div>
+              <p role="status" aria-live="polite" style={{ fontSize: "12px", color: "var(--color-muted)" }}>
+                Ảnh là tùy chọn. Chọn một ảnh để đặt làm ảnh chính; có thể xóa tất cả ảnh.
+                {hasPendingGalleryChanges && " Thay đổi ảnh đang chờ lưu; nhấn Cập nhật công thức để áp dụng."}
+              </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <label className={styles.field} htmlFor="imageAltText">
+                  Mô tả ảnh (Alt text) cho ảnh sắp tải lên (không bắt buộc)
+                </label>
+                <p id="imageAltTextHelp" style={{ margin: 0, fontSize: "12px", color: "var(--color-muted)" }}>
+                  Mô tả nội dung ảnh cho người dùng trình đọc màn hình.
+                </p>
                 <input
                   id="imageAltText"
-                  placeholder="Alt text (tùy chọn)"
+                  aria-describedby="imageAltTextHelp"
                   value={imageAltText}
                   onChange={(e) => setImageAltText(e.target.value)}
                   style={{
@@ -1504,17 +1617,20 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                   />
                   Đặt làm ảnh chính khi tải lên
                 </label>
+                <label className={styles.field} htmlFor="imageFile">
+                  Tải thêm ảnh (JPG, PNG, WebP hoặc AVIF)
+                </label>
                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                   <input
                     ref={fileInputRef}
                     id="imageFile"
                     type="file"
                     accept=".jpg,.jpeg,.png,.webp,.avif"
-                    disabled={uploadingImage || images.length >= 10}
+                    disabled={uploadingImage || visibleImages.length >= 10}
                     onChange={(e) => {
                       const f = e.target.files?.[0];
                       if (editing) {
-                        if (f) void handleImageUpload(f);
+                        handlePendingGalleryImageSelection(f);
                       } else {
                         handlePendingImageSelection(f);
                       }
@@ -1527,7 +1643,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                     </span>
                   )}
                 </div>
-                {images.length >= 10 && (
+                {visibleImages.length >= 10 && (
                   <span style={{ fontSize: "12px", color: "var(--color-error)" }}>
                     Đã đạt giới hạn 10 ảnh.
                   </span>
@@ -1548,14 +1664,17 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
             >
               <strong>Ảnh đại diện công thức (không bắt buộc)</strong>
               <label className={styles.field} htmlFor="imageAltText">
-                Mô tả ảnh
-                <input
-                  id="imageAltText"
-                  value={imageAltText}
-                  onChange={(event) => setImageAltText(event.target.value)}
-                  placeholder="Mô tả ngắn về món ăn"
-                />
+                Mô tả ảnh (Alt text) (không bắt buộc)
               </label>
+              <p id="imageAltTextHelp" style={{ margin: 0, fontSize: "12px", color: "var(--color-muted)" }}>
+                Mô tả nội dung ảnh cho người dùng trình đọc màn hình.
+              </p>
+              <input
+                id="imageAltText"
+                aria-describedby="imageAltTextHelp"
+                value={imageAltText}
+                onChange={(event) => setImageAltText(event.target.value)}
+              />
               <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <input
                   id="imageSetPrimary"
@@ -1564,6 +1683,9 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                   onChange={(event) => setImageSetPrimary(event.target.checked)}
                 />
                 Đặt làm ảnh chính
+              </label>
+              <label className={styles.field} htmlFor="imageFile">
+                Ảnh đại diện (JPG, PNG, WebP hoặc AVIF)
               </label>
               <input
                 ref={fileInputRef}

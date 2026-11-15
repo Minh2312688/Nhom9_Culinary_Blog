@@ -697,6 +697,8 @@ test.describe("FR-RCP-010: E2E Recipe CRUD, Structured Steps, Nutrition & Image 
 
     await page.goto("/dashboard/recipes/new");
     await expect(page.locator("#categoryId option")).toHaveCount(4, { timeout: 10_000 });
+    await expect(page.getByLabel("Mô tả ảnh (Alt text) (không bắt buộc)")).toBeVisible();
+    await expect(page.getByText("Mô tả nội dung ảnh cho người dùng trình đọc màn hình.")).toBeVisible();
     await page.fill("#title", "Canh chua ảnh đại diện");
     await page.selectOption("#categoryId", { label: "Món chính" });
     await page.fill("#imageAltText", "Canh chua hoàn chỉnh");
@@ -878,38 +880,119 @@ test.describe("FR-RCP-010: E2E Recipe CRUD, Structured Steps, Nutrition & Image 
         & Node.DOCUMENT_POSITION_FOLLOWING))).toBeTruthy();
   });
 
-  test("6. Recipe Image Gallery: Upload, Set Primary, and Delete Image", async ({ page }) => {
+  test("6. Recipe image changes are applied only after recipe update succeeds", async ({ page }) => {
+    test.setTimeout(120_000);
     await signInForRecipeTest(page);
 
-    // Navigate to edit existing recipe-1
     await page.goto("/dashboard/recipes/recipe-1/edit");
     await expect(page.getByRole("heading", { name: "Chỉnh sửa công thức" })).toBeVisible();
+    await expect(page.locator("#imageAltText")).toBeVisible();
+    await expect(page.getByLabel("Mô tả ảnh (Alt text) cho ảnh sắp tải lên")).toBeVisible();
+    await expect(page.getByText("Mô tả nội dung ảnh cho người dùng trình đọc màn hình.")).toBeVisible();
 
-    // Fill image info
+    const saveRecipe = async () => {
+      await page.getByRole("button", { name: "Tiếp theo" }).click();
+      await page.getByRole("button", { name: "Tiếp theo" }).click();
+      await page.getByRole("button", { name: "Xem lại" }).click();
+      await page.getByRole("button", { name: "Cập nhật công thức" }).click();
+      await expect(page).toHaveURL(/.*\/dashboard\/recipes$/, { timeout: 10_000 });
+    };
+    const imageRequests = async () => (await getMockApiRequests(page)).filter((request) =>
+      request.path.includes("/images") &&
+      ["POST", "PATCH", "DELETE"].includes(request.method),
+    );
+
     await page.fill("#imageAltText", "Hình ảnh bát súp thơm ngon");
     await page.check("#imageSetPrimary");
-
-    // Set files directly on file input
     await page.locator("#imageFile").setInputFiles({
       name: "soup.png",
       mimeType: "image/png",
       buffer: Buffer.from("fake-png-image-content"),
     });
+    await page.uncheck("#imageSetPrimary");
+    await page.locator("#imageFile").setInputFiles({
+      name: "soup-detail.png",
+      mimeType: "image/png",
+      buffer: Buffer.from("fake-png-image-content"),
+    });
+    await expect(page.getByRole("radio")).toHaveCount(2);
+    await expect(page.getByRole("radio", { name: "Đặt ảnh 1 làm ảnh chính" })).toBeChecked();
+    await page.getByRole("radio", { name: "Đặt ảnh 2 làm ảnh chính" }).click();
+    await expect(page.getByRole("radio", { name: "Đặt ảnh 2 làm ảnh chính" })).toBeChecked();
+    await expect(page.getByRole("radio", { name: "Đặt ảnh 1 làm ảnh chính" })).not.toBeChecked();
+    expect(await imageRequests()).toHaveLength(0);
 
-    // Wait for upload toast
-    await expect(page.getByText("Ảnh đã được tải lên.")).toBeVisible({ timeout: 10_000 });
+    await saveRecipe();
+    const firstSaveRequests = await getMockApiRequests(page);
+    const recipeUpdateIndex = firstSaveRequests.findIndex((request) =>
+      request.method === "PUT" && request.path === "/api/v1/recipes/recipe-1",
+    );
+    const firstImageUploadIndex = firstSaveRequests.findIndex((request) =>
+      request.method === "POST" && request.path === "/api/v1/recipes/recipe-1/images",
+    );
+    expect(recipeUpdateIndex).toBeGreaterThanOrEqual(0);
+    expect(firstImageUploadIndex).toBeGreaterThan(recipeUpdateIndex);
+    expect(firstSaveRequests.filter((request) =>
+      request.method === "POST" && request.path === "/api/v1/recipes/recipe-1/images",
+    )).toHaveLength(2);
 
-    // Verify image card exists with primary badge
-    const badge = page.locator("[data-testid='badge-primary']");
-    await expect(badge).toBeVisible();
-
-    // Click delete image on the newly added image
+    await page.goto("/dashboard/recipes/recipe-1/edit");
+    await expect(page.getByRole("radio")).toHaveCount(2);
+    await clearMockApiRequests(page);
+    await page.getByRole("radio", { name: "Đặt ảnh 1 làm ảnh chính" }).click();
     page.on("dialog", (dialog) => dialog.accept());
-    const deleteBtn = page.locator("[data-testid^='btn-delete-image-']").first();
-    await deleteBtn.click();
+    await page.locator("[data-testid^='btn-delete-image-']").nth(1).click();
+    expect(await imageRequests()).toHaveLength(0);
 
-    // Verify deleted toast
-    await expect(page.getByText("Đã xóa ảnh.")).toBeVisible({ timeout: 10_000 });
+    await saveRecipe();
+    const secondSaveRequests = await getMockApiRequests(page);
+    const secondUpdateIndex = secondSaveRequests.findIndex((request) => request.method === "PUT");
+    const deletePrimaryIndex = secondSaveRequests.findIndex((request) => request.method === "DELETE");
+    const setPrimaryIndex = secondSaveRequests.findIndex((request) => request.method === "PATCH");
+    expect(deletePrimaryIndex).toBeGreaterThan(secondUpdateIndex);
+    expect(setPrimaryIndex).toBe(-1);
+
+    await page.goto("/dashboard/recipes/recipe-1/edit");
+    await expect(page.getByRole("radio")).toHaveCount(1);
+    await expect(page.getByRole("radio", { name: "Đặt ảnh 1 làm ảnh chính" })).toBeChecked();
+    await clearMockApiRequests(page);
+    await page.locator("[data-testid^='btn-delete-image-']").click();
+    expect(await imageRequests()).toHaveLength(0);
+
+    await saveRecipe();
+    expect(await imageRequests()).toHaveLength(1);
+    await expect(page.getByText("Đã xóa ảnh cuối; công thức hiện không có ảnh.")).toBeVisible();
+  });
+
+  test("image changes stay pending when recipe update fails", async ({ page }) => {
+    test.setTimeout(60_000);
+    await signInForRecipeTest(page);
+    await queueMockApiResponse(page, {
+      method: "PUT",
+      path: "/api/v1/recipes/recipe-1",
+      status: 503,
+      body: { detail: "Recipe update unavailable" },
+    });
+
+    await page.goto("/dashboard/recipes/recipe-1/edit");
+    await expect(page.getByRole("heading", { name: "Chỉnh sửa công thức" })).toBeVisible();
+    await page.locator("#imageFile").setInputFiles({
+      name: "pending.webp",
+      mimeType: "image/webp",
+      buffer: Buffer.from("sample-image"),
+    });
+
+    await page.getByRole("button", { name: "Tiếp theo" }).click();
+    await page.getByRole("button", { name: "Tiếp theo" }).click();
+    await page.getByRole("button", { name: "Xem lại" }).click();
+    await page.getByRole("button", { name: "Cập nhật công thức" }).click();
+
+    await expect(page.getByText("Recipe update unavailable").first()).toBeVisible();
+    const requests = await getMockApiRequests(page);
+    expect(requests.some((request) =>
+      request.path.includes("/images") &&
+      ["POST", "PATCH", "DELETE"].includes(request.method),
+    )).toBe(false);
   });
 
   test("7. Access Control: Non-owner gets 403 Forbidden on update", async ({ page }) => {

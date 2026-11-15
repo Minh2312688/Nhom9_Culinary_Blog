@@ -867,7 +867,9 @@ const server = createServer(async (request, response) => {
       sendJson(response, 404, { title: "Not Found", detail: "Recipe not found." });
       return;
     }
-    await readBody(request);
+    const body = await readBody(request);
+    const primaryField = body.toString("utf8").match(/name="isPrimary"\r\n\r\n(true|false)\r\n/i);
+    const isPrimary = r.images.length === 0 || primaryField?.[1].toLowerCase() === "true";
     const imageId = `img-${Date.now()}`;
     const newImage = {
       id: imageId,
@@ -875,10 +877,10 @@ const server = createServer(async (request, response) => {
       mediumUrl: `https://storage.example.test/${imageId}-med.webp`,
       thumbnailUrl: `https://storage.example.test/${imageId}-thumb.webp`,
       altText: "Ảnh công thức",
-      isPrimary: true,
+      isPrimary,
       orderIndex: r.images.length,
     };
-    r.images.forEach((img) => (img.isPrimary = false));
+    if (isPrimary) r.images.forEach((img) => (img.isPrimary = false));
     r.images.push(newImage);
     sendJson(response, 201, {
       imageId: newImage.id,
@@ -934,7 +936,11 @@ const server = createServer(async (request, response) => {
       sendJson(response, 404, { title: "Not Found", detail: "Recipe not found." });
       return;
     }
+    const deletedImage = r.images.find((img) => img.id === imageId);
     r.images = r.images.filter((img) => img.id !== imageId);
+    if (deletedImage?.isPrimary && r.images.length > 0) {
+      r.images.forEach((img, index) => (img.isPrimary = index === 0));
+    }
     sendJson(response, 204, null);
     return;
   }

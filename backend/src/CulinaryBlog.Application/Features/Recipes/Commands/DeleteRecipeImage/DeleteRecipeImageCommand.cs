@@ -3,7 +3,6 @@ using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Application.Contracts.Storage;
 using CulinaryBlog.Domain.Entities;
-using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,12 +28,7 @@ public sealed class DeleteRecipeImageCommandHandler(
         var selected = images.SingleOrDefault(image => image.Id == request.ImageId)
             ?? throw new NotFoundException(nameof(RecipeImage), request.ImageId);
 
-        if (selected.IsPrimary && images.Count == 1)
-        {
-            throw new ValidationException("The only primary image of a recipe cannot be deleted.");
-        }
-
-        if (selected.IsPrimary)
+        if (selected.IsPrimary && images.Count > 1)
         {
             images.First(image => image.Id != selected.Id).IsPrimary = true;
         }

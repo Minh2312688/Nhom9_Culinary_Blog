@@ -44,14 +44,10 @@ function processViolations(route: string, violations: any[]) {
   }
   console.log(`==================================================\n`);
 
-  const criticalOrSerious = violations.filter(
-    (v) => v.impact === "critical" || v.impact === "serious"
-  );
-
   expect(
-    criticalOrSerious,
-    `Route ${route} phát hiện ${criticalOrSerious.length} vi phạm accessibility mức critical hoặc serious:\n` +
-      criticalOrSerious
+    violations,
+    `Route ${route} phát hiện ${violations.length} vi phạm WCAG 2.1 A/AA:\n` +
+      violations
         .map(
           (v) =>
             ` - [${v.impact.toUpperCase()}] ${v.id}: ${v.help} (Nodes: ${v.nodes?.length}, Selector: ${v.nodes?.[0]?.target?.join(" ")})`
@@ -60,67 +56,39 @@ function processViolations(route: string, violations: any[]) {
   ).toEqual([]);
 }
 
+const accessibilityRoutes = [
+  { route: "/", email: undefined },
+  { route: "/recipes", email: undefined },
+  { route: "/recipes/pho-bo", email: undefined },
+  { route: "/categories", email: undefined },
+  { route: "/categories/mon-chinh", email: undefined },
+  { route: "/search", email: undefined },
+  { route: "/authors/author-1", email: undefined },
+  { route: "/dashboard", email: "admin@example.com" },
+  { route: "/dashboard/recipes", email: "admin@example.com" },
+  { route: "/dashboard/recipes/new", email: "admin@example.com" },
+  {
+    route: "/dashboard/recipes/00000000-0000-0000-0000-000000000001/edit",
+    email: "admin@example.com",
+  },
+  { route: "/dashboard/categories", email: "admin@example.com" },
+];
+
 test.describe("Automated Accessibility Checks", () => {
-  test("accessibility check for route /", async ({ page }) => {
-    await page.goto("/");
-    await page.locator("main").waitFor({ state: "visible" });
-    await page.waitForLoadState("domcontentloaded");
+  for (const { route, email } of accessibilityRoutes) {
+    test(`WCAG 2.1 A/AA check for route ${route}`, async ({ page }) => {
+      if (email) await signInAsByApi(page, email);
+      await page.goto(route);
+      await page.locator("main").waitFor({ state: "visible" });
+      await page.waitForLoadState("domcontentloaded");
 
-    const results = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .analyze();
+      const results = await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+        .analyze();
 
-    processViolations("/", results.violations);
-  });
-
-  test("accessibility check for route /recipes", async ({ page }) => {
-    await page.goto("/recipes");
-    await page.locator("main").waitFor({ state: "visible" });
-    await page.waitForLoadState("domcontentloaded");
-
-    const results = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .analyze();
-
-    processViolations("/recipes", results.violations);
-  });
-
-  test("accessibility check for route /recipes/pho-bo", async ({ page }) => {
-    await page.goto("/recipes/pho-bo");
-    await page.locator("main").waitFor({ state: "visible" });
-    await page.waitForLoadState("domcontentloaded");
-
-    const results = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .analyze();
-
-    processViolations("/recipes/pho-bo", results.violations);
-  });
-
-  test("accessibility check for route /search", async ({ page }) => {
-    await page.goto("/search");
-    await page.locator("main").waitFor({ state: "visible" });
-    await page.waitForLoadState("domcontentloaded");
-
-    const results = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .analyze();
-
-    processViolations("/search", results.violations);
-  });
-
-  test("accessibility check for route /dashboard", async ({ page }) => {
-    await signInAsByApi(page);
-    await page.goto("/dashboard");
-    await page.locator("main").waitFor({ state: "visible" });
-    await page.waitForLoadState("domcontentloaded");
-
-    const results = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .analyze();
-
-    processViolations("/dashboard", results.violations);
-  });
+      processViolations(route, results.violations);
+    });
+  }
 
   test("keyboard navigation on home page focuses interactive elements", async ({ page }) => {
     await page.goto("/");

@@ -38,17 +38,23 @@ public sealed class UpdateRecipeCommandHandler : IRequestHandler<UpdateRecipeCom
         EnsureOwner(recipe);
         if (!await context.Categories.AnyAsync(x => x.Id == request.CategoryId, cancellationToken)) throw new NotFoundException(nameof(Category), request.CategoryId);
         var previousSlug = recipe.Slug;
+        var title = request.Title.Trim();
+        var titleSlug = RecipeCommandSlug.Slugify(title);
+        var previousTitleSlug = RecipeCommandSlug.Slugify(recipe.Title);
+        var removedNutrition = request.Nutrition is null ? recipe.Nutrition : null;
         context.SetOriginalRowVersion(recipe, request.RowVersion);
-        recipe.Title = request.Title.Trim(); recipe.Description = request.Description?.Trim(); recipe.CategoryId = request.CategoryId;
+        recipe.Title = title; recipe.Description = request.Description?.Trim(); recipe.CategoryId = request.CategoryId;
         recipe.PrepTimeMinutes = request.PrepTimeMinutes; recipe.CookTimeMinutes = request.CookTimeMinutes;
         recipe.Servings = request.Servings; recipe.Difficulty = Enum.Parse<RecipeDifficulty>(request.Difficulty, true);
-        recipe.Slug = RecipeCommandSlug.Slugify(recipe.Title);
+        if (!string.Equals(previousTitleSlug, titleSlug, StringComparison.Ordinal))
+            recipe.Slug = await RecipeCommandSlug.CreateUniqueSlugAsync(context.Recipes, title, recipe.Id, cancellationToken);
         if (request.Ingredients is not null)
         {
             foreach (var ingredient in recipe.Ingredients) ingredient.IsDeleted = true;
             recipe.Ingredients.Clear();
-            foreach (var item in request.Ingredients) recipe.Ingredients.Add(new RecipeIngredient
+            foreach (var item in request.Ingredients) context.RecipeIngredients.Add(new RecipeIngredient
             {
+                RecipeId = recipe.Id,
                 Name = item.Name.Trim(), Quantity = item.Quantity, Unit = item.Unit?.Trim(), Notes = item.Notes?.Trim(), OrderIndex = item.OrderIndex
             });
         }
@@ -57,22 +63,49 @@ public sealed class UpdateRecipeCommandHandler : IRequestHandler<UpdateRecipeCom
             foreach (var step in recipe.Steps) step.IsDeleted = true;
             recipe.Steps.Clear();
             var number = 1;
-            foreach (var item in request.Steps) recipe.Steps.Add(new RecipeStep
+            foreach (var item in request.Steps) context.RecipeSteps.Add(new RecipeStep
             {
-                StepNumber = number++, Title = item.Title?.Trim(), Description = item.Description.Trim(),
+                RecipeId = recipe.Id, StepNumber = number++, Title = item.Title?.Trim(), Description = item.Description.Trim(),
                 DurationMinutes = item.DurationMinutes, ImageUrl = item.ImageUrl?.Trim()
             });
         }
-        if (request.Nutrition is not null)
+        if (request.Nutrition is null)
         {
-            recipe.Nutrition = new RecipeNutrition
+            if (removedNutrition is not null)
+                removedNutrition.IsDeleted = true;
+        }
+        else
+        {
+            if (recipe.Nutrition is null)
             {
-                Calories = request.Nutrition.Calories, Protein = request.Nutrition.Protein, Carbohydrates = request.Nutrition.Carbohydrates,
-                Fat = request.Nutrition.Fat, Fiber = request.Nutrition.Fiber, Sodium = request.Nutrition.Sodium
-            };
+                var existingNutrition = await context.RecipeNutritions
+                    .IgnoreQueryFilters()
+                    .SingleOrDefaultAsync(item => item.RecipeId == recipe.Id, cancellationToken);
+
+                if (existingNutrition is null)
+                {
+                    recipe.Nutrition = new RecipeNutrition { RecipeId = recipe.Id };
+                    context.RecipeNutritions.Add(recipe.Nutrition);
+                }
+                else
+                {
+                    existingNutrition.IsDeleted = false;
+                    recipe.Nutrition = existingNutrition;
+                }
+            }
+
+            var nutrition = recipe.Nutrition;
+            nutrition.Calories = request.Nutrition.Calories;
+            nutrition.Protein = request.Nutrition.Protein;
+            nutrition.Carbohydrates = request.Nutrition.Carbohydrates;
+            nutrition.Fat = request.Nutrition.Fat;
+            nutrition.Fiber = request.Nutrition.Fiber;
+            nutrition.Sodium = request.Nutrition.Sodium;
         }
         try { await context.SaveChangesAsync(cancellationToken); }
         catch (DbUpdateConcurrencyException) { throw new ConcurrencyException(); }
+        if (removedNutrition is not null)
+            recipe.Nutrition = null;
         await cache.RemoveAsync($"recipes:slug:{previousSlug.ToLowerInvariant()}", cancellationToken);
         if (!string.Equals(previousSlug, recipe.Slug, StringComparison.OrdinalIgnoreCase))
             await cache.RemoveAsync($"recipes:slug:{recipe.Slug.ToLowerInvariant()}", cancellationToken);

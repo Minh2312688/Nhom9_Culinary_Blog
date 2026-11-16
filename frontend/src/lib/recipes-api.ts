@@ -1,3 +1,5 @@
+import { redirectToLoginForCurrentPage } from "./auth-redirect";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export interface PaginatedResult<T> {
@@ -153,9 +155,10 @@ function parseProblemDetails(value: unknown): ApiProblemDetails | undefined {
   };
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, init);
+async function request<T>(url: string, init?: RequestInit, isPrivate = false): Promise<T> {
+  const response = await fetch(url, init);
   if (!response.ok) {
+    if (isPrivate && response.status === 401) redirectToLoginForCurrentPage();
     let problemBody: unknown;
     try {
       problemBody = await response.json();
@@ -168,11 +171,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-function authHeaders(token: string, json = false): HeadersInit {
-  return {
-    ...(json ? { "Content-Type": "application/json" } : {}),
-    Authorization: `Bearer ${token}`,
-  };
+function publicRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  return request(`${API_BASE_URL}${path}`, {
+    ...init,
+    credentials: "omit",
+  });
+}
+
+function privateRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  return request(`/api/backend${path}`, {
+    ...init,
+    cache: "no-store",
+  }, true);
 }
 
 export async function searchRecipes(
@@ -183,27 +193,44 @@ export async function searchRecipes(
   const search = params.get("search");
   params.delete("search");
   if (search !== null) params.set("q", search);
-  return request(`/api/v1/recipes/search?${params.toString()}`, { signal });
+  return publicRequest(`/api/v1/recipes/search?${params.toString()}`, { signal });
 }
 
 export async function getRecipes(
   signal: AbortSignal,
   pageSize = 12,
-  token?: string,
   page = 1,
 ): Promise<PaginatedResult<RecipeSummary>> {
-  return request(`/api/v1/recipes/?page=${page}&pageSize=${pageSize}`, {
+  return publicRequest(`/api/v1/recipes/?page=${page}&pageSize=${pageSize}`, { signal });
+}
+
+export async function getMyRecipes(
+  signal: AbortSignal,
+  pageSize = 12,
+  page = 1,
+): Promise<PaginatedResult<RecipeSummary>> {
+  return privateRequest(`/recipes/mine?page=${page}&pageSize=${pageSize}`, {
+    method: "GET",
     signal,
-    headers: token ? authHeaders(token) : undefined,
+  });
+}
+
+export async function getPrivateRecipe(
+  id: string,
+  signal?: AbortSignal,
+): Promise<RecipeDetail> {
+  return privateRequest(`/recipes/${encodeURIComponent(id)}`, {
+    method: "GET",
+    signal,
   });
 }
 
 export async function getRecipe(slug: string, signal?: AbortSignal): Promise<RecipeDetail> {
-  return request(`/api/v1/recipes/${encodeURIComponent(slug)}`, { signal });
+  return publicRequest(`/api/v1/recipes/${encodeURIComponent(slug)}`, { signal });
 }
 
 export async function getRecipeCategories(signal: AbortSignal): Promise<RecipeCategory[]> {
-  const result = await request<PaginatedResult<RecipeCategory>>(
+  const result = await publicRequest<PaginatedResult<RecipeCategory>>(
     "/api/v1/categories/?pageSize=100",
     { signal },
   );
@@ -211,84 +238,76 @@ export async function getRecipeCategories(signal: AbortSignal): Promise<RecipeCa
 }
 
 export async function getCategory(slug: string, signal?: AbortSignal): Promise<RecipeCategory> {
-  return request(`/api/v1/categories/${encodeURIComponent(slug)}`, { signal });
+  return publicRequest(`/api/v1/categories/${encodeURIComponent(slug)}`, { signal });
 }
 
-export async function createRecipe(token: string, payload: RecipeInput): Promise<RecipeDetail> {
-  return request("/api/v1/recipes/", {
+export async function createRecipe(payload: RecipeInput): Promise<RecipeDetail> {
+  return privateRequest("/recipes", {
     method: "POST",
-    headers: authHeaders(token, true),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 }
 
 export async function updateRecipe(
-  token: string,
   id: string,
   payload: RecipeInput & { rowVersion: string },
 ): Promise<RecipeDetail> {
-  return request(`/api/v1/recipes/${id}`, {
+  return privateRequest(`/recipes/${encodeURIComponent(id)}`, {
     method: "PUT",
-    headers: authHeaders(token, true),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 }
 
-export async function deleteRecipe(token: string, id: string): Promise<void> {
-  return request(`/api/v1/recipes/${id}`, {
+export async function deleteRecipe(id: string): Promise<void> {
+  return privateRequest(`/recipes/${encodeURIComponent(id)}`, {
     method: "DELETE",
-    headers: authHeaders(token),
   });
 }
 
-export async function publishRecipe(token: string, id: string): Promise<void> {
-  return request(`/api/v1/recipes/${id}/publish`, {
+export async function publishRecipe(id: string): Promise<void> {
+  return privateRequest(`/recipes/${encodeURIComponent(id)}/publish`, {
     method: "PATCH",
-    headers: authHeaders(token),
   });
 }
 
 export async function createCategory(
-  token: string,
   payload: { name: string; description: string | null },
 ): Promise<RecipeCategory> {
-  return request("/api/v1/categories/", {
+  return privateRequest("/categories", {
     method: "POST",
-    headers: authHeaders(token, true),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 }
 
 export async function updateCategory(
-  token: string,
   id: string,
   payload: { name: string; description: string | null; imageUrl: string | null; orderIndex: number },
 ): Promise<RecipeCategory> {
-  return request(`/api/v1/categories/${id}`, {
+  return privateRequest(`/categories/${encodeURIComponent(id)}`, {
     method: "PUT",
-    headers: authHeaders(token, true),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 }
 
 export async function uploadCategoryImage(
-  token: string,
   categoryId: string,
   file: File,
 ): Promise<RecipeCategory> {
   const form = new FormData();
   form.append("file", file);
-  return request(`/api/v1/categories/${categoryId}/image`, {
+  return privateRequest(`/categories/${encodeURIComponent(categoryId)}/image`, {
     method: "POST",
-    headers: authHeaders(token),
     body: form,
   });
 }
 
-export async function deleteCategory(token: string, id: string): Promise<void> {
-  return request(`/api/v1/categories/${id}`, {
+export async function deleteCategory(id: string): Promise<void> {
+  return privateRequest(`/categories/${encodeURIComponent(id)}`, {
     method: "DELETE",
-    headers: authHeaders(token),
   });
 }
 
@@ -301,38 +320,34 @@ export interface RecipeIngredientPayload {
 }
 
 export async function addRecipeIngredient(
-  token: string,
   recipeId: string,
   payload: RecipeIngredientPayload,
 ): Promise<{ id: string }> {
-  return request(`/api/v1/recipes/${recipeId}/ingredients`, {
+  return privateRequest(`/recipes/${encodeURIComponent(recipeId)}/ingredients`, {
     method: "POST",
-    headers: authHeaders(token, true),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 }
 
 export async function updateRecipeIngredient(
-  token: string,
   recipeId: string,
   ingredientId: string,
   payload: RecipeIngredientPayload,
 ): Promise<void> {
-  return request(`/api/v1/recipes/${recipeId}/ingredients/${ingredientId}`, {
+  return privateRequest(`/recipes/${encodeURIComponent(recipeId)}/ingredients/${encodeURIComponent(ingredientId)}`, {
     method: "PUT",
-    headers: authHeaders(token, true),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 }
 
 export async function deleteRecipeIngredient(
-  token: string,
   recipeId: string,
   ingredientId: string,
 ): Promise<void> {
-  return request(`/api/v1/recipes/${recipeId}/ingredients/${ingredientId}`, {
+  return privateRequest(`/recipes/${encodeURIComponent(recipeId)}/ingredients/${encodeURIComponent(ingredientId)}`, {
     method: "DELETE",
-    headers: authHeaders(token),
   });
 }
 
@@ -346,7 +361,6 @@ export interface RecipeImageUploadResult {
 }
 
 export async function uploadRecipeImage(
-  token: string,
   recipeId: string,
   file: File,
   isPrimary = false,
@@ -356,31 +370,42 @@ export async function uploadRecipeImage(
   form.append("file", file);
   form.append("isPrimary", String(isPrimary));
   if (altText) form.append("altText", altText);
-  return request(`/api/v1/recipes/${recipeId}/images/`, {
+  return privateRequest(`/recipes/${encodeURIComponent(recipeId)}/images`, {
     method: "POST",
-    headers: authHeaders(token),
     body: form,
   });
 }
 
+export async function uploadRecipeStepImage(
+  recipeId: string,
+  stepId: string,
+  file: File,
+): Promise<RecipeStep> {
+  const form = new FormData();
+  form.append("file", file);
+  return privateRequest(
+    `/recipes/${encodeURIComponent(recipeId)}/steps/${encodeURIComponent(stepId)}/image`,
+    {
+      method: "POST",
+      body: form,
+    },
+  );
+}
+
 export async function setPrimaryRecipeImage(
-  token: string,
   recipeId: string,
   imageId: string,
 ): Promise<void> {
-  return request(`/api/v1/recipes/${recipeId}/images/${imageId}/primary`, {
+  return privateRequest(`/recipes/${encodeURIComponent(recipeId)}/images/${encodeURIComponent(imageId)}/primary`, {
     method: "PATCH",
-    headers: authHeaders(token),
   });
 }
 
 export async function deleteRecipeImage(
-  token: string,
   recipeId: string,
   imageId: string,
 ): Promise<void> {
-  return request(`/api/v1/recipes/${recipeId}/images/${imageId}`, {
+  return privateRequest(`/recipes/${encodeURIComponent(recipeId)}/images/${encodeURIComponent(imageId)}`, {
     method: "DELETE",
-    headers: authHeaders(token),
   });
 }

@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { getSiteUrl } from "@/lib/site-config";
-import { FeedbackProvider } from "./feedback";
+import { Providers } from "./providers";
+import "@fontsource/be-vietnam-pro/400.css";
+import "@fontsource/be-vietnam-pro/500.css";
+import "@fontsource/be-vietnam-pro/600.css";
+import "@fontsource/be-vietnam-pro/700.css";
 import "./globals.css";
 
 const siteUrl = getSiteUrl();
@@ -32,7 +36,7 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body className="antialiased min-h-screen">
-        <FeedbackProvider>{children}</FeedbackProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

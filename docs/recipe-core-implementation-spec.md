@@ -109,7 +109,7 @@ Phạm vi đã triển khai gồm:
 - Soft delete, optimistic concurrency bằng `RowVersion` và cache-aside cho chi tiết.
 - FluentValidation và test cho các input chính.
 
-Phạm vi chưa hoàn tất được ghi rõ ở cuối tài liệu, đặc biệt là Hangfire cleanup ảnh, integration test với Testcontainers, migration production và authentication JWT đầy đủ. Module không tự tạo dữ liệu demo hoặc dữ liệu kiểm thử ngẫu nhiên.
+Phạm vi chưa hoàn tất được ghi rõ ở cuối tài liệu, đặc biệt là Hangfire cleanup ảnh, integration test với Testcontainers và migration production. Frontend Auth.js/BFF được mô tả ở mục 3; backend vẫn quyết định quyền truy cập Recipe. Module không tự tạo dữ liệu demo hoặc dữ liệu kiểm thử ngẫu nhiên.
 
 ## 2. Quyết định nghiệp vụ
 
@@ -124,7 +124,8 @@ Các quyết định trong plan được dùng làm hợp đồng hiện tại:
 | Sort | Dùng `sortBy` và `sortOrder`, không dùng prefix `-`. |
 | Pagination | Dùng `PaginatedResult<T>` dạng phẳng: `items`, `totalCount`, `page`, `pageSize`, `totalPages`, `hasNextPage`, `hasPreviousPage`. |
 | Concurrency | RowVersion không khớp trả HTTP 409 Conflict. |
-| Cache detail | Redis distributed cache, key `recipes:slug:{slug}`, TTL 5 phút. |
+| Cache detail | Distributed cache-aside, key `recipes:slug:{slug}`, TTL 5 phút. |
+| Cache list | Distributed cache-aside cho query không có Search, TTL 60 giây; cache key gồm filter, sort, trang và visibility scope. |
 | Publish | Bắt buộc có ít nhất một ingredient và một step. |
 | Step number | Server tự tạo số bước tuần tự khi tạo recipe. |
 | Nutrition | Sáu chỉ số theo mỗi khẩu phần: calories, protein, carbohydrates, fat, fiber, sodium. |
@@ -149,13 +150,14 @@ Các entity con kế thừa `BaseEntity`, nên cũng chịu global query filter.
 
 1. Gán `CreatedAt` cho entity mới.
 2. Gán `UpdatedAt` cho entity sửa.
-3. Chuyển thao tác delete thành update `IsDeleted = true`.
+3. Sinh `RowVersion` 8 byte mới khi thêm, sửa hoặc soft-delete entity.
+4. Chuyển thao tác delete thành update `IsDeleted = true`.
 
 `RecipeConfiguration` cấu hình:
 
 - Bảng `Recipes`, khóa chính `Id` và unique index trên `Slug`.
 - `Title` bắt buộc tối đa 200 ký tự, `Slug` tối đa 250 ký tự.
-- `RowVersion` là concurrency token.
+- `RowVersion` là concurrency token do ứng dụng sinh; PostgreSQL lưu `bytea` và không tự tăng token.
 - Global filter `!IsDeleted`.
 - Category/Author dùng `Restrict`; Steps/Ingredients/Images/Nutrition dùng `Cascade`.
 
@@ -174,6 +176,18 @@ Các configuration con có filter tương tự và giới hạn độ dài cho d
 ### API
 
 `RecipeEndpoints.cs` map các route Minimal API. `Program.cs` đăng ký current user, cache, exception handler, authentication/authorization middleware và gọi `MapRecipeEndpoints()`.
+
+### Frontend Recipe Editor
+
+`frontend/src/app/dashboard/recipe-editor.tsx` giữ giao diện một trang, dùng React Hook Form quản lý các trường Recipe chính và Zod resolver để kiểm tra trước khi gọi API. Luồng bước nấu, dinh dưỡng và quản lý ảnh giữ nguyên. Các thao tác riêng tư của Recipe Editor dùng API helper không nhận access token từ trình duyệt; helper gọi BFF cùng origin như mô tả dưới đây.
+
+### Xác thực frontend và BFF
+
+Frontend dùng Auth.js v5 với Credentials provider cho email/mật khẩu và Google Identity Services ID token. Đây là luồng Credentials tới backend hiện có, không phải OAuth redirect. Auth.js giữ backend access/refresh token trong JWT session cookie được mã hóa, `HttpOnly`, `SameSite=Lax` và `Secure` trong production; Session gửi tới trình duyệt chỉ chứa thông tin người dùng, không chứa token backend. Tài khoản được làm mới token trước hạn 30 giây; refresh đồng thời được gộp trong phạm vi một tiến trình.
+
+Các request riêng tư từ browser gọi `/api/backend/{resource}`. Route Handler này xác thực session, kiểm tra allowlist resource/method, xác thực `Origin` cho request thay đổi dữ liệu rồi mới gắn Bearer token khi gọi backend qua `API_INTERNAL_URL` chỉ dùng phía server. Backend vẫn là nơi quyết định quyền nghiệp vụ và quyền tác giả. Các API công khai tiếp tục gọi public API mà không gửi credential. Đăng xuất gọi thu hồi token ở phía server; lỗi thu hồi không ngăn việc xóa session cục bộ.
+
+Thiết kế refresh single-flight hiện dựa trên một Next.js instance. Nếu triển khai nhiều instance, cần thay thế bằng cơ chế phối hợp refresh dùng chung; mỗi môi trường triển khai cũng phải cấu hình `AUTH_SECRET`, `API_INTERNAL_URL` và HTTPS phù hợp.
 
 ### Dữ liệu ứng dụng
 
@@ -200,7 +214,7 @@ Handler áp dụng visibility trước, sau đó filter, count, sort và Skip/Ta
 
 ### GET `/api/v1/recipes/{slug}`
 
-Handler đọc cache trước. Cache miss sẽ query recipe cùng Ingredients, Steps, Images và Nutrition bằng eager loading. Recipe không tồn tại trả 404. Recipe không Published và không thuộc owner/Admin trả 403. Kết quả hợp lệ được cache 5 phút.
+Handler đọc cache trước. Cache miss sẽ query recipe cùng Ingredients, Steps, Images và Nutrition bằng eager loading với `AsSplitQuery()` để tránh nhân chéo dữ liệu từ nhiều collection. Recipe không tồn tại trả 404. Recipe không Published và không thuộc owner/Admin trả 403. Kết quả hợp lệ được cache 5 phút.
 
 ### POST `/api/v1/recipes`
 
@@ -252,7 +266,9 @@ Response lỗi dùng `Results.Problem`, tương thích Problem Details ở mức
 
 `DistributedRecipeCache` serialize DTO bằng `System.Text.Json`. Khi có `Redis:ConnectionString`, Infrastructure đăng ký `AddStackExchangeRedisCache`; khi không có cấu hình Redis, app dùng `AddDistributedMemoryCache` để chạy local.
 
-Detail cache dùng key `recipes:slug:{slug}`. Sau create/update/publish/archive/delete, handler gọi invalidation. `IDistributedCache` không cung cấp API scan key portable, nên `RemoveByPrefixAsync` hiện là no-op. Vì danh sách chưa cache, điều này không làm stale list cache; nhưng nếu sau này cache list, cần bổ sung key registry hoặc Redis-specific `SCAN` adapter.
+Detail cache dùng key `recipes:slug:{slug}` với TTL 5 phút. List không có Search dùng cache-aside TTL 60 giây; cache key bao gồm phân trang, filter, sort và scope guest/user/admin để không dùng chung dữ liệu có visibility khác nhau. Search phổ biến giữ chính sách cache riêng.
+
+Sau các thay đổi Recipe, handler gọi `RemoveByPrefixAsync("recipes:")`. Cache list và search thêm generation hiện tại vào resolved key; tăng generation làm các kết quả cũ không còn được đọc mà không cần quét key Redis. Detail cache được xóa theo slug. Khi không cấu hình Redis, app dùng distributed memory cache; lỗi kết nối Redis được ghi log và request tiếp tục truy vấn database.
 
 ## 7. Kiểm thử đã thực hiện
 
@@ -277,9 +293,9 @@ Kết quả xác minh ngày 2026-10-06: MinIO thật chạy từ Compose bằng 
 1. Thêm migration PostgreSQL và seed Category/User/Recipe mẫu.
 2. Viết integration tests bằng WebApplicationFactory với PostgreSQL và Redis Testcontainers.
 3. Kiểm thử HTTP 409 bằng hai update request có cùng RowVersion.
-4. Hoàn thiện JWT/Identity và resource authorization thực tế.
+4. Khi triển khai, xác nhận `AUTH_SECRET`, `API_INTERNAL_URL`, HTTPS/Secure cookie và giới hạn một Next.js instance phù hợp với cấu hình môi trường; frontend Auth.js/BFF đã được tích hợp nhưng backend vẫn giữ quyền xác thực và resource authorization cuối cùng.
 5. Thêm Hangfire job xóa các URL ảnh sau soft delete, hoặc xác định rõ chính sách giữ ảnh.
-6. Tạo cache key registry/Redis adapter để invalidation theo prefix thực sự hoạt động.
+6. Smoke-test cache list/search và generation invalidation với Redis đang chạy trong môi trường tích hợp.
 7. FR-RCP-008 image routes/handlers đã được thêm; FR-RCP-009 ingredients endpoints còn lại. FR-RCP-010 step endpoints đã được triển khai.
 8. Chuẩn hóa toàn bộ package EF Core về cùng một phiên bản để loại cảnh báo build.
 9. Chạy manual flow: create Draft -> add nested data -> publish -> archive -> delete; kiểm tra record vẫn tồn tại với `IsDeleted = true`.
@@ -297,7 +313,7 @@ Kết quả xác minh ngày 2026-10-06: MinIO thật chạy từ Compose bằng 
 | FR-RCP-007 | DONE | `DeleteRecipeCommand`, DbContext soft delete |
 | FR-RCP-008 | PARTIAL | Image routes and handlers exist; MinIO integration tests require a live service and remain unverified; FR-JOB-002 thumbnail queue is pending |
 | FR-RCP-010 | DONE (backend) | Step commands, authenticated endpoints, validation, soft delete and renumbering; PostgreSQL migration and handler/HTTP tests |
-| Redis cache | PARTIAL | Redis registration có; prefix invalidation chưa có |
+| Recipe cache | IMPLEMENTED | Detail cache-aside 5 phút; list cache-aside 60 giây, key có visibility/filter/pagination/sort; generation invalidation cho list/search |
 | Hangfire cleanup | NOT STARTED | Chưa có Hangfire job trong repository |
 | Integration verification | NOT STARTED | Chưa có Testcontainers recipe suite |
 | Mock/demo data implementation | REMOVED | Seeder, seed configuration and generated-data Robot suite removed |

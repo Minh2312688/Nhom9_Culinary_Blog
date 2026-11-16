@@ -124,6 +124,21 @@ public class CategoryEndpointsTests
     }
 
     [Fact]
+    public async Task PostCategory_WithUnicodeSlug_ShouldReturn201WithEscapedLocation()
+    {
+        await using var factory = new CategoryWebApplicationFactory();
+        var client = factory.CreateClientAs("Admin");
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/categories",
+            new { name = "日本料理", description = "Ẩm thực Nhật Bản" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        response.Headers.Location!.ToString()
+            .Should().Be("/api/v1/categories/%E6%97%A5%E6%9C%AC%E6%96%99%E7%90%86");
+    }
+
+    [Fact]
     public async Task PostCategory_WithInvalidName_ShouldReturn400ProblemDetails()
     {
         // Arrange

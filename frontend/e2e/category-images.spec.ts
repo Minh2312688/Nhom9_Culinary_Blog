@@ -1,4 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { signInAsByApi } from "./support/auth";
+import {
+  clearMockApiRequests,
+  getMockApiRequests,
+  queueMockApiResponse,
+} from "./support/mock-api";
 
 const category = {
   id: "00000000-0000-0000-0000-000000000010",
@@ -19,6 +25,56 @@ const categoriesResponse = {
   hasNextPage: false,
   hasPreviousPage: false,
 };
+
+test.beforeEach(async ({ page }) => {
+  const reset = await page.context().request.post("http://127.0.0.1:5055/__test/auth/reset");
+  expect(reset.status()).toBe(204);
+  await clearMockApiRequests(page);
+});
+
+test("Author cannot access Category management", async ({ page }) => {
+  await signInAsByApi(page);
+  await page.goto("/dashboard");
+  await expect(page.getByRole("link", { name: "Danh mục" })).toHaveCount(0);
+  await expect(page.locator('a[href="/dashboard/categories"]')).toHaveCount(0);
+  await page.goto("/dashboard/categories");
+  await expect(page).toHaveURL(/\/dashboard$/);
+});
+
+test("Admin can access Category management", async ({ page }) => {
+  await signInAsByApi(page, "admin@example.com");
+  await page.goto("/dashboard/categories");
+  await expect(page.getByRole("heading", { level: 1, name: "Quản lý danh mục" })).toBeVisible();
+  const dashboardNavigation = page.getByRole("navigation", { name: "Điều hướng bảng điều khiển" });
+  await expect(dashboardNavigation.getByRole("link", { name: "Danh mục" })).toBeVisible();
+  const navigationGap = await dashboardNavigation.evaluate((element) =>
+    Number.parseFloat(window.getComputedStyle(element).columnGap),
+  );
+  expect(navigationGap).toBeGreaterThanOrEqual(16);
+  await expect(page.getByRole("button", { name: "Sửa" }).first()).toBeVisible();
+
+  const createButton = await page.getByRole("button", { name: "Tạo danh mục" }).boundingBox();
+  const editButton = await page.getByRole("button", { name: "Sửa" }).first().boundingBox();
+  const deleteButton = await page.getByRole("button", { name: "Xóa" }).first().boundingBox();
+  expect(createButton?.height).toBeGreaterThanOrEqual(44);
+  expect(editButton?.height).toBeGreaterThanOrEqual(44);
+  expect(deleteButton?.height).toBeGreaterThanOrEqual(44);
+  const firstRow = page.locator("tbody tr").first();
+  const rowEdit = await firstRow.getByRole("button", { name: "Sửa" }).boundingBox();
+  const rowDelete = await firstRow.getByRole("button", { name: "Xóa" }).boundingBox();
+  expect(rowEdit).not.toBeNull();
+  expect(rowDelete).not.toBeNull();
+  expect(Math.abs(rowEdit!.y - rowDelete!.y)).toBeLessThan(3);
+});
+
+test("category creation action has visible background and text colors", async ({ page }) => {
+  await signInAsByApi(page, "admin@example.com");
+  await page.goto("/dashboard/categories");
+
+  const createButton = page.getByRole("button", { name: "Tạo danh mục" });
+  await expect(createButton).toHaveCSS("background-color", "rgb(183, 62, 45)");
+  await expect(createButton).toHaveCSS("color", "rgb(255, 253, 248)");
+});
 
 test("shows category images and an accessible placeholder when no image exists", async ({ page }) => {
   await page.route("**/api/v1/categories**", (route) => route.fulfill({
@@ -41,37 +97,9 @@ test("shows category images and an accessible placeholder when no image exists",
   await expect(page.getByRole("img", { name: /Món sáng.*chưa có ảnh/i })).toBeVisible();
 });
 
-test("creates a category then uploads its selected image as multipart data", async ({ page }) => {
-  await page.addInitScript(() => {
-    sessionStorage.setItem("culinary_access_token", "category-image-token");
-  });
-  let created = 0;
-  let uploadHeaders: Record<string, string> | undefined;
-  let uploadBody = "";
-  await page.route("**/api/v1/categories**", async (route) => {
-    const request = route.request();
-    const path = new URL(request.url()).pathname;
-    if (request.method() === "GET") {
-      await route.fulfill({ json: categoriesResponse });
-      return;
-    }
-    if (request.method() === "POST" && path === "/api/v1/categories/") {
-      created++;
-      await route.fulfill({ status: 201, json: { ...category, id: "category-created" } });
-      return;
-    }
-    if (request.method() === "POST" && path.endsWith("/category-created/image")) {
-      uploadHeaders = await request.allHeaders();
-      uploadBody = request.postDataBuffer()?.toString("utf8") ?? "";
-      await route.fulfill({
-        status: 200,
-        json: { ...category, id: "category-created", imageUrl: "https://storage.example.test/category.webp" },
-      });
-      return;
-    }
-    await route.fallback();
-  });
-
+test("creates a category then uploads its selected image through the authenticated BFF", async ({ page }) => {
+  await signInAsByApi(page, "admin@example.com");
+  await clearMockApiRequests(page);
   await page.goto("/dashboard/categories");
   await page.getByLabel("Tên danh mục").fill("Món canh mới");
   await page.locator("#categoryImageFile").setInputFiles({
@@ -80,92 +108,73 @@ test("creates a category then uploads its selected image as multipart data", asy
     buffer: Buffer.from("sample-image"),
   });
   await expect(page.getByRole("img", { name: "Món canh mới" })).toBeVisible();
+  const createResponse = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === "/api/backend/categories" &&
+    response.request().method() === "POST",
+  );
+  const imageResponse = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === "/api/backend/categories/category-created/image" &&
+    response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "Tạo danh mục" }).click();
 
+  expect((await createResponse).status()).toBe(201);
+  expect((await imageResponse).status()).toBe(200);
   await expect(page.locator("[role='status']").filter({ hasText: "Đã tạo danh mục." })).toBeVisible();
-  expect(created).toBe(1);
-  expect(uploadHeaders?.authorization).toBe("Bearer category-image-token");
-  expect(uploadHeaders?.["content-type"]).toContain("multipart/form-data; boundary=");
-  expect(uploadBody).toContain("name=\"file\"");
-  expect(uploadBody).toContain("mon-canh.webp");
+  const requests = await getMockApiRequests(page);
+  expect(requests.find((request) =>
+    request.method === "POST" && request.path === "/api/v1/categories",
+  )).toMatchObject({
+    authorizationPresent: true,
+    body: { name: "Món canh mới", description: null },
+  });
+  expect(requests.find((request) =>
+    request.method === "POST" && request.path === "/api/v1/categories/category-created/image",
+  )).toMatchObject({
+    authorizationPresent: true,
+    contentType: expect.stringContaining("multipart/form-data; boundary="),
+  });
 });
 
 test("uploads a selected image when editing an existing category", async ({ page }) => {
-  await page.addInitScript(() => {
-    sessionStorage.setItem("culinary_access_token", "category-image-token");
-  });
-  let updatedCategory: Record<string, unknown> | undefined;
-  let uploaded = false;
-  await page.route("**/api/v1/categories**", async (route) => {
-    const request = route.request();
-    const path = new URL(request.url()).pathname;
-    if (request.method() === "GET") {
-      await route.fulfill({ json: categoriesResponse });
-      return;
-    }
-    if (request.method() === "PUT" && path.endsWith(`/${category.id}`)) {
-      updatedCategory = request.postDataJSON();
-      await route.fulfill({ status: 200, json: category });
-      return;
-    }
-    if (request.method() === "POST" && path.endsWith(`/${category.id}/image`)) {
-      uploaded = request.headers()["content-type"]?.includes("multipart/form-data") ?? false;
-      await route.fulfill({
-        status: 200,
-        json: { ...category, imageUrl: "https://storage.example.test/categories/mon-canh.webp" },
-      });
-      return;
-    }
-    await route.fallback();
-  });
-
+  await signInAsByApi(page, "admin@example.com");
+  await clearMockApiRequests(page);
   await page.goto("/dashboard/categories");
-  await page.getByRole("button", { name: "Sửa" }).click();
+  await page.getByRole("button", { name: "Sửa" }).first().click();
+  await expect(page.getByLabel("Tên danh mục")).toHaveValue("Món chính");
   await page.locator("#categoryImageFile").setInputFiles({
-    name: "mon-canh.webp",
+    name: "mon-chinh.webp",
     mimeType: "image/webp",
     buffer: Buffer.from("sample-image"),
   });
-  await expect(page.getByRole("img", { name: "Món canh" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Món chính" })).toBeVisible();
   await page.getByRole("button", { name: "Cập nhật" }).click();
 
   await expect(page.locator("[role='status']").filter({ hasText: "Đã cập nhật danh mục." })).toBeVisible();
-  expect(updatedCategory).toMatchObject({
-    name: "Món canh",
-    description: "Canh thanh mát",
+  const requests = await getMockApiRequests(page);
+  expect(requests.find((request) =>
+    request.method === "PUT" && request.path === "/api/v1/categories/category-1",
+  )?.body).toMatchObject({
+    name: "Món chính",
     imageUrl: null,
   });
-  expect(uploaded).toBe(true);
+  expect(requests.find((request) =>
+    request.method === "POST" && request.path === "/api/v1/categories/category-1/image",
+  )).toMatchObject({
+    authorizationPresent: true,
+    contentType: expect.stringContaining("multipart/form-data; boundary="),
+  });
 });
 
 test("retries a failed category image upload without creating a duplicate category", async ({ page }) => {
-  await page.addInitScript(() => {
-    sessionStorage.setItem("culinary_access_token", "category-image-token");
+  await signInAsByApi(page, "admin@example.com");
+  await clearMockApiRequests(page);
+  await queueMockApiResponse(page, {
+    method: "POST",
+    path: "/api/v1/categories/category-created/image",
+    status: 503,
+    body: { title: "Storage unavailable" },
   });
-  let createCount = 0;
-  let uploadCount = 0;
-  await page.route("**/api/v1/categories**", async (route) => {
-    const request = route.request();
-    const path = new URL(request.url()).pathname;
-    if (request.method() === "GET") {
-      await route.fulfill({ json: categoriesResponse });
-      return;
-    }
-    if (request.method() === "POST" && path === "/api/v1/categories/") {
-      createCount++;
-      await route.fulfill({ status: 201, json: { ...category, id: "category-created" } });
-      return;
-    }
-    if (request.method() === "POST" && path.endsWith("/category-created/image")) {
-      uploadCount++;
-      await route.fulfill(uploadCount === 1
-        ? { status: 503, contentType: "application/problem+json", json: { title: "Storage unavailable" } }
-        : { status: 200, json: { ...category, id: "category-created", imageUrl: "https://storage.example.test/category.webp" } });
-      return;
-    }
-    await route.fallback();
-  });
-
   await page.goto("/dashboard/categories");
   await page.getByLabel("Tên danh mục").fill("Món canh mới");
   await page.locator("#categoryImageFile").setInputFiles({
@@ -178,6 +187,11 @@ test("retries a failed category image upload without creating a duplicate catego
   await page.getByRole("button", { name: "Thử tải ảnh lại" }).click();
 
   await expect(page.locator("[role='status']").filter({ hasText: "Đã tạo danh mục." })).toBeVisible();
-  expect(createCount).toBe(1);
-  expect(uploadCount).toBe(2);
+  const requests = await getMockApiRequests(page);
+  expect(requests.filter((request) =>
+    request.method === "POST" && request.path === "/api/v1/categories",
+  )).toHaveLength(1);
+  expect(requests.filter((request) =>
+    request.method === "POST" && request.path === "/api/v1/categories/category-created/image",
+  )).toHaveLength(2);
 });

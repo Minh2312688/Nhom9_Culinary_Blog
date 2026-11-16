@@ -43,6 +43,8 @@
 Quy ước trạng thái:
 - `VERIFIED`: Đã hoàn thành và kiểm chứng tự động qua test suite hiện tại.
 - `DONE`: Đã triển khai xong code nhưng chưa có test kiểm chứng đầy đủ.
+
+> **Cập nhật phân công 15/11/2026:** Trần Hữu Phan Lâm đã ngừng tham gia theo xác nhận của nhóm. Dương Văn Minh (TV2) tiếp nhận toàn bộ phạm vi Frontend Core & UI/UX của TV3. Cột TV3 giữ dấu X để bảo toàn truy vết phân công ban đầu; `Primary Owner` phản ánh người chịu trách nhiệm hiện tại.
 - `IN_PROGRESS`: Đang trong quá trình triển khai theo kế hoạch phase.
 - `NOT_STARTED`: Chưa bắt đầu triển khai.
 - `BLOCKED`: Bị chặn bởi các mâu thuẫn đặc tả (`CONFLICT`) chưa thống nhất.
@@ -95,8 +97,8 @@ Quy ước trạng thái:
 | **NFR-SEC-005** | **X** | | X | X | **TV1 / TV4** | Nginx SSL termination, CORS appsettings | None | **NOT_STARTED** |
 | **NFR-SEC-006** | **X** | X | | | **TV1** | RecipeAuthorizationHandler (Resource ownership) | None | **NOT_STARTED** |
 | **NFR-SEC-007** | **X** | X | X | X | **Toàn đội** | User secrets (dev), Environment variables (prod) | None | **NOT_STARTED** |
-| **NFR-USE-001** | | | **X** | | **TV3** | Tailwind CSS responsive utility classes | None | **NOT_STARTED** |
-| **NFR-USE-002** | | | **X** | | **TV3** | Semantic HTML5, ARIA, Keyboard navigation | None | **NOT_STARTED** |
+| **NFR-USE-001** | | **X** | **X** | | **TV2 (tiếp nhận TV3)** | Playwright: 12 public/dashboard routes × 5 viewport boundaries (320, 767, 768, 1199, 1200 px); không tràn ngang, 60/60 pass | None | **VERIFIED** |
+| **NFR-USE-002** | | **X** | **X** | | **TV2 (tiếp nhận TV3)** | Axe WCAG 2.1 A/AA + keyboard smoke: 13/13 pass; nhãn `#imageFile` và contrast Wizard đã sửa; manual screen-reader review pending | Đánh giá accessibility thủ công | **IN_PROGRESS** |
 | **NFR-USE-003** | X | | **X** | | **TV1 / TV3** | RFC 7807 Problem Details, React Hook Form UI | CONFLICT-011 | **BLOCKED** |
 | **NFR-USE-004** | | | **X** | | **TV3** | Skeleton components, Toast notifications | None | **NOT_STARTED** |
 | **NFR-REL-001** | | | | **X** | **TV4** | Uptime SLA >= 99.5%, Health check readiness | None | **NOT_STARTED** |
@@ -167,6 +169,7 @@ Quy ước trạng thái:
 
 ### 3.3. TV3 Traceability (Frontend Platform & UI/UX)
 - **Phạm vi (Scope):** Toàn bộ giao diện người dùng trên nền Next.js App Router (15 màn hình/routes), State management, Form validation UX, Tối ưu SEO và Core Web Vitals.
+- **Tình trạng thành viên:** Trần Hữu Phan Lâm đã ngừng tham gia ngày 15/11/2026 theo xác nhận của nhóm; toàn bộ phạm vi này hiện do TV2 – Dương Văn Minh tiếp nhận. Dấu TV3 trong ma trận master là lịch sử phân công ban đầu.
 - **FR Supported:** Toàn bộ giao diện tương ứng 34 FRs (Auth screens, Category pages, Recipe browsing/detail/wizard, Search UI, Author dashboard).
 - **NFR Owned:** `NFR-PERF-005` (Core Web Vitals), `NFR-USE-001` (Responsive), `NFR-USE-002` (Accessibility a11y), `NFR-USE-003` (Error UX), `NFR-USE-004` (Loading states), `NFR-SEO-001` (JSON-LD), `NFR-SEO-002` (Meta / Open Graph).
 - **CONS Affected:** `CONS-003` (Next.js App Router, không Pages Router).

@@ -27,6 +27,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.IdentityModel.Tokens;
 using Minio;
+using StackExchange.Redis;
 
 namespace CulinaryBlog.Infrastructure;
 public static class DependencyInjection
@@ -59,10 +60,15 @@ public static class DependencyInjection
         }
         else
         {
+            var redisMultiplexer = new Lazy<IConnectionMultiplexer>(
+                () => ConnectionMultiplexer.Connect(redisConnection));
+            services.AddSingleton<IConnectionMultiplexer>(_ => redisMultiplexer.Value);
             services.AddStackExchangeRedisCache(options =>
             {
                 options.Configuration = redisConnection;
                 options.InstanceName = "CulinaryBlog:";
+                options.ConnectionMultiplexerFactory = () =>
+                    Task.FromResult(redisMultiplexer.Value);
             });
         }
 

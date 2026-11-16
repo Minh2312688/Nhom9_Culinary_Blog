@@ -8,6 +8,7 @@ using CulinaryBlog.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
+using System.Collections.Concurrent;
 using IdentityApplicationUser = CulinaryBlog.Infrastructure.Identity.ApplicationUser;
 
 namespace CulinaryBlog.Application.Tests.Features.Recipes;
@@ -34,6 +35,20 @@ public sealed class GetRecipesVisibilityTests
         Assert.Contains(result.Items, item => item.Title == "Owner draft");
         Assert.Contains(result.Items, item => item.Title == "Owner archived");
         Assert.DoesNotContain(result.Items, item => item.Title == "Other draft");
+    }
+
+    [Fact]
+    public async Task AuthorOwnedList_ExcludesRecipesOwnedByOtherAuthors()
+    {
+        await using var fixture = await RecipeListFixture.CreateAsync();
+        var result = await fixture.GetRecipesAsync(
+            "author-one", false, new GetRecipesQuery(OnlyMine: true));
+
+        Assert.Equal(8, result.TotalCount);
+        Assert.DoesNotContain(result.Items, item => item.Title == "Published two");
+        Assert.DoesNotContain(result.Items, item => item.Title == "Other draft");
+        Assert.Contains(result.Items, item => item.Title == "Owner draft");
+        Assert.Contains(result.Items, item => item.Title == "Owner archived");
     }
 
     [Fact]
@@ -102,6 +117,69 @@ public sealed class GetRecipesVisibilityTests
         Assert.True(result.HasPreviousPage);
     }
 
+    [Fact]
+    public async Task UnsearchedList_CachesResultForSixtySeconds()
+    {
+        await using var fixture = await RecipeListFixture.CreateAsync();
+        var cache = new RecordingRecipeCache();
+
+        var first = await fixture.GetRecipesAsync(null, false, cache: cache);
+        fixture.AddPublishedRecipe("Added after first request");
+        var second = await fixture.GetRecipesAsync(null, false, cache: cache);
+
+        Assert.Equal(7, first.TotalCount);
+        Assert.Equal(7, second.TotalCount);
+        Assert.DoesNotContain(second.Items, item => item.Title == "Added after first request");
+        Assert.Contains(cache.Ttls.Values, ttl => ttl == TimeSpan.FromSeconds(60));
+    }
+
+    [Fact]
+    public async Task UnsearchedListCache_IsScopedToTheCurrentVisibility()
+    {
+        await using var fixture = await RecipeListFixture.CreateAsync();
+        var cache = new RecordingRecipeCache();
+
+        var authorResult = await fixture.GetRecipesAsync("author-one", false, cache: cache);
+        var anonymousResult = await fixture.GetRecipesAsync(null, false, cache: cache);
+
+        Assert.Contains(authorResult.Items, item => item.Title == "Owner draft");
+        Assert.DoesNotContain(anonymousResult.Items, item => item.Title == "Owner draft");
+        Assert.Equal(9, authorResult.TotalCount);
+        Assert.Equal(7, anonymousResult.TotalCount);
+    }
+
+    [Fact]
+    public async Task OwnerOnlyListCache_DoesNotPolluteTheVisibleRecipeList()
+    {
+        await using var fixture = await RecipeListFixture.CreateAsync();
+        var cache = new RecordingRecipeCache();
+
+        var ownRecipes = await fixture.GetRecipesAsync(
+            "author-one", false, new GetRecipesQuery(OnlyMine: true), cache);
+        var visibleRecipes = await fixture.GetRecipesAsync("author-one", false, cache: cache);
+
+        Assert.Equal(8, ownRecipes.TotalCount);
+        Assert.Equal(9, visibleRecipes.TotalCount);
+        Assert.Contains(visibleRecipes.Items, item => item.Title == "Published two");
+    }
+
+    [Fact]
+    public async Task UnsearchedListCache_SeparatesPages()
+    {
+        await using var fixture = await RecipeListFixture.CreateAsync();
+        var cache = new RecordingRecipeCache();
+
+        var firstPage = await fixture.GetRecipesAsync(
+            null, false, new GetRecipesQuery(Page: 1, PageSize: 2), cache);
+        var secondPage = await fixture.GetRecipesAsync(
+            null, false, new GetRecipesQuery(Page: 2, PageSize: 2), cache);
+
+        Assert.Equal(2, firstPage.Items.Count);
+        Assert.Equal(2, secondPage.Items.Count);
+        Assert.NotEqual(firstPage.Items.Select(item => item.Id), secondPage.Items.Select(item => item.Id));
+        Assert.Equal(2, cache.Values.Count);
+    }
+
     private sealed class RecipeListFixture : IAsyncDisposable
     {
         private readonly ApplicationDbContext db;
@@ -119,14 +197,21 @@ public sealed class GetRecipesVisibilityTests
         public async Task<PaginatedResult<CulinaryBlog.Application.DTOs.Recipes.RecipeSummaryDto>> GetRecipesAsync(
             string? userId,
             bool isAdmin,
-            GetRecipesQuery? query = null)
+            GetRecipesQuery? query = null,
+            IRecipeCache? cache = null)
         {
             repository.SetupGet(value => value.Query).Returns(db.Recipes);
             var user = new Mock<ICurrentUserService>();
             user.SetupGet(value => value.UserId).Returns(userId);
             user.SetupGet(value => value.IsAdmin).Returns(isAdmin);
-            var handler = new GetRecipesQueryHandler(repository.Object, user.Object);
+            var handler = new GetRecipesQueryHandler(repository.Object, user.Object, cache);
             return await handler.Handle(query ?? new GetRecipesQuery(), CancellationToken.None);
+        }
+
+        public void AddPublishedRecipe(string title)
+        {
+            db.Recipes.Add(CreateRecipe(title, "author-one", SoupCategoryId, RecipeStatus.Published));
+            db.SaveChanges();
         }
 
         public void VerifySearchWasNotCalled() => repository.Verify(value => value.SearchAsync(
@@ -187,5 +272,31 @@ public sealed class GetRecipesVisibilityTests
         };
 
         public ValueTask DisposeAsync() => db.DisposeAsync();
+    }
+
+    private sealed class RecordingRecipeCache : IRecipeCache
+    {
+        public ConcurrentDictionary<string, object> Values { get; } = new();
+        public ConcurrentDictionary<string, TimeSpan> Ttls { get; } = new();
+
+        public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Values.TryGetValue(key, out var value) ? (T?)value : default);
+
+        public Task SetAsync<T>(string key, T value, TimeSpan ttl, CancellationToken cancellationToken = default)
+        {
+            Values[key] = value!;
+            Ttls[key] = ttl;
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+        {
+            Values.TryRemove(key, out _);
+            Ttls.TryRemove(key, out _);
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveByPrefixAsync(string prefix, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }

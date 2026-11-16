@@ -86,8 +86,9 @@ public sealed class DistributedRecipeCache : IRecipeCache
     private async Task<string> ResolveKeyAsync(string key, CancellationToken cancellationToken)
     {
         var normalized = NormalizeKey(key);
-        // Prefix-invalidated search result keys incorporate generation
-        if (normalized.StartsWith("recipes:search:", StringComparison.OrdinalIgnoreCase))
+        // Prefix-invalidated list and search result keys incorporate generation.
+        if (normalized.StartsWith("recipes:list:", StringComparison.OrdinalIgnoreCase) ||
+            normalized.StartsWith("recipes:search:", StringComparison.OrdinalIgnoreCase))
         {
             var generation = await cache.GetStringAsync(GenerationKey, cancellationToken);
             return $"{normalized}:g{generation ?? InitialGeneration}";

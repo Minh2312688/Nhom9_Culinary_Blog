@@ -39,8 +39,8 @@ function ResetPasswordForm() {
   const [success, setSuccess] = useState(false);
   const [showManualForm, setShowManualForm] = useState(false);
 
-  const initialEmail = searchParams.get("email") || "";
-  const initialToken = searchParams.get("token") || "";
+  const initialEmail = searchParams?.get("email") || "";
+  const initialToken = searchParams?.get("token") || "";
 
   const {
     register,

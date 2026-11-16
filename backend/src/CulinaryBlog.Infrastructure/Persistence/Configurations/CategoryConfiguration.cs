@@ -30,7 +30,8 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
             .HasMaxLength(500);
 
         builder.Property(c => c.RowVersion)
-            .IsRowVersion();
+            .IsConcurrencyToken()
+            .ValueGeneratedNever();
 
         builder.HasQueryFilter(c => !c.IsDeleted);
     }

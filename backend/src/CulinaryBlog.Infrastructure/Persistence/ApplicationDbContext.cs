@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
@@ -12,7 +13,7 @@ public class ApplicationDbContext : IdentityDbContext<IdentityApplicationUser, I
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options) { }
-    
+
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Recipe> Recipes => Set<Recipe>();
@@ -57,13 +58,6 @@ public class ApplicationDbContext : IdentityDbContext<IdentityApplicationUser, I
                 .HasDatabaseName("IDX_Recipe_Search")
                 .HasMethod("GIN");
         }
-
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes()
-                     .Where(x => typeof(BaseEntity).IsAssignableFrom(x.ClrType)))
-        {
-            entityType.FindProperty(nameof(BaseEntity.RowVersion))
-                ?.SetDefaultValueSql("decode('00', 'hex')");
-        }
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -74,14 +68,17 @@ public class ApplicationDbContext : IdentityDbContext<IdentityApplicationUser, I
             {
                 case EntityState.Added:
                     entry.Entity.CreatedAt = DateTime.UtcNow;
+                    entry.Entity.RowVersion = RandomNumberGenerator.GetBytes(8);
                     break;
                 case EntityState.Modified:
                     entry.Entity.UpdatedAt = DateTime.UtcNow;
+                    entry.Entity.RowVersion = RandomNumberGenerator.GetBytes(8);
                     break;
                 case EntityState.Deleted:
                     entry.State = EntityState.Modified;
                     entry.Entity.IsDeleted = true;
                     entry.Entity.UpdatedAt = DateTime.UtcNow;
+                    entry.Entity.RowVersion = RandomNumberGenerator.GetBytes(8);
                     break;
             }
         }

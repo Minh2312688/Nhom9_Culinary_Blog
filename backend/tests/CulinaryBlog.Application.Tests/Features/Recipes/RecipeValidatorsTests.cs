@@ -170,6 +170,16 @@ public sealed class RecipeValidatorsTests
         Assert.Contains(rejected.Errors, error => error.PropertyName == nameof(GetRecipesQuery.Search));
     }
 
+    [Fact]
+    public async Task GetRecipes_ShouldRejectSearchForOwnerOnlyList()
+    {
+        var validator = new GetRecipesQueryValidator();
+
+        var result = await validator.ValidateAsync(new GetRecipesQuery(Search: "soup", OnlyMine: true));
+
+        Assert.Contains(result.Errors, error => error.PropertyName == nameof(GetRecipesQuery.Search));
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]

@@ -29,7 +29,8 @@ public class RecipeStepConfiguration : IEntityTypeConfiguration<RecipeStep>
             .HasFilter("\"IsDeleted\" = false");
 
         builder.Property(rs => rs.RowVersion)
-            .IsRowVersion();
+            .IsConcurrencyToken()
+            .ValueGeneratedNever();
 
         builder.HasQueryFilter(rs => !rs.IsDeleted);
     }

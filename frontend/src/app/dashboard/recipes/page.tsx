@@ -2,27 +2,24 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { deleteRecipe, getRecipes, publishRecipe, type PaginatedResult, type RecipeSummary } from "@/lib/recipes-api";
+import { deleteRecipe, getMyRecipes, publishRecipe, type PaginatedResult, type RecipeSummary } from "@/lib/recipes-api";
 import { useFeedback } from "../../feedback";
 import { ErrorNotice, LoadingSkeleton, Pagination, SectionTitle } from "../../site-ui";
 import styles from "../../site-ui.module.css";
 
 export default function DashboardRecipesPage() {
-  const router = useRouter();
   const { showToast } = useFeedback();
-  const [token, setToken] = useState("");
   const [result, setResult] = useState<PaginatedResult<RecipeSummary> | null>(null);
   const [page, setPage] = useState(1);
   const [initialized, setInitialized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadRecipes = useCallback(async (accessToken: string, requestedPage = page) => {
+  const loadRecipes = useCallback(async (requestedPage = page) => {
     setLoading(true);
     setError(null);
     try {
-      setResult(await getRecipes(new AbortController().signal, 12, accessToken, requestedPage));
+      setResult(await getMyRecipes(new AbortController().signal, 12, requestedPage));
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "Không thể tải công thức.";
       setError(message);
@@ -40,21 +37,15 @@ export default function DashboardRecipesPage() {
 
   useEffect(() => {
     if (!initialized) return;
-    const accessToken = sessionStorage.getItem("culinary_access_token");
-    if (!accessToken) {
-      router.replace("/auth/login");
-      return;
-    }
-    setToken(accessToken);
     window.history.replaceState(null, "", page === 1 ? "/dashboard/recipes" : `/dashboard/recipes?page=${page}`);
-    void loadRecipes(accessToken);
-  }, [initialized, loadRecipes, page, router]);
+    void loadRecipes(page);
+  }, [initialized, loadRecipes, page]);
 
   async function handlePublish(id: string) {
     try {
-      await publishRecipe(token, id);
+      await publishRecipe(id);
       showToast("Đã xuất bản công thức.", "success");
-      await loadRecipes(token);
+      await loadRecipes();
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "Không thể xuất bản công thức.";
       setError(message);
@@ -65,9 +56,9 @@ export default function DashboardRecipesPage() {
   async function handleDelete(id: string) {
     if (!window.confirm("Bạn có chắc muốn xóa công thức này?")) return;
     try {
-      await deleteRecipe(token, id);
+      await deleteRecipe(id);
       showToast("Đã xóa công thức.", "success");
-      await loadRecipes(token);
+      await loadRecipes();
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "Không thể xóa công thức.";
       setError(message);
@@ -91,7 +82,11 @@ export default function DashboardRecipesPage() {
         </div>
         {loading && <LoadingSkeleton variant="cards" />}
         {error && <ErrorNotice><span data-error-summary>{error}</span></ErrorNotice>}
-        {!loading && !error && result?.items.length === 0 && <p className={styles.notice}>Bạn chưa có công thức nào.</p>}
+        {!loading && !error && result?.items.length === 0 && (
+          <section className={`${styles.notice} ${styles.emptyState}`} aria-label="Chưa có công thức">
+            <p>Bạn chưa có công thức nào.</p>
+          </section>
+        )}
         {!!result?.items.length && <div style={{ overflowX: "auto" }}>
           <table className={styles.table}>
             <thead><tr><th>Tên món</th><th>Trạng thái</th><th>Thời gian nấu</th><th>Thao tác</th></tr></thead>
@@ -101,7 +96,7 @@ export default function DashboardRecipesPage() {
                 <td><span className={styles.status}>{statusLabel(recipe.status)}</span></td>
                 <td>{recipe.cookTimeMinutes} phút</td>
                 <td>
-                  <div className={styles.actions}>
+                  <div className={`${styles.actions} ${styles.tableActions}`}>
                     <Link href={`/dashboard/recipes/${recipe.id}/edit`}>Sửa</Link>
                     {(recipe.status === 0 || recipe.status === "Draft") &&
                       <button type="button" onClick={() => void handlePublish(recipe.id)}>Xuất bản</button>}

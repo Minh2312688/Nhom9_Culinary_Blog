@@ -57,6 +57,45 @@ public sealed class RecipeStepCommandHandlerTests
     }
 
     [Fact]
+    public async Task UpdateRecipe_KeepsExistingUniqueSlugWhenTitleIsUnchanged()
+    {
+        await using var fixture = await RecipeFixture.CreateAsync();
+        fixture.Recipe.Slug = "vegetable-soup-2";
+        fixture.Db.Recipes.Add(new Recipe
+        {
+            Title = "Another Soup", Slug = "vegetable-soup", CategoryId = fixture.Recipe.CategoryId,
+            AuthorId = fixture.User.Id!, Difficulty = RecipeDifficulty.Easy, Servings = 2
+        });
+        await fixture.Db.SaveChangesAsync();
+        var handler = new UpdateRecipeCommandHandler(fixture.Db, fixture.User, new RecordingRecipeCache());
+
+        var result = await handler.Handle(new UpdateRecipeCommand(
+            fixture.Recipe.Id, "Vegetable Soup", null, fixture.Recipe.CategoryId,
+            5, 10, 2, "Easy", fixture.Recipe.RowVersion ?? []), CancellationToken.None);
+
+        Assert.Equal("vegetable-soup-2", result.Slug);
+    }
+
+    [Fact]
+    public async Task UpdateRecipe_AssignsUniqueSlugWhenNewTitleSlugIsTaken()
+    {
+        await using var fixture = await RecipeFixture.CreateAsync();
+        fixture.Db.Recipes.Add(new Recipe
+        {
+            Title = "Another Soup", Slug = "new-soup-name", CategoryId = fixture.Recipe.CategoryId,
+            AuthorId = fixture.User.Id!, Difficulty = RecipeDifficulty.Easy, Servings = 2
+        });
+        await fixture.Db.SaveChangesAsync();
+        var handler = new UpdateRecipeCommandHandler(fixture.Db, fixture.User, new RecordingRecipeCache());
+
+        var result = await handler.Handle(new UpdateRecipeCommand(
+            fixture.Recipe.Id, "New Soup Name", null, fixture.Recipe.CategoryId,
+            5, 10, 2, "Easy", fixture.Recipe.RowVersion ?? []), CancellationToken.None);
+
+        Assert.Equal("new-soup-name-2", result.Slug);
+    }
+
+    [Fact]
     public async Task UpdateStep_ChangesStepContentButKeepsServerAssignedNumber()
     {
         await using var fixture = await RecipeFixture.CreateAsync(1, 2);

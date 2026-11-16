@@ -14,7 +14,9 @@ Docker guide: [docs/docker-guide.md](docs/docker-guide.md).
 | 1 | Dương Văn Minh | 2312688 | 2312688@dlu.edu.vn | 0352183984 |
 | 2 | Nguyễn Phạm Phú Nam | 2312695 | 2312695@dlu.edu.vn | 0917707902 |
 | 3 | Mai Quý Phước | 2312716 | 2312716@dlu.edu.vn | 097100756 |
-| 4 | Trần Hữu Phan Lâm | 2312656 | 2312656@dlu.edu.vn | 0562144990 |
+| 4 | Trần Hữu Phan Lâm (đã rời nhóm) | 2312656 | 2312656@dlu.edu.vn | 0562144990 |
+
+> **Cập nhật phân công (15/11/2026):** Theo xác nhận của nhóm, Trần Hữu Phan Lâm đã ngừng tham gia. Toàn bộ phạm vi Frontend Core & UI/UX được chuyển cho Dương Văn Minh. Các mục tiến độ bên dưới ghi người phụ trách hiện tại; mã nguồn có mặt không tự xác định ai là tác giả ban đầu.
 
 ---
 
@@ -157,9 +159,13 @@ Cấu trúc có thể được bổ sung khi các module mới được tích h�
 
 ### Backend và dịch vụ nền
 
-1. Sao chép `.env.example` thành `.env`; thay các placeholder bằng secrets riêng cho local.
+1. Sao chép `.env.example` thành `.env`; thay các placeholder bằng secrets riêng cho local. Compose đọc `.env`, không tự đọc `.env.example`.
 2. Chạy `docker compose up --build -d` từ thư mục gốc.
 3. API lắng nghe tại `http://localhost:5000`; PostgreSQL, Redis và MinIO được khởi chạy cùng Compose.
+
+Để seed tài khoản Admin cho môi trường local, đặt `ADMIN_SEED_ENABLED=true`, `ADMIN_SEED_EMAIL` và `ADMIN_SEED_PASSWORD` trong `.env` trước khi khởi chạy API. Không đưa credential thật vào `.env.example`, image hoặc Git; triển khai web nên lấy chúng từ secret manager của nền tảng.
+
+`FRONTEND_BASE_URL` là địa chỉ frontend mà trình duyệt truy cập được; Compose dùng nó cho Auth.js redirect và liên kết đặt lại mật khẩu. Khi triển khai web, đặt biến này thành origin HTTPS thực tế, không dùng `0.0.0.0` (địa chỉ bind nội bộ).
 
 `JWT_SECRET` là bắt buộc. Nếu không có biến này, API dừng khi khởi tạo cấu hình JWT. Redis có thể bỏ cấu hình để dùng cache trong bộ nhớ; khi Redis đã cấu hình nhưng tạm thời không truy cập được, cache bỏ qua lỗi và tiếp tục đọc database.
 
@@ -286,7 +292,9 @@ npm run build
 
 ---
 
-### TV3 – Trần Hữu Phan Lâm – Frontend Core & UI/UX
+### TV3 – Trần Hữu Phan Lâm (đã rời nhóm) – Frontend Core & UI/UX
+
+> Phạm vi Frontend Core & UI/UX ban đầu của TV3 hiện do TV2 – Dương Văn Minh tiếp nhận.
 
 **Frontend Core**
 
@@ -395,7 +403,7 @@ npm run build
 |---|---|---|---|
 | **Nguyễn Phạm Phú Nam** | Auth & Base Infrastructure | Clean Architecture base, Register, Local Login, Google Login, JWT, Refresh Token, Rate Limit, Auth UI, Docker base | FR-AUTH-001 → 007, NFR Security |
 | **Dương Văn Minh** | Recipe Backend & Data | Recipe CRUD, Ingredient, Recipe Step, Recipe Status, DbContext/Migration chung, PostgreSQL Search, Redis Cache | FR-RCP-001 → 007, 009, 010; FR-SRCH-001 → 004 |
-| **Trần Hữu Phan Lâm** | Frontend Core | Shared UI, Homepage, Recipe Listing/Detail, Category Public Pages, Search Page, Author Dashboard | Public UI, Dashboard, SEO, Usability |
+| **Trần Hữu Phan Lâm (đã rời nhóm)** | Frontend Core (đã chuyển cho Dương Văn Minh) | Shared UI, Homepage, Recipe Listing/Detail, Category Public Pages, Search Page, Author Dashboard | Public UI, Dashboard, SEO, Usability |
 | **Mai Quý Phước** | Services & Admin | Category API, MinIO Upload, Background Jobs, Health Check, Logging, Tracing, Category Admin UI | FR-CAT, FR-FILE, FR-JOB, FR-OBS |
 
 ---
@@ -603,7 +611,7 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 
 ---
 
-### 10.2. Dương Văn Minh (MSSV: 2312688) – Recipe Backend, Data, Search & Cache
+### 10.2. Dương Văn Minh (MSSV: 2312688) – Recipe Backend, Data, Search, Cache & Frontend (nhận bàn giao)
 
 | Hạng mục | Trạng thái | Đã hoàn thành | Còn lại / Phụ thuộc |
 |---|---|---|---|
@@ -612,19 +620,22 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 | FR-SRCH-001 → FR-SRCH-004 | Xong | Search/filter/sort/pagination có backend và UI; Application 725/725, Integration 138/138; Playwright pass | Đã nghiệm thu |
 | Redis Caching & File Cleanup | Xong | Generation key pattern cho RemoveByPrefixAsync, chuẩn hóa lowercase cache keys; eager load & xóa file ảnh MinIO khi xóa công thức (TECH-RISK-004) | Đã nghiệm thu |
 | FR-RCP-008 → FR-RCP-010 (Tuần 8) | Xong | Form bước nấu có cấu trúc (title, duration, description, image), sắp xếp thứ tự bước (move up/down), bảng dinh dưỡng 6 chỉ số; bộ kiểm thử E2E Playwright hoàn chỉnh 7/7 pass 100% | Đã nghiệm thu |
+| Frontend Core & UI/UX (nhận từ TV3) | Đã tiếp nhận | Shared layout/navigation, REST integration, public/category/author screens, Recipe dashboard và wizard RHF/Zod hiện có trong frontend | Minh là owner hiện tại; không suy luận tác giả ban đầu từ source |
+| NFR-USE-001 Responsive | VERIFIED | 60/60 Playwright checks: 12 public/dashboard routes tại 320, 767, 768, 1199 và 1200 px; không có tràn ngang | [responsive.spec.ts](frontend/e2e/responsive.spec.ts) |
+| NFR-USE-002 Accessibility | IN_PROGRESS | Axe/keyboard automation 13/13 đạt; đã sửa nhãn `#imageFile` và độ tương phản bước Wizard | Cần đánh giá thủ công với screen reader; chưa kết luận toàn hệ thống đạt WCAG 2.1 AA |
 
 ---
 
-### 10.3. Trần Hữu Phan Lâm (MSSV: 2312656) – Frontend Core & UI/UX
+### 10.3. Trần Hữu Phan Lâm (MSSV: 2312656) – Đã rời nhóm
 
-| Hạng mục | Trạng thái | Đã hoàn thành | Còn lại / Phụ thuộc |
+> Theo xác nhận của nhóm, thành viên đã ngừng tham gia ngày 15/11/2026 và không còn đầu việc đang phụ trách. Toàn bộ phạm vi Frontend Core & UI/UX được chuyển cho Dương Văn Minh tại mục 10.2.
+
+| Phạm vi đã chuyển giao | Trạng thái | Người phụ trách hiện tại | Ghi chú |
 |---|---|---|---|
-| Next.js Core / Shared Layout | `CẦN CẬP NHẬT` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
-| `/` | `Không làm` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| `/recipes` | `Không làm` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| `/recipes/[slug]` | `Không làm` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| `/categories` | `Không làm` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| `/categories/[slug]` | `Không làm` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| Frontend Core, shared UI và REST API integration | Đã chuyển giao | Dương Văn Minh | Minh chịu trách nhiệm tiếp tục và nghiệm thu |
+| Public screens, category pages, search, author pages | Đã chuyển giao | Dương Văn Minh | Chi tiết route và test tại mục 10.2 |
+| Dashboard Recipe, Recipe Editor wizard, RHF/Zod | Đã chuyển giao | Dương Văn Minh | Axe/keyboard automation 13/13 đạt; đánh giá thủ công với screen reader còn pending |
+| Responsive UI, SEO và accessibility | Đã chuyển giao | Dương Văn Minh | Responsive VERIFIED; accessibility IN_PROGRESS, chưa xác nhận đầy đủ WCAG AA |
 
 ---
 

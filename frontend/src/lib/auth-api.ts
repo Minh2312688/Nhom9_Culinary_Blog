@@ -1,4 +1,5 @@
-import { ApiError, AuthResult } from "./api";
+import type { ApiError } from "./api";
+import { redirectToLoginForCurrentPage } from "./auth-redirect";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -13,97 +14,72 @@ export interface UserProfile {
   roles: string[];
 }
 
-export async function refreshTokenApi(refreshToken: string): Promise<AuthResult> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ refreshToken }),
-  });
-
+async function request<T>(
+  url: string,
+  init: RequestInit,
+  fallbackMessage: string,
+  isPrivate = false,
+): Promise<T> {
+  const response = await fetch(url, init);
   if (!response.ok) {
-    let errorData: any = {};
+    if (isPrivate && response.status === 401) redirectToLoginForCurrentPage();
+    let errorData: Record<string, unknown> = {};
     try {
-      errorData = await response.json();
+      const body: unknown = await response.json();
+      if (body && typeof body === "object" && !Array.isArray(body)) {
+        errorData = body as Record<string, unknown>;
+      }
     } catch {
-      // Non-JSON response
+      // Non-JSON response.
     }
 
-    const error: ApiError = {
+    const errors = errorData.errors;
+    const apiError: ApiError = {
       status: response.status,
-      title: errorData.title || "Refresh Token Error",
+      title: typeof errorData.title === "string" ? errorData.title : "Request Error",
       detail:
-        errorData.detail ||
-        (response.status === 401
-          ? "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại."
-          : "Không thể làm mới phiên đăng nhập."),
-      errors: errorData.errors,
+        typeof errorData.detail === "string"
+          ? errorData.detail
+          : fallbackMessage,
+      ...(errors && typeof errors === "object" && !Array.isArray(errors)
+        ? { errors: errors as Record<string, string[]> }
+        : {}),
     };
-    throw error;
+    throw apiError;
   }
 
-  return await response.json();
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
 }
 
-export async function logoutApi(accessToken: string, refreshToken: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ refreshToken }),
-  });
-
-  if (!response.ok && response.status !== 204) {
-    let errorData: any = {};
-    try {
-      errorData = await response.json();
-    } catch {
-      // Non-JSON response
-    }
-
-    const error: ApiError = {
-      status: response.status,
-      title: errorData.title || "Logout Error",
-      detail: errorData.detail || "Đăng xuất không thành công.",
-    };
-    throw error;
-  }
+function privateRequest<T>(
+  path: string,
+  init: RequestInit,
+  fallbackMessage: string,
+): Promise<T> {
+  return request(`/api/backend${path}`, {
+    ...init,
+    cache: "no-store",
+  }, fallbackMessage, true);
 }
 
-export async function getProfileApi(accessToken: string): Promise<UserProfile> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+function publicRequest<T>(
+  path: string,
+  init: RequestInit,
+  fallbackMessage: string,
+): Promise<T> {
+  return request(`${API_BASE_URL}/api/v1/${path}`, {
+    ...init,
+    credentials: "omit",
+  }, fallbackMessage);
+}
 
-  if (!response.ok) {
-    let errorData: any = {};
-    try {
-      errorData = await response.json();
-    } catch {
-      // Non-JSON response
-    }
-
-    const error: ApiError = {
-      status: response.status,
-      title: errorData.title || "Profile Error",
-      detail:
-        errorData.detail ||
-        (response.status === 401
-          ? "Phiên làm việc đã hết hạn hoặc không hợp lệ."
-          : response.status === 404
-          ? "Không tìm thấy thông tin người dùng."
-          : "Không thể tải thông tin trang cá nhân."),
-    };
-    throw error;
-  }
-
-  return await response.json();
+export function getProfileApi(): Promise<UserProfile> {
+  return privateRequest(
+    "/auth/me",
+    { method: "GET" },
+    "Không thể tải thông tin trang cá nhân.",
+  );
 }
 
 export interface UpdateProfileRequest {
@@ -112,43 +88,16 @@ export interface UpdateProfileRequest {
   bio?: string | null;
 }
 
-export async function updateProfileApi(
-  accessToken: string,
-  request: UpdateProfileRequest
-): Promise<UserProfile> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
+export function updateProfileApi(requestBody: UpdateProfileRequest): Promise<UserProfile> {
+  return privateRequest(
+    "/auth/me",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
     },
-    body: JSON.stringify(request),
-  });
-
-  if (!response.ok) {
-    let errorData: any = {};
-    try {
-      errorData = await response.json();
-    } catch {
-      // Non-JSON response
-    }
-
-    const error: ApiError = {
-      status: response.status,
-      title: errorData.title || "Profile Update Error",
-      detail:
-        errorData.detail ||
-        (response.status === 401
-          ? "Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại."
-          : response.status === 404
-          ? "Không tìm thấy thông tin người dùng."
-          : "Không thể cập nhật thông tin hồ sơ."),
-      errors: errorData.errors,
-    };
-    throw error;
-  }
-
-  return await response.json();
+    "Không thể cập nhật thông tin hồ sơ.",
+  );
 }
 
 export interface ChangePasswordRequest {
@@ -157,82 +106,36 @@ export interface ChangePasswordRequest {
   confirmPassword: string;
 }
 
-export async function changePasswordApi(
-  accessToken: string,
-  request: ChangePasswordRequest
+export function changePasswordApi(
+  requestBody: ChangePasswordRequest,
 ): Promise<{ message: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/change-password`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
+  return privateRequest(
+    "/auth/change-password",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
     },
-    body: JSON.stringify(request),
-  });
-
-  if (!response.ok) {
-    let errorData: any = {};
-    try {
-      errorData = await response.json();
-    } catch {
-      // Non-JSON response
-    }
-
-    const error: ApiError = {
-      status: response.status,
-      title: errorData.title || "Change Password Error",
-      detail:
-        errorData.detail ||
-        (response.status === 401
-          ? "Phiên làm việc đã hết hạn hoặc mật khẩu hiện tại không đúng."
-          : response.status === 400
-          ? "Dữ liệu mật khẩu không hợp lệ."
-          : "Không thể đổi mật khẩu. Vui lòng thử lại."),
-      errors: errorData.errors,
-    };
-    throw error;
-  }
-
-  return await response.json();
+    "Không thể đổi mật khẩu. Vui lòng thử lại.",
+  );
 }
 
 export interface ForgotPasswordRequest {
   email: string;
 }
 
-export async function forgotPasswordApi(
-  request: ForgotPasswordRequest
+export function forgotPasswordApi(
+  requestBody: ForgotPasswordRequest,
 ): Promise<{ message: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  return publicRequest(
+    "auth/forgot-password",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
     },
-    body: JSON.stringify(request),
-  });
-
-  if (!response.ok) {
-    let errorData: any = {};
-    try {
-      errorData = await response.json();
-    } catch {
-      // Non-JSON response
-    }
-
-    const error: ApiError = {
-      status: response.status,
-      title: errorData.title || "Forgot Password Error",
-      detail:
-        errorData.detail ||
-        (response.status === 400
-          ? "Địa chỉ email không hợp lệ."
-          : "Không thể xử lý yêu cầu quên mật khẩu."),
-      errors: errorData.errors,
-    };
-    throw error;
-  }
-
-  return await response.json();
+    "Không thể xử lý yêu cầu quên mật khẩu.",
+  );
 }
 
 export interface ResetPasswordRequest {
@@ -242,37 +145,16 @@ export interface ResetPasswordRequest {
   confirmPassword: string;
 }
 
-export async function resetPasswordApi(
-  request: ResetPasswordRequest
+export function resetPasswordApi(
+  requestBody: ResetPasswordRequest,
 ): Promise<{ message: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/reset-password`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  return publicRequest(
+    "auth/reset-password",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
     },
-    body: JSON.stringify(request),
-  });
-
-  if (!response.ok) {
-    let errorData: any = {};
-    try {
-      errorData = await response.json();
-    } catch {
-      // Non-JSON response
-    }
-
-    const error: ApiError = {
-      status: response.status,
-      title: errorData.title || "Reset Password Error",
-      detail:
-        errorData.detail ||
-        (response.status === 400
-          ? "Mã xác thực không hợp lệ hoặc mật khẩu mới không đúng quy định."
-          : "Không thể đặt lại mật khẩu. Vui lòng thử lại."),
-      errors: errorData.errors,
-    };
-    throw error;
-  }
-
-  return await response.json();
+    "Không thể đặt lại mật khẩu. Vui lòng thử lại.",
+  );
 }

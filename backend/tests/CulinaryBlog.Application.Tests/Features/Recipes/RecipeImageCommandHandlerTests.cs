@@ -140,7 +140,7 @@ public sealed class RecipeImageCommandHandlerTests
     }
 
     [Fact]
-    public async Task DeleteOnlyPrimaryImage_IsRejectedWithoutDeletingObject()
+    public async Task DeleteOnlyPrimaryImage_AllowsRecipeWithoutImages()
     {
         await using var fixture = await RecipeImageFixture.CreateAsync(imageCount: 1);
         var image = await fixture.Db.RecipeImages.SingleAsync();
@@ -148,10 +148,13 @@ public sealed class RecipeImageCommandHandlerTests
         var handler = new DeleteRecipeImageCommandHandler(
             fixture.Db, fixture.User, storage.Object, new RecordingRecipeCache());
 
-        await Assert.ThrowsAsync<ValidationException>(() =>
-            handler.Handle(new DeleteRecipeImageCommand(fixture.Recipe.Id, image.Id), CancellationToken.None));
+        await handler.Handle(
+            new DeleteRecipeImageCommand(fixture.Recipe.Id, image.Id), CancellationToken.None);
 
-        storage.Verify(service => service.DeleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Empty(await fixture.Db.RecipeImages.ToListAsync());
+        Assert.True(await fixture.Db.RecipeImages.IgnoreQueryFilters()
+            .Where(item => item.Id == image.Id).Select(item => item.IsDeleted).SingleAsync());
+        storage.Verify(service => service.DeleteAsync(image.OriginalUrl, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

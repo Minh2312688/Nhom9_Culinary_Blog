@@ -9,6 +9,16 @@ public sealed class RecipeSearchEndpointsTests : IClassFixture<CustomAuthWebAppl
 
     public RecipeSearchEndpointsTests(CustomAuthWebApplicationFactory factory) => this.factory = factory;
 
+    [Fact]
+    public async Task GetMyRecipes_RequiresAuthentication()
+    {
+        var client = factory.CreateIsolatedClient();
+
+        var response = await client.GetAsync("/api/v1/recipes/mine");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
     [Theory]
     [InlineData("maxCookTime=0")]
     [InlineData("maxCookTime=-1")]

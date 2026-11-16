@@ -52,7 +52,7 @@ public sealed class CreateRecipeCommandHandler : IRequestHandler<CreateRecipeCom
         if (!await categories.Query.AnyAsync(x => x.Id == request.CategoryId, cancellationToken))
             throw new NotFoundException(nameof(Category), request.CategoryId);
 
-        var slug = await CreateUniqueSlugAsync(request.Title, cancellationToken);
+        var slug = await RecipeCommandSlug.CreateUniqueSlugAsync(recipes.Query, request.Title, null, cancellationToken);
         var recipe = new Recipe
         {
             Title = request.Title.Trim(), Slug = slug, Description = request.Description?.Trim(),
@@ -71,16 +71,6 @@ public sealed class CreateRecipeCommandHandler : IRequestHandler<CreateRecipeCom
     {
         if (!currentUser.IsAuthenticated || currentUser.UserId is null) throw new ForbiddenAccessException("Authentication is required.");
         if (!currentUser.IsAdmin && currentUser.UserId is null) throw new ForbiddenAccessException();
-    }
-
-    private async Task<string> CreateUniqueSlugAsync(string title, CancellationToken cancellationToken)
-    {
-        var baseSlug = RecipeCommandSlug.Slugify(title);
-        var slug = baseSlug;
-        var suffix = 2;
-        while (await recipes.Query.IgnoreQueryFilters().AnyAsync(x => x.Slug == slug, cancellationToken))
-            slug = $"{baseSlug}-{suffix++}";
-        return slug;
     }
 
     internal static string Slugify(string value) => RecipeCommandSlug.Slugify(value);

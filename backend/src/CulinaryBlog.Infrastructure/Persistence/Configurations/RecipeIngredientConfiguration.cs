@@ -26,7 +26,8 @@ public class RecipeIngredientConfiguration : IEntityTypeConfiguration<RecipeIngr
             .HasMaxLength(500);
 
         builder.Property(ri => ri.RowVersion)
-            .IsRowVersion();
+            .IsConcurrencyToken()
+            .ValueGeneratedNever();
 
         builder.HasQueryFilter(ri => !ri.IsDeleted);
     }

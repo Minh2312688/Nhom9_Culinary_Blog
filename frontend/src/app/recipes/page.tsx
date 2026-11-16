@@ -24,7 +24,7 @@ export default function RecipesPage() {
     setLoading(true);
     setError(null);
     window.history.replaceState(null, "", page === 1 ? "/recipes" : `/recipes?page=${page}`);
-    getRecipes(controller.signal, 12, undefined, page).then(setResult).catch((reason: unknown) => {
+    getRecipes(controller.signal, 12, page).then(setResult).catch((reason: unknown) => {
       if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Không thể tải công thức.");
     }).finally(() => {
       if (!controller.signal.aborted) setLoading(false);

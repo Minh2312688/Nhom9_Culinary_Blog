@@ -81,6 +81,8 @@ public sealed class CategoryWebApplicationFactory : WebApplicationFactory<Progra
             }
 
             services.AddSingleton<ICategoryCache, TestCategoryCache>();
+            services.RemoveAll<IRecipeCache>();
+            services.AddSingleton<IRecipeCache, TestRecipeCache>();
             services.RemoveAll<IFileStorageService>();
             services.AddSingleton<IFileStorageService, TestCategoryFileStorage>();
         });
@@ -119,9 +121,10 @@ internal sealed class TestCategoryFileStorage : IFileStorageService
         CancellationToken cancellationToken = default)
     {
         UploadCount++;
+        var objectPath = $"{request.Folder}/{request.FileName}";
         return Task.FromResult(new FileUploadResult(
-            $"categories/{request.FileName}",
-            $"https://media.example.test/categories/{request.FileName}",
+            objectPath,
+            $"https://media.example.test/{objectPath}",
             request.ContentType ?? "image/webp",
             request.Length));
     }
@@ -158,4 +161,18 @@ internal sealed class TestCategoryCache : ICategoryCache
         entries.Clear();
         return Task.CompletedTask;
     }
+}
+
+internal sealed class TestRecipeCache : IRecipeCache
+{
+    public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default) =>
+        Task.FromResult(default(T));
+
+    public Task SetAsync<T>(string key, T value, TimeSpan ttl, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+
+    public Task RemoveAsync(string key, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+    public Task RemoveByPrefixAsync(string prefix, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
 }

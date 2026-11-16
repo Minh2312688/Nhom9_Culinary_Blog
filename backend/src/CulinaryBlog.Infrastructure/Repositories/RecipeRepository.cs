@@ -27,7 +27,7 @@ public sealed class RecipeRepository(IApplicationDbContext context) : IRecipeRep
         var tsQueryText = string.Join(" & ", terms);
         var recipes = context.Recipes.AsNoTracking();
         recipes = isAdmin
-            ? recipes
+            ? recipes.Where(x => x.Status == RecipeStatus.Published)
             : recipes.Where(x => x.Status == RecipeStatus.Published || (userId != null && x.AuthorId == userId));
 
         if (categoryId.HasValue) recipes = recipes.Where(x => x.CategoryId == categoryId.Value);

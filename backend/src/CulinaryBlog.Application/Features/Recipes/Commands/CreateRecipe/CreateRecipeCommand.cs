@@ -69,8 +69,10 @@ public sealed class CreateRecipeCommandHandler : IRequestHandler<CreateRecipeCom
 
     private void EnsureCanEdit()
     {
-        if (!currentUser.IsAuthenticated || currentUser.UserId is null) throw new ForbiddenAccessException("Authentication is required.");
-        if (!currentUser.IsAdmin && currentUser.UserId is null) throw new ForbiddenAccessException();
+        if (!currentUser.IsAuthenticated || currentUser.UserId is null)
+            throw new ForbiddenAccessException("Authentication is required.");
+        if (currentUser.IsAdmin)
+            throw new ForbiddenAccessException();
     }
 
     internal static string Slugify(string value) => RecipeCommandSlug.Slugify(value);

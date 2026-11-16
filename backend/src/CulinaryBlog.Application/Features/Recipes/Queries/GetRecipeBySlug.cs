@@ -73,5 +73,5 @@ public sealed class GetRecipeBySlugQueryHandler : IRequestHandler<GetRecipeBySlu
     }
 
     private bool CanView(RecipeStatus status, string authorId) =>
-        status == RecipeStatus.Published || currentUser.IsAdmin || currentUser.UserId == authorId;
+        status == RecipeStatus.Published || (!currentUser.IsAdmin && currentUser.UserId == authorId);
 }

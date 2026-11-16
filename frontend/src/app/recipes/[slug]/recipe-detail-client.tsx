@@ -5,7 +5,11 @@ import type { RecipeDetail } from "@/lib/recipes-api";
 import { ErrorNotice, SitePage } from "../../site-ui";
 import styles from "../../site-ui.module.css";
 
-export function RecipeDetailClient({ recipe }: Readonly<{ recipe: RecipeDetail }>) {
+export function RecipeDetailClient({
+  recipe,
+  backHref = "/recipes",
+  backLabel = "CÔNG THỨC",
+}: Readonly<{ recipe: RecipeDetail; backHref?: string; backLabel?: string }>) {
   const images = recipe.images
     .slice()
     .sort((first, second) => Number(second.isPrimary) - Number(first.isPrimary) ||
@@ -22,7 +26,7 @@ export function RecipeDetailClient({ recipe }: Readonly<{ recipe: RecipeDetail }
   return (
     <SitePage>
       <main className={styles.detail}>
-        <p className={styles.eyebrow}><Link href="/recipes">CÔNG THỨC</Link> / CHI TIẾT</p>
+        <p className={styles.eyebrow}><Link href={backHref}>{backLabel}</Link> / CHI TIẾT</p>
         <h1>{recipe.title}</h1>
         {primaryImage && (
           <div className={styles.recipeHero}>

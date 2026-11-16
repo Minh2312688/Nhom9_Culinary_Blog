@@ -1,6 +1,7 @@
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Authentication;
 using CulinaryBlog.Application.Contracts.Persistence;
+using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.DTOs.Recipes;
 using CulinaryBlog.Application.Features.Recipes.Queries;
 using CulinaryBlog.Domain.Entities;
@@ -15,6 +16,30 @@ namespace CulinaryBlog.Application.Tests.Features.Recipes;
 
 public sealed class GetRecipeBySlugQueryHandlerTests
 {
+    [Fact]
+    public async Task Handle_AdminCannotReadDraftEvenWhenItIsCached()
+    {
+        var recipe = CreatePublishedRecipe(new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero));
+        recipe.Status = RecipeStatus.Draft;
+        await using var db = await CreateDbAsync(recipe);
+        var cachedRecipe = new RecipeDetailDto(
+            recipe.Id, recipe.Title, recipe.Slug, recipe.Description, recipe.PrepTimeMinutes,
+            recipe.CookTimeMinutes, recipe.Servings, recipe.Difficulty.ToString(), recipe.Status,
+            recipe.CategoryId, recipe.AuthorId, recipe.PublishedAt, recipe.RowVersion,
+            [], [], [], null, null);
+        var cache = new RecordingRecipeCache { Value = cachedRecipe };
+        var currentUser = new Mock<ICurrentUserService>();
+        currentUser.SetupGet(user => user.IsAdmin).Returns(true);
+        var handler = new GetRecipeBySlugQueryHandler(
+            CreateRecipeRepository(db).Object,
+            currentUser.Object,
+            cache,
+            CreateIdentityService(active: true).Object);
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
+            handler.Handle(new GetRecipeBySlugQuery(recipe.Slug), CancellationToken.None));
+    }
+
     [Fact]
     public async Task Handle_ReturnsPublicationDateAndActiveAuthorWithoutCachingIdentityFields()
     {

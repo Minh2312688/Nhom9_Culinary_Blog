@@ -263,6 +263,20 @@ public sealed class RecipeImageCommandHandlerTests
             handler.Handle(new SetPrimaryRecipeImageCommand(fixture.Recipe.Id, image.Id), CancellationToken.None));
     }
 
+    [Fact]
+    public async Task ImageCommands_RejectAdminEdits()
+    {
+        await using var fixture = await RecipeImageFixture.CreateAsync(imageCount: 1);
+        fixture.User.IsAdmin = true;
+        fixture.User.Id = "administrator";
+        var image = await fixture.Db.RecipeImages.SingleAsync();
+        var handler = new SetPrimaryRecipeImageCommandHandler(
+            fixture.Db, fixture.User, new RecordingRecipeCache());
+
+        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
+            handler.Handle(new SetPrimaryRecipeImageCommand(fixture.Recipe.Id, image.Id), CancellationToken.None));
+    }
+
     private static UploadRecipeImageCommand UploadCommand(Guid recipeId) => new(
         recipeId, new MemoryStream([1, 2, 3]), "photo.jpg", "image/jpeg", 3, "Photo");
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -116,6 +117,8 @@ type RecipeEditorFormValues = z.infer<typeof recipeEditorSchema>;
 
 export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   const router = useRouter();
+  const { data: session, status: sessionStatus } = useSession();
+  const isAdmin = session?.user.roles?.includes("Admin") ?? false;
   const { showToast } = useFeedback();
   const params = useParams<{ id?: string }>();
   const recipeId = params?.id;
@@ -328,6 +331,13 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   }
 
   useEffect(() => {
+    if (sessionStatus === "loading") return;
+    if (isAdmin) {
+      setError("Tài khoản quản trị chỉ được xem và xóa công thức đã xuất bản.");
+      setLoading(false);
+      return;
+    }
+
     if (editing && !recipeId) {
       setError("Không thể xác định công thức cần chỉnh sửa.");
       setLoading(false);
@@ -350,7 +360,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     }
     void load();
     return () => controller.abort();
-  }, [editing, recipeId, router, showToast]);
+  }, [editing, isAdmin, recipeId, router, sessionStatus, showToast]);
 
   async function reloadRecipe() {
     setLoading(true);
@@ -893,6 +903,16 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
         {message}
       </span>
     ) : null;
+  }
+
+  if (sessionStatus !== "loading" && isAdmin) {
+    return (
+      <main className={styles.content}>
+        <SectionTitle eyebrow="QUẢN LÝ CÔNG THỨC" title="Không có quyền chỉnh sửa" />
+        <ErrorNotice>Tài khoản quản trị chỉ được xem và xóa công thức đã xuất bản.</ErrorNotice>
+        <Link href="/dashboard/recipes">Quay lại danh sách công thức</Link>
+      </main>
+    );
   }
 
   return (

@@ -52,12 +52,16 @@ public sealed class GetRecipesVisibilityTests
     }
 
     [Fact]
-    public async Task AdminList_IncludesEveryRecipeStatus()
+    public async Task AdminList_OnlyIncludesPublishedRecipesFromEveryAuthor()
     {
         await using var fixture = await RecipeListFixture.CreateAsync();
         var result = await fixture.GetRecipesAsync(null, true);
 
-        Assert.Equal(10, result.TotalCount);
+        Assert.Equal(7, result.TotalCount);
+        Assert.All(result.Items, item => Assert.Equal(nameof(RecipeStatus.Published), item.Status.ToString()));
+        Assert.Contains(result.Items, item => item.Title == "Published two");
+        Assert.DoesNotContain(result.Items, item => item.Title == "Owner draft");
+        Assert.DoesNotContain(result.Items, item => item.Title == "Other draft");
     }
 
     [Fact]

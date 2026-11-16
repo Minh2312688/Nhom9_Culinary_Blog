@@ -18,8 +18,9 @@ internal static class RecipeImageAccess
             item => item.Id == recipeId, cancellationToken)
             ?? throw new NotFoundException(nameof(Recipe), recipeId);
 
-        if (!currentUser.IsAdmin &&
-            (!currentUser.IsAuthenticated || recipe.AuthorId != currentUser.UserId))
+        if (currentUser.IsAdmin ||
+            !currentUser.IsAuthenticated ||
+            recipe.AuthorId != currentUser.UserId)
         {
             throw new ForbiddenAccessException();
         }

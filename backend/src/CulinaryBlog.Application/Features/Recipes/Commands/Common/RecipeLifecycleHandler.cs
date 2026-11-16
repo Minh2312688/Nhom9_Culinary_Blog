@@ -36,7 +36,7 @@ public sealed class RecipeLifecycleHandler :
 
     public async Task Handle(DeleteRecipeCommand request, CancellationToken ct)
     {
-        var recipe = await GetOwnedRecipe(request.Id, ct);
+        var recipe = await GetRecipeForDelete(request.Id, ct);
         if (storage is not null)
         {
             var firstFailure = await DeleteStoredObjectsAsync(recipe.Images, ct);
@@ -83,7 +83,7 @@ public sealed class RecipeLifecycleHandler :
 
     private async Task ChangeStatus(Guid id, RecipeStatus status, CancellationToken ct, bool requireChildren)
     {
-        var recipe = await GetOwnedRecipe(id, ct);
+        var recipe = await GetEditableRecipe(id, ct);
         if (requireChildren) recipe.Publish(DateTimeOffset.UtcNow);
         else recipe.Status = status;
         await context.SaveChangesAsync(ct);
@@ -91,7 +91,7 @@ public sealed class RecipeLifecycleHandler :
         await cache.RemoveByPrefixAsync("recipes:", ct);
     }
 
-    private async Task<Recipe> GetOwnedRecipe(Guid id, CancellationToken ct)
+    private async Task<Recipe> GetEditableRecipe(Guid id, CancellationToken ct)
     {
         var recipe = await context.Recipes
             .Include(x => x.Steps)
@@ -99,8 +99,26 @@ public sealed class RecipeLifecycleHandler :
             .Include(x => x.Images)
             .SingleOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NotFoundException(nameof(Recipe), id);
-        if (!currentUser.IsAdmin && recipe.AuthorId != currentUser.UserId)
+        if (currentUser.IsAdmin || recipe.AuthorId != currentUser.UserId)
             throw new ForbiddenAccessException();
+        return recipe;
+    }
+
+    private async Task<Recipe> GetRecipeForDelete(Guid id, CancellationToken ct)
+    {
+        var recipe = await context.Recipes
+            .Include(x => x.Steps)
+            .Include(x => x.Ingredients)
+            .Include(x => x.Images)
+            .SingleOrDefaultAsync(x => x.Id == id, ct)
+            ?? throw new NotFoundException(nameof(Recipe), id);
+        if (currentUser.IsAdmin
+            ? recipe.Status != RecipeStatus.Published
+            : recipe.AuthorId != currentUser.UserId)
+        {
+            throw new ForbiddenAccessException();
+        }
+
         return recipe;
     }
 }

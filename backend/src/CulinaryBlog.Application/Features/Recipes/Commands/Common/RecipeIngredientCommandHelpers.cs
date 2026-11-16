@@ -15,12 +15,12 @@ internal static class RecipeIngredientCommandHelpers
         Guid recipeId,
         CancellationToken cancellationToken)
     {
-        if (!currentUser.IsAuthenticated || currentUser.UserId is null && !currentUser.IsAdmin)
+        if (!currentUser.IsAuthenticated || currentUser.UserId is null || currentUser.IsAdmin)
             throw new ForbiddenAccessException("Authentication is required.");
 
         var recipe = await context.Recipes.SingleOrDefaultAsync(x => x.Id == recipeId, cancellationToken)
             ?? throw new NotFoundException(nameof(Recipe), recipeId);
-        if (!currentUser.IsAdmin && recipe.AuthorId != currentUser.UserId)
+        if (recipe.AuthorId != currentUser.UserId)
             throw new ForbiddenAccessException();
         return recipe;
     }

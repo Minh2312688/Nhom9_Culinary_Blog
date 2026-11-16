@@ -125,7 +125,11 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
         }
 
         var query = recipes.Query.AsNoTracking();
-        if (request.OnlyMine)
+        if (currentUser.IsAdmin)
+        {
+            query = query.Where(x => x.Status == RecipeStatus.Published);
+        }
+        else if (request.OnlyMine)
         {
             query = currentUser.UserId is null
                 ? query.Where(_ => false)
@@ -133,10 +137,8 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
         }
         else
         {
-            query = currentUser.IsAdmin
-                ? query
-                : query.Where(x => x.Status == RecipeStatus.Published ||
-                    (currentUser.UserId != null && x.AuthorId == currentUser.UserId));
+            query = query.Where(x => x.Status == RecipeStatus.Published ||
+                (currentUser.UserId != null && x.AuthorId == currentUser.UserId));
         }
 
         if (request.CategoryId.HasValue) query = query.Where(x => x.CategoryId == request.CategoryId);
@@ -201,7 +203,7 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
     private string BuildSearchCacheKey(string normalized, GetRecipesQuery request)
     {
         var scope = currentUser.IsAdmin ? "admin" : currentUser.UserId is null ? "guest" : $"user:{currentUser.UserId}";
-        var material = $"v2|{normalized}|{request.Page}|{request.PageSize}|{request.SortBy?.ToLowerInvariant() ?? "relevance"}|{request.SortOrder?.ToLowerInvariant() ?? "desc"}|{request.OnlyMine}|{scope}";
+        var material = $"v3|{normalized}|{request.Page}|{request.PageSize}|{request.SortBy?.ToLowerInvariant() ?? "relevance"}|{request.SortOrder?.ToLowerInvariant() ?? "desc"}|{request.OnlyMine}|{scope}";
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material))).ToLowerInvariant();
         return $"recipes:search:result:{hash}";
     }
@@ -210,7 +212,7 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
     {
         var scope = currentUser.IsAdmin ? "admin" : currentUser.UserId is null ? "guest" : $"user:{currentUser.UserId}";
         var material = string.Join('|',
-            "v1",
+            "v2",
             request.Page.ToString(CultureInfo.InvariantCulture),
             request.PageSize.ToString(CultureInfo.InvariantCulture),
             request.CategoryId?.ToString("N") ?? string.Empty,

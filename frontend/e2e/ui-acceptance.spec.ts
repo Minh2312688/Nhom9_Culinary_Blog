@@ -38,7 +38,7 @@ test.beforeEach(async ({ page }) => {
 test("renders API validation errors beside Recipe fields and in an error summary", async ({ page }) => {
   await queueMockApiResponse(page, {
     method: "POST",
-    path: "/api/v1/recipes",
+    path: "/api/v1/recipes/",
     status: 400,
     body: {
       title: "Validation failed",
@@ -153,6 +153,41 @@ test("shows one create-recipe action when the recipe list is empty", async ({ pa
   await expect(createRecipe).toHaveAttribute("href", "/dashboard/recipes/new");
   await expect(createRecipe).toHaveCSS("background-color", "rgb(183, 62, 45)");
   await expect(createRecipe).toHaveCSS("color", "rgb(255, 253, 248)");
+});
+
+test("hides the recipe status column for admins", async ({ page }) => {
+  await signInAsByApi(page, "admin@example.com");
+  await queueMockApiResponse(page, {
+    method: "GET",
+    path: "/api/v1/recipes",
+    status: 200,
+    body: {
+      ...emptyRecipes,
+      items: [{
+        id: "00000000-0000-0000-0000-000000000003",
+        title: "Món đã xuất bản",
+        slug: "mon-da-xuat-ban",
+        description: null,
+        difficulty: "Easy",
+        cookTimeMinutes: 20,
+        servings: 2,
+        status: "Published",
+        categoryId: category.id,
+        authorId: "author-1",
+        publishedAt: null,
+        rowVersion: "AAAAAA==",
+      }],
+      totalCount: 1,
+      totalPages: 1,
+    },
+  });
+
+  await page.goto("/dashboard/recipes");
+
+  await expect(page.getByText("Món đã xuất bản", { exact: true })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Trạng thái" })).toHaveCount(0);
+  await expect(page.getByText("Đã xuất bản", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("columnheader", { name: "Thời gian nấu" })).toBeVisible();
 });
 
 test("announces successful Category creation", async ({ page }) => {

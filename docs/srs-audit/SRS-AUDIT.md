@@ -2,7 +2,12 @@
 
 > **BẢN QUYỀN TÀI LIỆU:**
 > ĐÂY LÀ TÀI LIỆU MASTER AUDIT TOÀN BỘ 71 TRANG CỦA SRS v1.0.0 DÀNH CHO CẢ 4 THÀNH VIÊN (TV1, TV2, TV3, TV4).
-> TÀI LIỆU NÀY LƯU TẠI THƯ MỤC PRIVATE NOTES VÀ **TUYỆT ĐỐI KHÔNG ĐƯỢC ĐƯA LÊN GIT REPOSITORY**.
+> Cảnh báo bên dưới phản ánh quy định áp dụng cho tài liệu SRS gốc.
+
+> **Trạng thái lưu trữ 17/11/2026:** Bản audit dẫn xuất này đang nằm trong
+> repository. Đây không phải bản SRS gốc; cần xác nhận quyền phân phối trước
+> khi chia sẻ repository ra ngoài. Audit mô tả yêu cầu gốc, không phải bảng
+> trạng thái triển khai hiện hành.
 
 ---
 

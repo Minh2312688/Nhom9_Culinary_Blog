@@ -1,27 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
-import { getRecipes, type RecipeSummary } from "@/lib/recipes-api";
+import { useRecipes } from "@/lib/queries/recipes";
 import { BrandMotion } from "./brand-motion";
 import { ErrorNotice, LoadingNotice, RecipeCard, SectionTitle, SitePage } from "./site-ui";
 import styles from "./site-ui.module.css";
 
 export default function HomePage() {
-  const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    getRecipes(controller.signal, 6).then(({ items }) => setRecipes(items)).catch((reason: unknown) => {
-      if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Không thể tải công thức.");
-    }).finally(() => {
-      if (!controller.signal.aborted) setLoading(false);
-    });
-    return () => controller.abort();
-  }, []);
+  const recipesQuery = useRecipes({ page: 1, pageSize: 6 });
+  const recipes = recipesQuery.data?.items ?? [];
 
   return (
     <SitePage>
@@ -45,9 +33,9 @@ export default function HomePage() {
             <h2>Công thức mới nhất</h2>
             <p className={styles.description}>Những món ăn đang chờ bạn khám phá trong căn bếp hôm nay.</p>
           </div>
-          {loading && <LoadingNotice />}
-          {error && <ErrorNotice>{error}</ErrorNotice>}
-          {!loading && !error && recipes.length === 0 && <p className={styles.notice}>Chưa có công thức được chia sẻ.</p>}
+          {recipesQuery.isPending && <LoadingNotice />}
+          {recipesQuery.error && <ErrorNotice>{recipesQuery.error.message || "Không thể tải công thức."}</ErrorNotice>}
+          {!recipesQuery.isPending && !recipesQuery.error && recipes.length === 0 && <p className={styles.notice}>Chưa có công thức được chia sẻ.</p>}
           <div className={styles.grid}>
             {recipes.map((recipe) => (
               <RecipeCard recipe={recipe} key={recipe.id} />

@@ -1,5 +1,11 @@
 # Culinary Blog Docker Rollout Plan
 
+> **Trạng thái hiện tại (17/11/2026):** Compose/run documentation reflects the
+> current service configuration. This plan's rebuild and image-cleanup steps
+> are an operational procedure, not proof they were executed; no container
+> rebuild, volume operation, image prune, or runtime verification was performed
+> for this documentation update.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Rebuild and run the completed category media, recipe media, and nutrition changes in Docker, then remove only obsolete Culinary Blog images.

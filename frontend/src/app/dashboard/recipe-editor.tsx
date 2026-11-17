@@ -1,28 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import {
-  createRecipe,
-  getPrivateRecipe,
-  getRecipeCategories,
-  updateRecipe,
-  uploadRecipeImage,
-  uploadRecipeStepImage,
-  setPrimaryRecipeImage,
-  deleteRecipeImage,
-  type RecipeCategory,
   type RecipeDetail,
   type RecipeInput,
   type RecipeNutritionInput,
   type RecipeStep,
   ApiRequestError,
 } from "@/lib/recipes-api";
+import { useCategories } from "@/lib/queries/categories";
+import { useRecipeForEdit } from "@/lib/queries/recipes";
+import {
+  useCreateRecipe,
+  useDeleteRecipeImage,
+  useSetPrimaryRecipeImage,
+  useUpdateRecipe,
+  useUploadRecipeImage,
+  useUploadRecipeStepImage,
+} from "@/lib/queries/recipe-mutations";
 import { getFormErrorDetails, useFeedback } from "../feedback";
 import { ErrorNotice, LoadingSkeleton, SectionTitle } from "../site-ui";
 import styles from "../site-ui.module.css";
@@ -119,14 +120,30 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
   const isAdmin = session?.user.roles?.includes("Admin") ?? false;
+  const userId = session?.user.id ?? "";
   const { showToast } = useFeedback();
   const params = useParams<{ id?: string }>();
   const recipeId = params?.id;
+  const categoriesQuery = useCategories(sessionStatus !== "loading" && !isAdmin);
+  const recipeQuery = useRecipeForEdit(
+    userId,
+    recipeId ?? "",
+    editing && sessionStatus !== "loading" && !isAdmin,
+  );
+  const createRecipeMutation = useCreateRecipe(userId);
+  const updateRecipeMutation = useUpdateRecipe(userId);
+  const uploadRecipeImageMutation = useUploadRecipeImage(userId);
+  const uploadRecipeStepImageMutation = useUploadRecipeStepImage(userId);
+  const setPrimaryRecipeImageMutation = useSetPrimaryRecipeImage(userId);
+  const deleteRecipeImageMutation = useDeleteRecipeImage(userId);
+  const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
+  const recipe = editing ? recipeQuery.data ?? null : null;
   const {
     control,
     register,
     handleSubmit,
     reset,
+    getValues,
     setValue,
     setError: setFormError,
     watch,
@@ -153,9 +170,6 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     append: appendIngredient,
     remove: removeIngredient,
   } = useFieldArray({ control, name: "ingredients" });
-  const [categories, setCategories] = useState<RecipeCategory[]>([]);
-  const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -187,11 +201,12 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   const [pendingPrimaryImageId, setPendingPrimaryImageId] = useState<string | null>(null);
   const [imageAltText, setImageAltText] = useState("");
   const [imageSetPrimary, setImageSetPrimary] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const uploadingImage = uploadRecipeImageMutation.isPending || uploadRecipeStepImageMutation.isPending;
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const [pendingImagePreviewUrl, setPendingImagePreviewUrl] = useState<string | null>(null);
   const [createdRecipeId, setCreatedRecipeId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hydratedRecipeKeyRef = useRef<string | null>(null);
   const galleryPreviewUrlsRef = useRef(new Set<string>());
   const stepPreviewUrlsRef = useRef(new Set<string>());
   const visibleImages = [
@@ -253,129 +268,127 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     for (const url of stepPreviewUrlsRef.current) URL.revokeObjectURL(url);
   }, []);
 
-  async function loadRecipeData(signal?: AbortSignal) {
-    const categoryItems = await getRecipeCategories(signal ?? new AbortController().signal);
-    setCategories(categoryItems);
-    if (editing && recipeId) {
-      const detail = await getPrivateRecipe(recipeId, signal);
-      setRecipe(detail);
-      reset({
-        title: detail.title,
-        description: detail.description ?? "",
-        categoryId: detail.categoryId,
-        prepTime: String(detail.prepTimeMinutes),
-        cookTime: String(detail.cookTimeMinutes),
-        servings: String(detail.servings),
-        difficulty: detail.difficulty,
-        ingredients: detail.ingredients
-          .slice()
-          .sort((first, second) => first.orderIndex - second.orderIndex)
-          .map((item) => ({
-            name: item.name,
-            quantity: item.quantity === null ? "" : String(item.quantity),
-            unit: item.unit ?? "",
-            notes: item.notes ?? "",
-          })),
-        steps: "",
-      });
+  const hydrateRecipe = useCallback((detail: RecipeDetail) => {
+    setError(null);
+    reset({
+      title: detail.title,
+      description: detail.description ?? "",
+      categoryId: detail.categoryId,
+      prepTime: String(detail.prepTimeMinutes),
+      cookTime: String(detail.cookTimeMinutes),
+      servings: String(detail.servings),
+      difficulty: detail.difficulty,
+      ingredients: detail.ingredients
+        .slice()
+        .sort((first, second) => first.orderIndex - second.orderIndex)
+        .map((item) => ({
+          name: item.name,
+          quantity: item.quantity === null ? "" : String(item.quantity),
+          unit: item.unit ?? "",
+          notes: item.notes ?? "",
+        })),
+      steps: "",
+    });
 
-      if (detail.steps && detail.steps.length > 0) {
-        const sorted = detail.steps
-          .slice()
-          .sort((a, b) => (a.stepNumber ?? 0) - (b.stepNumber ?? 0));
-        setStructuredSteps(
-          sorted.map((st, idx) => ({
-            id: st.id,
-            stepNumber: st.stepNumber ?? idx + 1,
-            title: st.title ?? "",
-            description: st.description ?? "",
-            durationMinutes: st.durationMinutes ?? null,
-            imageUrl: st.imageUrl ?? null,
-            imageFile: null,
-            imagePreviewUrl: null,
-          })),
-        );
-        setValue("steps", sorted.map((item) => item.description).join("\n"));
-      } else {
-        setStructuredSteps([]);
-        setValue("steps", "");
-      }
-
-      if (detail.nutrition) {
-        setIncludeNutrition(true);
-        setNutrition({
-          calories: detail.nutrition.calories,
-          protein: detail.nutrition.protein,
-          carbohydrates: detail.nutrition.carbohydrates,
-          fat: detail.nutrition.fat,
-          fiber: detail.nutrition.fiber,
-          sodium: detail.nutrition.sodium,
-        });
-      }
-      setImages(
-        detail.images.map((img) => ({
-          id: img.id,
-          originalUrl: img.originalUrl,
-          thumbnailUrl: img.thumbnailUrl,
-          altText: img.altText,
-          isPrimary: img.isPrimary,
-          orderIndex: img.orderIndex,
+    if (detail.steps && detail.steps.length > 0) {
+      const sorted = detail.steps
+        .slice()
+        .sort((a, b) => (a.stepNumber ?? 0) - (b.stepNumber ?? 0));
+      setStructuredSteps(
+        sorted.map((st, idx) => ({
+          id: st.id,
+          stepNumber: st.stepNumber ?? idx + 1,
+          title: st.title ?? "",
+          description: st.description ?? "",
+          durationMinutes: st.durationMinutes ?? null,
+          imageUrl: st.imageUrl ?? null,
+          imageFile: null,
+          imagePreviewUrl: null,
         })),
       );
-      setPendingGalleryImages([]);
-      setPendingImageDeletes([]);
-      setPendingPrimaryImageId(detail.images.find((image) => image.isPrimary)?.id ?? null);
-    } else if (categoryItems.length) {
-      setValue("categoryId", categoryItems[0].id);
+      setValue("steps", sorted.map((item) => item.description).join("\n"));
+    } else {
+      setStructuredSteps([]);
+      setValue("steps", "");
     }
-  }
+
+    if (detail.nutrition) {
+      setIncludeNutrition(true);
+      setNutrition({
+        calories: detail.nutrition.calories,
+        protein: detail.nutrition.protein,
+        carbohydrates: detail.nutrition.carbohydrates,
+        fat: detail.nutrition.fat,
+        fiber: detail.nutrition.fiber,
+        sodium: detail.nutrition.sodium,
+      });
+    }
+    setImages(
+      detail.images.map((img) => ({
+        id: img.id,
+        originalUrl: img.originalUrl,
+        thumbnailUrl: img.thumbnailUrl,
+        altText: img.altText,
+        isPrimary: img.isPrimary,
+        orderIndex: img.orderIndex,
+      })),
+    );
+    setPendingGalleryImages([]);
+    setPendingImageDeletes([]);
+    setPendingPrimaryImageId(detail.images.find((image) => image.isPrimary)?.id ?? null);
+  }, [reset, setValue]);
+
+  const recipeHydrationKey = recipeId ? `${userId}:${recipeId}` : null;
+
+  useEffect(() => {
+    if (!editing && categories.length > 0 && !getValues("categoryId")) {
+      setValue("categoryId", categories[0].id);
+    }
+  }, [categories, editing, getValues, setValue]);
+
+  useEffect(() => {
+    if (!recipe || !recipeHydrationKey || hydratedRecipeKeyRef.current === recipeHydrationKey) return;
+    hydrateRecipe(recipe);
+    hydratedRecipeKeyRef.current = recipeHydrationKey;
+  }, [hydrateRecipe, recipe, recipeHydrationKey]);
 
   useEffect(() => {
     if (sessionStatus === "loading") return;
     if (isAdmin) {
       setError("Tài khoản quản trị chỉ được xem và xóa công thức đã xuất bản.");
-      setLoading(false);
-      return;
-    }
-
-    if (editing && !recipeId) {
+    } else if (editing && !recipeId) {
       setError("Không thể xác định công thức cần chỉnh sửa.");
-      setLoading(false);
-      return;
     }
+  }, [editing, isAdmin, recipeId, sessionStatus]);
 
-    const controller = new AbortController();
-    async function load() {
-      try {
-        await loadRecipeData(controller.signal);
-      } catch (reason) {
-        if (!controller.signal.aborted) {
-          const message = reason instanceof Error ? reason.message : "Không thể tải dữ liệu.";
-          setError(message);
-          showToast(message, "error");
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }
-    void load();
-    return () => controller.abort();
-  }, [editing, isAdmin, recipeId, router, sessionStatus, showToast]);
+  useEffect(() => {
+    const reason = categoriesQuery.error ?? (editing ? recipeQuery.error : null);
+    if (!reason) return;
+    const message = reason instanceof Error ? reason.message : "Không thể tải dữ liệu.";
+    setError(message);
+    showToast(message, "error");
+  }, [categoriesQuery.error, editing, recipeQuery.error, showToast]);
+
+  const loading = sessionStatus === "loading"
+    || (!isAdmin && (
+      categoriesQuery.isPending
+      || (editing && Boolean(recipeId) && recipeQuery.isPending)
+    ));
 
   async function reloadRecipe() {
-    setLoading(true);
     setIsConflict(false);
     setError(null);
     setFieldErrors({});
     try {
-      await loadRecipeData();
+      const refreshed = await recipeQuery.refetch({ throwOnError: true });
+      if (refreshed.data && recipeHydrationKey) {
+        hydrateRecipe(refreshed.data);
+        hydratedRecipeKeyRef.current = recipeHydrationKey;
+      }
       showToast("Đã tải lại dữ liệu mới nhất.", "success");
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "Không thể tải lại công thức.";
       setError(message);
-      showToast(message, "error");
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -565,29 +578,24 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   async function uploadPendingImage(targetRecipeId: string) {
     if (!pendingImageFile) return;
 
-    setUploadingImage(true);
-    try {
-      const result = await uploadRecipeImage(
-        targetRecipeId,
-        pendingImageFile,
-        imageSetPrimary,
-        imageAltText || undefined,
-      );
-      setImages((current) => [...current, {
-        id: result.imageId,
-        originalUrl: result.originalUrl,
-        thumbnailUrl: result.thumbnailUrl,
-        altText: result.altText,
-        isPrimary: result.isPrimary,
-        orderIndex: current.length,
-      }]);
-      setPendingImageFile(null);
-      setImageAltText("");
-      setImageSetPrimary(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    } finally {
-      setUploadingImage(false);
-    }
+    const result = await uploadRecipeImageMutation.mutateAsync({
+      recipeId: targetRecipeId,
+      file: pendingImageFile,
+      isPrimary: imageSetPrimary,
+      altText: imageAltText || undefined,
+    });
+    setImages((current) => [...current, {
+      id: result.imageId,
+      originalUrl: result.originalUrl,
+      thumbnailUrl: result.thumbnailUrl,
+      altText: result.altText,
+      isPrimary: result.isPrimary,
+      orderIndex: current.length,
+    }]);
+    setPendingImageFile(null);
+    setImageAltText("");
+    setImageSetPrimary(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function handlePendingImageSelection(file: File | undefined) {
@@ -613,40 +621,35 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     let currentImages = [...images];
 
     for (const pendingImage of pendingGalleryImages) {
-      setUploadingImage(true);
-      try {
-        const result = await uploadRecipeImage(
-          targetRecipeId,
-          pendingImage.file,
-          false,
-          pendingImage.altText ?? undefined,
-        );
-        if (primaryImageId === pendingImage.id) {
-          primaryImageId = result.imageId;
-          setPendingPrimaryImageId(result.imageId);
-        }
-        const uploadedImage: ImageEntry = {
-          id: result.imageId,
-          originalUrl: result.originalUrl,
-          thumbnailUrl: result.thumbnailUrl,
-          altText: result.altText,
-          isPrimary: result.isPrimary,
-          orderIndex: currentImages.length,
-        };
-        currentImages = result.isPrimary
-          ? currentImages.map((image) => ({ ...image, isPrimary: false })).concat(uploadedImage)
-          : [...currentImages, uploadedImage];
-        setImages(currentImages);
-        setPendingGalleryImages((current) =>
-          current.filter((image) => image.id !== pendingImage.id),
-        );
-      } finally {
-        setUploadingImage(false);
+      const result = await uploadRecipeImageMutation.mutateAsync({
+        recipeId: targetRecipeId,
+        file: pendingImage.file,
+        isPrimary: false,
+        altText: pendingImage.altText ?? undefined,
+      });
+      if (primaryImageId === pendingImage.id) {
+        primaryImageId = result.imageId;
+        setPendingPrimaryImageId(result.imageId);
       }
+      const uploadedImage: ImageEntry = {
+        id: result.imageId,
+        originalUrl: result.originalUrl,
+        thumbnailUrl: result.thumbnailUrl,
+        altText: result.altText,
+        isPrimary: result.isPrimary,
+        orderIndex: currentImages.length,
+      };
+      currentImages = result.isPrimary
+        ? currentImages.map((image) => ({ ...image, isPrimary: false })).concat(uploadedImage)
+        : [...currentImages, uploadedImage];
+      setImages(currentImages);
+      setPendingGalleryImages((current) =>
+        current.filter((image) => image.id !== pendingImage.id),
+      );
     }
 
     for (const imageId of pendingImageDeletes) {
-      await deleteRecipeImage(targetRecipeId, imageId);
+      await deleteRecipeImageMutation.mutateAsync({ recipeId: targetRecipeId, imageId });
       const deletedImage = currentImages.find((image) => image.id === imageId);
       currentImages = currentImages.filter((image) => image.id !== imageId);
       if (deletedImage?.isPrimary && currentImages.length > 0) {
@@ -661,7 +664,10 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
 
     const currentPrimaryImageId = currentImages.find((image) => image.isPrimary)?.id ?? null;
     if (primaryImageId && primaryImageId !== currentPrimaryImageId) {
-      await setPrimaryRecipeImage(targetRecipeId, primaryImageId);
+      await setPrimaryRecipeImageMutation.mutateAsync({
+        recipeId: targetRecipeId,
+        imageId: primaryImageId,
+      });
       currentImages = currentImages.map((image) => ({
         ...image,
         isPrimary: image.id === primaryImageId,
@@ -682,7 +688,11 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
         throw new Error(`Không xác định được bước ${index + 1} để tải ảnh lên.`);
       }
 
-      const updatedStep = await uploadRecipeStepImage(targetRecipeId, stepId, step.imageFile);
+      const updatedStep = await uploadRecipeStepImageMutation.mutateAsync({
+        recipeId: targetRecipeId,
+        stepId,
+        file: step.imageFile,
+      });
       setStructuredSteps((current) => current.map((item, itemIndex) =>
         itemIndex === index
           ? {
@@ -709,7 +719,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
       router.push("/dashboard/recipes");
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "Không thể tải ảnh.";
-      setError(`Công thức đã lưu, nhưng ảnh chưa tải lên. ${message}`);
+      setError(`${editing ? "Công thức đã được cập nhật" : "Công thức đã lưu"}, nhưng ảnh chưa tải lên. ${message}`);
       showToast(message, "error");
     } finally {
       setSaving(false);
@@ -804,11 +814,13 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     try {
       let savedRecipe: RecipeDetail;
       if (editing && recipe && recipeId) {
-        savedRecipe = await updateRecipe(recipeId, { ...payload, rowVersion: recipe.rowVersion });
+        savedRecipe = await updateRecipeMutation.mutateAsync({
+          id: recipeId,
+          payload: { ...payload, rowVersion: recipe.rowVersion },
+        });
       } else {
-        savedRecipe = await createRecipe(payload);
+        savedRecipe = await createRecipeMutation.mutateAsync(payload);
       }
-      if (editing) setRecipe(savedRecipe);
 
       setStructuredSteps((current) => current.map((step, index) => ({
         ...step,
@@ -826,7 +838,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
           return;
         }
       }
-      if (!editing && hasPendingImageUploads) {
+      if (hasPendingImageUploads) {
         setCreatedRecipeId(savedRecipe.id);
         try {
           if (pendingImageFile) await uploadPendingImage(savedRecipe.id);
@@ -834,7 +846,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
           setCreatedRecipeId(null);
         } catch (reason) {
           const message = reason instanceof Error ? reason.message : "Không thể tải ảnh.";
-          setError(`Công thức đã lưu, nhưng ảnh chưa tải lên. ${message}`);
+          setError(`${editing ? "Công thức đã được cập nhật" : "Công thức đã lưu"}, nhưng ảnh chưa tải lên. ${message}`);
           showToast(message, "error");
           setSaving(false);
           return;
@@ -955,6 +967,9 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
             </button>
           </div>
         </div>
+      )}
+      {!loading && editing && !recipe && error && !isConflict && (
+        <ErrorNotice><span data-error-summary>{error}</span></ErrorNotice>
       )}
       {!loading && (!editing || recipe !== null) && (
         <form className={styles.recipeEditorForm} onSubmit={handleSubmit(onSubmit)} noValidate>

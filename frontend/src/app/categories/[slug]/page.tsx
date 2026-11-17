@@ -3,19 +3,21 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getCategory, searchRecipes, type PaginatedResult, type RecipeCategory, type RecipeSummary } from "@/lib/recipes-api";
+import { useCategory, useCategoryRecipes } from "@/lib/queries/categories";
 import { ErrorNotice, LoadingNotice, Pagination, RecipeCard, SitePage } from "../../site-ui";
 import styles from "../../site-ui.module.css";
 
 export default function CategoryDetailPage() {
   const params = useParams<{ slug: string }>();
   const slug = params?.slug;
-  const [category, setCategory] = useState<RecipeCategory | null>(null);
-  const [result, setResult] = useState<PaginatedResult<RecipeSummary> | null>(null);
   const [page, setPage] = useState(1);
   const [initialized, setInitialized] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const categoryQuery = useCategory(slug ?? "", initialized);
+  const category = categoryQuery.data ?? null;
+  const recipesQuery = useCategoryRecipes(slug ?? "", category?.id, page, initialized);
+  const result = recipesQuery.data;
+  const loading = !initialized || categoryQuery.isFetching || recipesQuery.isFetching;
+  const error = categoryQuery.error?.message ?? recipesQuery.error?.message ?? null;
 
   useEffect(() => {
     const requestedPage = Number(new URLSearchParams(window.location.search).get("page"));
@@ -25,39 +27,18 @@ export default function CategoryDetailPage() {
 
   useEffect(() => {
     if (!initialized) return;
-    if (!slug) {
-      setError("Không thể xác định danh mục.");
-      setLoading(false);
-      return;
-    }
-
-    const categorySlug = slug;
-    const controller = new AbortController();
-    setLoading(true);
-    setError(null);
+    const categorySlug = slug ?? "";
     window.history.replaceState(null, "", page === 1 ? `/categories/${categorySlug}` : `/categories/${categorySlug}?page=${page}`);
-    async function load() {
-      try {
-        const item = await getCategory(categorySlug, controller.signal);
-        setCategory(item);
-        const query = new URLSearchParams({ categoryId: item.id, page: String(page), pageSize: "12" });
-        setResult(await searchRecipes(query, controller.signal));
-      } catch (reason) {
-        if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Không thể tải danh mục.");
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }
-    void load();
-    return () => controller.abort();
   }, [initialized, page, slug]);
+
+  const visibleError = slug ? error : "Không thể xác định danh mục.";
 
   return (
     <SitePage>
       <main className={styles.content}>
         <p className={styles.eyebrow}><Link href="/categories">DANH MỤC</Link> / CHI TIẾT</p>
         {loading && <LoadingNotice />}
-        {error && <ErrorNotice>{error}</ErrorNotice>}
+        {visibleError && <ErrorNotice>{visibleError}</ErrorNotice>}
         {category && <>
           <div className={styles.sectionTitle}>
             <h1>{category.name}</h1>

@@ -1,6 +1,11 @@
 # Recipe Dashboard Permissions and Editor Wizard
 
-**Status:** Approved design; implementation has not started.
+**Status at design time:** Approved design; implementation had not started.
+
+> **Current status (2026-11-17):** The four-step recipe editor wizard and
+> Admin-only category dashboard access are implemented. Recipe mutations and
+> nested data/media remain owner-only except Admin deletion of Published
+> recipes; Admin read access is limited to Published recipes.
 **Date:** 2026-11-13
 
 ## Context

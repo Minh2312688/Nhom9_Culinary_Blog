@@ -1,5 +1,9 @@
 # Checklist triển khai FR-SRCH-003 và FR-SRCH-004
 
+> **Trạng thái hiện tại (17/11/2026):** Sorting và pagination đã có ở backend
+> và UI. Các kết quả build/test/live probe dưới đây được giữ làm bằng chứng
+> theo thời điểm chạy; không chạy lại ứng dụng khi cập nhật tài liệu này.
+
 Quy ước: `[x]` hoàn tất và có bằng chứng; `[~]` một phần/giới hạn môi trường; `[ ]` chưa làm.
 
 ## FR-SRCH-003 — Sort

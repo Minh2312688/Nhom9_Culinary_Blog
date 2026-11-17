@@ -1,6 +1,16 @@
 # Kế hoạch Triển khai Chi tiết: FR-RCP-009, UI Recipe Editor & PostgreSQL Testcontainers
 
-> **Trạng thái:** Sẵn sàng triển khai (Ready for Implementation) – **Chỉ lập kế hoạch, không thực thi code**.  
+> **Trạng thái hiện tại (17/11/2026):** FR-RCP-009 endpoints/editor và
+> PostgreSQL Testcontainers coverage đã có trong repository. Kế hoạch lịch sử
+> nêu quyền owner/Admin đã được thay thế: ingredients, steps và images hiện
+> owner-only. Test results trong tài liệu không chạy lại trong lần cập nhật này.
+> Regression nâng cấp dữ liệu legacy hiện nằm trong
+> `CulinaryBlog.Integration.Tests/Persistence/PostgresMigrationTests.cs`;
+> migration test suite đạt 2/2 ngày 2026-11-17. Project
+> `CulinaryBlog.DataMigration.Tests` trong danh sách dự kiến là phương án cũ,
+> không phải vị trí triển khai hiện tại.
+
+> **Trạng thái tại thời điểm lập:** Sẵn sàng triển khai (Ready for Implementation) – **Chỉ lập kế hoạch, không thực thi code**.
 > **Thành viên phụ trách:** Dương Văn Minh (TV2 – Recipe Backend, Data, Search & Cache)  
 > **Mục tiêu Tuần 7:**  
 > 1. Chốt hợp đồng FR-RCP-009 (nguyên liệu quản lý qua endpoint riêng biệt).  

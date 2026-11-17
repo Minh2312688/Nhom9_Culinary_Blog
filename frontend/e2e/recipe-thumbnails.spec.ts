@@ -30,12 +30,14 @@ const paginatedRecipes = {
 
 test("shows each recipe's primary image in home, recipe, search, and category lists", async ({ page }) => {
   await page.route("**/api/v1/recipes/**", (route) => route.fulfill({ json: paginatedRecipes }));
-  await page.route("**/api/v1/categories/category-thumbnail", (route) => route.fulfill({
-    json: { id: "category-thumbnail", name: "Món chính", slug: "mon-chinh" },
-  }));
-  await page.route("**/api/v1/categories**", (route) => route.fulfill({
-    json: { items: [], totalCount: 0, page: 1, pageSize: 100, totalPages: 0, hasNextPage: false, hasPreviousPage: false },
-  }));
+  await page.route("**/api/v1/categories**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    return path === "/api/v1/categories/mon-chinh"
+      ? route.fulfill({ json: { id: "category-thumbnail", name: "Món chính", slug: "mon-chinh" } })
+      : route.fulfill({
+          json: { items: [], totalCount: 0, page: 1, pageSize: 100, totalPages: 0, hasNextPage: false, hasPreviousPage: false },
+        });
+  });
 
   for (const path of ["/", "/recipes", "/search?q=pho", "/categories/mon-chinh"]) {
     await page.goto(path);

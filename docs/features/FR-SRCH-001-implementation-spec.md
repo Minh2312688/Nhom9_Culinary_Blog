@@ -1,5 +1,12 @@
 # Đặc tả triển khai FR-SRCH-001 — Tìm kiếm toàn văn công thức
 
+> **Trạng thái hiện tại (17/11/2026):** Search/filter được triển khai. Khách và
+> Admin chỉ thấy Published; tác giả có thể tìm Published cùng Draft/Archived
+> của mình. Kết quả test/API trong tài liệu là ghi nhận lịch sử; Redis thật
+> vẫn cần xác minh trong môi trường có Redis. PostgreSQL migration regression
+> hiện kiểm tra FTS backfill và trigger; `PostgresMigrationTests` đạt 2/2 ngày
+> 2026-11-17.
+
 ## 1. Phạm vi
 
 Triển khai tìm công thức bằng từ khóa không dấu, sử dụng PostgreSQL Full-Text Search. API tìm trong tiêu đề và mô tả công thức, chỉ trả bản tóm tắt có phân trang và sắp xếp theo độ liên quan. Nếu có filter FR-SRCH-002, API áp dụng đồng thời tất cả điều kiện theo AND trước khi đếm và phân trang; nếu chỉ có filter thì tiếp tục dùng luồng danh sách hiện có.
@@ -9,7 +16,7 @@ Triển khai tìm công thức bằng từ khóa không dấu, sử dụng Postg
 - **Phương thức/đường dẫn chuẩn:** `GET /api/v1/recipes/search` theo SRS §8.3.
 - **Tham số truy vấn:** `q` (tùy chọn), `page` (mặc định 1), `pageSize` (mặc định 12); có thể kết hợp filter FR-SRCH-002.
 - **Phản hồi:** `200 OK` với `PaginatedResult<RecipeSummaryDto>`; khi không có kết quả vẫn trả danh sách rỗng và `totalCount = 0`.
-- **Phân quyền:** Khách chưa đăng nhập được tìm kiếm; mọi người thấy công thức Published. Tác giả đăng nhập còn thấy công thức của mình; Admin giữ quyền xem hiện có.
+- **Phân quyền:** Khách chưa đăng nhập và Admin chỉ thấy công thức Published. Tác giả đăng nhập còn thấy Draft/Archived của mình.
 - **Kiểm tra dữ liệu:** `search` tối đa 100 ký tự. Nếu sau khi bỏ dấu câu/khoảng trắng không còn từ khóa thì dùng luồng danh sách mới nhất mặc định.
 - **Phân trang:** Giữ nguyên page/pageSize, giới hạn pageSize 1–50 và envelope hiện có của Recipe Core.
 
@@ -57,6 +64,7 @@ Chính sách đã chọn cho CONFLICT-016: chỉ đếm truy vấn search không
 - [x] Triển khai popularity gate 3 lần/5 phút và TTL 60 giây cho search không filter; filter động không dùng cache.
 - [x] Thêm EF shadow property và ánh xạ chỉ mục GIN.
 - [x] FTS migration từng được kiểm tra trong database cục bộ `culinary_blog`; sau khi hợp nhất DbContext, database mới phải chạy lại toàn bộ migration stream qua `ApplicationDbContext` (xem `docs/postgresql-setup.md`).
+- [x] Regression migration trên PostgreSQL 16 Testcontainers nâng cấp schema có dữ liệu legacy, xác nhận `SearchVector` được backfill và trigger tiếp tục cập nhật vector sau migration.
 - [x] Đồng bộ EF model snapshot.
 - [x] Validator FR-SRCH-002 yêu cầu `maxCookTime`/`minServings` > 0 và difficulty là Easy/Medium/Hard, không phân biệt hoa thường.
 - [x] Kết hợp các filter với nhau và với full-text search bằng AND.
@@ -70,7 +78,7 @@ Chính sách đã chọn cho CONFLICT-016: chỉ đếm truy vấn search không
 - [x] Kiểm tra TypeScript, build production và smoke test trình duyệt `/search` với API giả lập.
 - [x] Kiểm tra trigger sau insert/update title/description bằng recipe thử; xác nhận cleanup sau kiểm tra.
 - [x] Kiểm tra rollback migration trên PostgreSQL cluster/database tạm riêng; `Up` tạo FTS artifacts, `Down` gỡ cột/index/trigger/function và giữ migration trước đó; DB hiện tại không rollback.
-- [x] PostgreSQL verifier tự seed Draft/Archived trong transaction, xác nhận guest bị ẩn và author/Admin thấy ở list/search, sau đó rollback dữ liệu tạm.
+- [x] PostgreSQL verifier lịch sử từng seed Draft/Archived và xác nhận author/Admin thấy ở list/search, sau đó rollback dữ liệu tạm. **Admin visibility trong kết quả cũ đã bị policy hiện tại supersede:** Admin hiện chỉ thấy Published.
 - [x] Kiểm thử cache popularity hit/miss/fallback bằng test double: cache sau lần quan sát thứ 3, hit ở lần sau, filter bypass cache, Redis connection/JSON hỏng fallback database; policy popularity đã triển khai.
 
 ## 8. Bằng chứng và việc cần xác nhận
@@ -79,6 +87,6 @@ Kiểm tra lại ngày 2026-10-06: backend 533 passed, 0 failed, 6 skipped (MinI
 
 Lần kiểm thử ngày 2026-10-02: Application 435/435, Integration 56/56, Architecture 3/3 (494/494 tổng). Số liệu hiện tại sau khi bổ sung test được ghi ngay phía trên.
 
-Verifier PostgreSQL chạy ngày 2026-10-02 trên database `culinary_blog`: build verifier và API đều exit 0 khi dùng output riêng; verifier exit 0. Verifier tự seed một recipe Draft và một recipe Archived trong transaction, kiểm tra 12 trường hợp visibility (search/list × guest/author/Admin), tất cả đạt, sau đó rollback. Database sau kiểm tra không còn recipe tạm. Rollback migration chạy trên cluster tạm port 55432: trước rollback FTS column/GIN/trigger/function/history đều có; sau rollback đều không còn, migration `20260921101739_AddRowVersionDefaults` vẫn còn; rollback verifier exit 0. Cluster tạm đã dừng và xóa.
+Verifier PostgreSQL chạy ngày 2026-10-02 trên database `culinary_blog`: build verifier và API đều exit 0 khi dùng output riêng; verifier exit 0. Verifier tự seed một recipe Draft và một recipe Archived trong transaction, kiểm tra 12 trường hợp visibility (search/list × guest/author/Admin), tất cả đạt theo policy tại thời điểm đó, sau đó rollback. **Kết quả Admin nhìn thấy Draft/Archived đã bị supersede bởi policy hiện tại**, theo đó Admin chỉ thấy Published. Database sau kiểm tra không còn recipe tạm. Rollback migration chạy trên cluster tạm port 55432: trước rollback FTS column/GIN/trigger/function/history đều có; sau rollback đều không còn, migration `20260921101739_AddRowVersionDefaults` vẫn còn; rollback verifier exit 0. Cluster tạm đã dừng và xóa.
 
-Migration đã có trong history của `culinary_blog`; kiểm tra schema dùng transaction chỉ đọc. Recipe thử tạm đã được thêm/xóa có chủ đích ở lần xác minh trước. Verifier visibility PostgreSQL đã seed Draft/Archived tạm và rollback thành công. Redis, MinIO và Docker không khả dụng; cache fallback đã có regression test với test double cho connection failure và JSON hỏng. Route chuẩn theo SRS §8.3 là `/api/v1/recipes/search?q=`. Popularity policy 3 lần/5 phút, TTL 60 giây được ghi ở CONFLICT-016. Rollback migration đã chạy trên cluster riêng; không rollback database đang dùng.
+Migration đã có trong history của `culinary_blog`; kiểm tra schema dùng transaction chỉ đọc. Recipe thử tạm đã được thêm/xóa có chủ đích ở lần xác minh trước. Verifier visibility PostgreSQL đã seed Draft/Archived tạm và rollback thành công. Redis và MinIO chưa khả dụng trong lượt xác minh trước; migration tests chạy được trên PostgreSQL 16 Testcontainers ngày 2026-11-17 (2/2). Cache fallback đã có regression test với test double cho connection failure và JSON hỏng. Route chuẩn theo SRS §8.3 là `/api/v1/recipes/search?q=`. Popularity policy 3 lần/5 phút, TTL 60 giây được ghi ở CONFLICT-016. Rollback migration đã chạy trên cluster riêng; không rollback database đang dùng.

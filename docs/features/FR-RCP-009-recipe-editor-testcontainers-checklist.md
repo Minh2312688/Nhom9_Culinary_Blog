@@ -1,6 +1,6 @@
 # Checklist Triển khai: FR-RCP-009, UI Recipe Editor & PostgreSQL Testcontainers
 
-> **Trạng thái:** `[~]` Đang thực hiện (In Progress)  
+> **Trạng thái hiện tại (17/11/2026):** `[x]` API nguyên liệu, editor và PostgreSQL Testcontainers đã có trong repository. Migration tests được chạy lại trong lần cập nhật này: 2/2 đạt, gồm nâng cấp dữ liệu legacy. Các kết quả khác trong checklist là lịch sử; không chạy lại chúng. Chỉ chủ sở hữu được sửa ingredients/steps/images; Admin không được kế thừa quyền sửa nested data.
 > **Người phụ trách:** Dương Văn Minh (TV2 – MSSV: 2312688)  
 > **Kế hoạch chi tiết:** [FR-RCP-009-recipe-editor-testcontainers-plan.md](./FR-RCP-009-recipe-editor-testcontainers-plan.md)  
 > **Quy ước:** Đánh dấu `[x]` khi hoàn thành kèm bằng chứng lệnh/test; `[~]` khi hoàn thành một phần; `[ ]` chưa thực hiện.
@@ -21,7 +21,7 @@
   - [x] Tạo `ReplaceRecipeIngredientRequest(string Name, decimal? Quantity, string? Unit, string? Notes, int? OrderIndex)`.
 - [x] **Application CQRS Commands (`backend/src/CulinaryBlog.Application/Features/Recipes/Commands/RecipeIngredientCommands.cs`)**:
   - [x] `AddRecipeIngredientCommand` và `AddRecipeIngredientCommandValidator`: validate Name (1-100 chars, no HTML), Quantity (> 0 when set), Unit (<= 50 chars), Notes (<= 200 chars).
-  - [x] `AddRecipeIngredientCommandHandler`: kiểm tra Recipe tồn tại, kiểm tra Author-Owner hoặc Admin, tự động gán `OrderIndex = max + 1` nếu null, lưu DbContext, gọi invalidate cache `recipes:slug:{slug}` và `recipes:`.
+  - [x] `AddRecipeIngredientCommandHandler`: kiểm tra Recipe tồn tại và chủ sở hữu; Admin không được sửa nested data; tự động gán `OrderIndex = max + 1` nếu null, lưu DbContext, gọi invalidate cache `recipes:slug:{slug}` và `recipes:`.
   - [x] `UpdateRecipeIngredientCommand` và `UpdateRecipeIngredientCommandValidator`: validate tương tự, yêu cầu `IngredientId != Guid.Empty`.
   - [x] `UpdateRecipeIngredientCommandHandler`: kiểm tra quyền sở hữu, cập nhật bản ghi `!IsDeleted`, lưu DbContext, invalidate cache, trả về `RecipeIngredientDto`.
   - [x] `DeleteRecipeIngredientCommand` và `DeleteRecipeIngredientCommandHandler`: soft-delete `IsDeleted = true`, chuẩn hóa `OrderIndex` của các active ingredients còn lại, invalidate cache.
@@ -34,7 +34,7 @@
 - [x] **Integration Tests cho CQRS FR-RCP-009**:
   - [x] Test validator từ chối Name rỗng, Name quá dài, Quantity <= 0, Unit/Notes chứa thẻ HTML.
   - [x] Test handler thêm nguyên liệu tự động tăng `OrderIndex`.
-  - [x] Test handler từ chối người dùng không phải chủ sở hữu hoặc không phải Admin (HTTP 403).
+  - [x] Test handler từ chối người dùng không phải chủ sở hữu, bao gồm Admin (HTTP 403).
   - [x] Test soft-delete và invalidation cache.
   - [x] Commit: `feat(backend): implement recipe ingredient sub-resource endpoints for FR-RCP-009`
 
@@ -104,7 +104,9 @@
   - [x] Tạo `DockerPostgresEnvironment` (helper + `DockerPostgresFactAttribute`) khởi động image `postgres:16-alpine`.
 - [x] **Migration Test Cases (`PostgresMigrationTests.cs`)**:
   - [x] `Database_MigratesSuccessfully_AndEnforcesSchemaOnPostgres16`: áp dụng toàn bộ migrations từ rỗng, xác nhận connect thành công, tạo Category/Recipe, kiểm tra cột `RowVersion` và `SearchVector`.
+  - [x] `Database_MigratesExistingData_WithoutLossOrFabricatingValues`: nâng cấp dữ liệu từ `InitialRecipeSchema`, kiểm tra RowVersion, Identity/role, FTS backfill/trigger, trạng thái ảnh cũ và `PublishedAt` lịch sử.
   - [x] Kiểm tra extension `unaccent` và cột mapping hoạt động trên PostgreSQL 16 thật (`TECH-RISK-002`).
+  - [x] `dotnet test backend\tests\CulinaryBlog.Integration.Tests\CulinaryBlog.Integration.Tests.csproj --filter "FullyQualifiedName~PostgresMigrationTests"`: 2/2 đạt ngày 2026-11-17.
 
 ---
 

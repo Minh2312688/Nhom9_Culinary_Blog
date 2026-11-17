@@ -1,5 +1,11 @@
 # TanStack Query Server-State Migration Plan
 
+> **Trạng thái hiện tại (17/11/2026):** Plan này chưa được triển khai. Không
+> tìm thấy `QueryClientProvider`, `useQuery` hoặc `useMutation` trong frontend
+> source; các trang hiện vẫn dùng cách tải dữ liệu hiện có. Giữ tài liệu như
+> đề xuất tương lai, không xem các bước/checkbox bên dưới là công việc đã hoàn
+> tất. Không chạy build/test trong lần cập nhật tài liệu.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace duplicated component-level server-data loading with TanStack Query for public pages, Dashboard, Profile, and supported auth form requests while preserving SSR and existing UI behavior.

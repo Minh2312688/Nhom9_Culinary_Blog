@@ -16,7 +16,7 @@ docker compose ps
 docker compose logs api
 ```
 
-PostgreSQL tạo database và role `POSTGRES_USER` khi volume được khởi tạo lần đầu. API chạy ở Development, tự áp dụng toàn bộ migration của `ApplicationDbContext`; `Seed__Enabled=true` tạo danh mục và 20 công thức từ `tools/sample-data/20_cong_thuc_mon_an.json`, đồng thời tải các ảnh trong `tools/sample-data/images/` lên MinIO. API: `http://localhost:5000`.
+PostgreSQL tạo database và role `POSTGRES_USER` khi volume được khởi tạo lần đầu. API chạy ở Development, tự áp dụng toàn bộ migration của `ApplicationDbContext`; `Seed__Enabled=true` tạo danh mục và 20 công thức từ `tools/sample-data/20_cong_thuc_mon_an.json`, đồng thời tải các ảnh trong `tools/sample-data/images/` lên MinIO. `RandomDataSeeder` không được gọi tự động khi API khởi động. API: `http://localhost:5000`.
 
 PostgreSQL được publish trên máy host tại `localhost:5433` (cổng container vẫn
 là `5432`, và API trong Compose kết nối bằng `postgres:5432`). Cổng host `5433`
@@ -83,7 +83,11 @@ docker compose exec postgres psql -U culinary -d culinary_blog -c 'SELECT COUNT(
 docker compose exec postgres psql -U culinary -d culinary_blog -c 'SELECT * FROM "__EFMigrationsHistory" ORDER BY "MigrationId";'
 ```
 
-Kỳ vọng sau khi seed: ít nhất 20 categories, 100 recipes và tài khoản vừa đăng ký trong `AspNetUsers`. Identity và dữ liệu công thức cùng nằm trong một database, dùng một migration history.
+Kỳ vọng sau sample seed: có ít nhất 20 categories và 20 công thức mẫu; tài
+khoản mới đăng ký xuất hiện trong `AspNetUsers`. Seeder không xóa dữ liệu cũ,
+nên tổng số recipe có thể cao hơn 20. Dataset báo cáo ngẫu nhiên 100 recipe
+không phải seed mặc định của API. Identity và dữ liệu công thức cùng nằm trong
+một database, dùng một migration history.
 
 `Recipe.Difficulty` được EF chuyển từ enum sang `character varying(20)` và lưu
 tên mức độ (`Easy`, `Medium`, `Hard`, `Expert`), không lưu số enum. Migration
@@ -108,5 +112,24 @@ Remove-Item Env:ConnectionStrings__Postgres
 ```
 
 Chỉ tạo migration mới trên `ApplicationDbContext`. Không chạy `EnsureCreated()` hoặc migration lịch sử `AuthDbContext`.
+
+## Kiểm thử migration trên PostgreSQL
+
+Migration regression tests dùng PostgreSQL 16 qua Testcontainers; cần Docker
+daemon đang chạy. Test nâng cấp bắt đầu từ schema `InitialRecipeSchema`, thêm
+dữ liệu legacy rồi áp dụng các migration còn lại. Test xác nhận dữ liệu
+RowVersion và Identity/role được giữ, `SearchVector` được backfill và trigger
+tiếp tục hoạt động, ảnh cũ nhận `VariantStatus=Pending`, và recipe Published
+lịch sử vẫn có `PublishedAt=NULL`.
+
+Chạy riêng các kiểm thử migration:
+
+```powershell
+dotnet test backend\tests\CulinaryBlog.Integration.Tests\CulinaryBlog.Integration.Tests.csproj `
+  --filter "FullyQualifiedName~PostgresMigrationTests"
+```
+
+Testcontainers dùng database cô lập và không thay đổi database Compose hoặc
+database trên máy host. Chi tiết trạng thái coverage: [recipe-core-implementation-spec.md](./recipe-core-implementation-spec.md).
 
 Hướng dẫn chạy API, frontend và kiểm thử toàn dự án: [run-project.md](./run-project.md).

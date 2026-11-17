@@ -46,7 +46,7 @@ trên host, dùng `API_INTERNAL_URL=http://localhost:5000`.
 - **Google Login (`NEXT_PUBLIC_GOOGLE_CLIENT_ID`):** `.env.example` và `frontend/.env.example` đã điền sẵn Web Client ID phát triển công khai cho `http://localhost:3000`. Docker Compose truyền biến này vào cả lúc build Frontend và cho API (`Google__ClientId`). Nếu chạy Next.js ngoài Docker (`npm run dev`), sao chép `frontend/.env.example` thành `frontend/.env.local`. Trên Google Cloud Console, OAuth Client ID cần khai báo đúng **Authorized JavaScript origins** (ví dụ `http://localhost:3000`); nếu ứng dụng OAuth đang ở trạng thái Testing thì chỉ các Test Users được cấp quyền hoặc cần tự tạo Client ID riêng mới đăng nhập được trên máy mới.
 - **Email Quên mật khẩu / Welcome Email (`SMTP_*`):**
   - **Chế độ demo / offline (mặc định):** Khi không khai báo `SMTP_*` trong `.env`, Docker Compose tự dùng **MailHog** (`mailhog:1025`, xem thư giả lập tại `http://127.0.0.1:8025`). Email trong MailHog **không** gửi tới Gmail thật.
-  - **Gửi email thật (Brevo):** Bỏ ghi chú và điền các biến `SMTP_HOST`, `SMTP_PORT`, `SMTP_USE_SSL`, `SMTP_USERNAME`, `SMTP_PASSWORD` (SMTP Key cá nhân — không commit vào Git), `SMTP_FROM_ADDRESS`, `SMTP_FROM_NAME` trong `.env` cục bộ rồi chạy `docker compose up -d api`. Brevo bật kiểm soát IP nguồn (`Authorized IP addresses`), nên khi đổi mạng hoặc chạy từ máy thành viên khác mà API log `525: 5.7.1 Unauthorized IP address`, cần vào **Brevo → Security → Authorized IP addresses** thêm IP công cộng hiện tại của máy đó.
+  - **Gửi email thật:** Điền `SMTP_HOST`, `SMTP_PORT`, `SMTP_USE_SSL`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS` và `SMTP_FROM_NAME` trong `.env` cục bộ rồi chạy `docker compose up -d api`. Lấy thông tin từ nhà cung cấp SMTP; không ghi credential hoặc địa chỉ cá nhân vào tài liệu, image hay Git. Nếu nhà cung cấp giới hạn IP nguồn, cho phép IP egress hiện tại theo hướng dẫn của nhà cung cấp.
 
 ## 3. Khởi chạy toàn bộ ứng dụng
 
@@ -80,8 +80,10 @@ liệu. Ở Development, API tự áp dụng EF migration khi khởi động;
 PostgreSQL/Redis/MinIO healthy rồi xem log ở bước dưới. Healthcheck chờ API mở
 cổng sau migration/seed; Compose chỉ khởi động frontend khi API healthy.
 Seed không xóa dữ liệu cũ; database đã có 100 công thức giả lập từ phiên bản
-trước sẽ giữ nguyên chúng. Dùng `docker compose down -v` rồi khởi động lại nếu
-cần tạo database development mới chỉ với bộ dữ liệu JSON.
+trước có thể vẫn giữ nguyên chúng. `RandomDataSeeder` không được API tự gọi;
+seed mặc định của Compose dùng sample JSON. Dùng `docker compose down -v` rồi
+khởi động lại nếu chủ động muốn tạo database development mới chỉ với bộ dữ
+liệu JSON; lệnh này xóa toàn bộ dữ liệu trong các volume của project.
 
 Nutrition trong JSON là giá trị ước tính để tham khảo trên mỗi khẩu phần, không
 thay thế tư vấn chuyên môn. Seeder bổ sung dinh dưỡng còn thiếu nhưng không ghi
@@ -110,7 +112,9 @@ Remove-Item Env:ConnectionStrings__Postgres
 Migration `20261014123827_AddRecipePublishedAt` thêm `PublishedAt` nullable.
 Recipe đã Published trước migration vẫn giữ `NULL`; không backfill bằng
 `CreatedAt`. UTC publication time chỉ được ghi khi recipe thực sự chuyển sang
-Published.
+Published. PostgreSQL Testcontainers regression xác nhận recipe Published cũ
+vẫn có `PublishedAt=NULL`; lệnh chạy test nằm trong
+[postgresql-setup.md](./postgresql-setup.md).
 
 ## 4. Theo dõi, kiểm tra và chẩn đoán
 

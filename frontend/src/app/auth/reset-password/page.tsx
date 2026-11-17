@@ -2,12 +2,11 @@
 
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { resetPasswordApi } from "@/lib/auth-api";
-import { ApiError } from "@/lib/api";
+import { useResetPassword } from "@/lib/queries/auth";
 import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle2, Lock, ArrowLeft, KeyRound } from "lucide-react";
 import { BrandLink } from "../../site-ui";
 
@@ -33,11 +32,14 @@ type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const [showManualForm, setShowManualForm] = useState(false);
+  const resetPasswordMutation = useResetPassword();
+  const serverError = resetPasswordMutation.isError
+    ? resetPasswordMutation.error?.detail
+      || "Mã xác thực không hợp lệ hoặc đã hết hạn. Vui lòng thử lại."
+    : null;
+  const success = resetPasswordMutation.isSuccess;
 
   const initialEmail = searchParams?.get("email") || "";
   const initialToken = searchParams?.get("token") || "";
@@ -45,7 +47,7 @@ function ResetPasswordForm() {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
     mode: "onBlur",
@@ -57,22 +59,13 @@ function ResetPasswordForm() {
     },
   });
 
-  const onSubmit = async (data: ResetPasswordFormData) => {
-    setServerError(null);
-    try {
-      await resetPasswordApi({
-        email: data.email,
-        token: data.token,
-        newPassword: data.newPassword,
-        confirmPassword: data.confirmPassword,
-      });
-      setSuccess(true);
-    } catch (err) {
-      const apiErr = err as ApiError;
-      setServerError(
-        apiErr.detail || "Mã xác thực không hợp lệ hoặc đã hết hạn. Vui lòng thử lại."
-      );
-    }
+  const onSubmit = (data: ResetPasswordFormData) => {
+    resetPasswordMutation.mutate({
+      email: data.email,
+      token: data.token,
+      newPassword: data.newPassword,
+      confirmPassword: data.confirmPassword,
+    });
   };
 
   const hasToken = Boolean(initialToken);
@@ -191,7 +184,7 @@ function ResetPasswordForm() {
                 id="email"
                 type="email"
                 autoComplete="email"
-                disabled={isSubmitting}
+                disabled={resetPasswordMutation.isPending}
                 readOnly={Boolean(hasToken && initialEmail)}
                 className={`w-full px-4 py-2 rounded-xl border ${
                   hasToken && initialEmail
@@ -224,7 +217,7 @@ function ResetPasswordForm() {
                 <input
                   id="token"
                   type="text"
-                  disabled={isSubmitting}
+                  disabled={resetPasswordMutation.isPending}
                   className={`w-full px-4 py-2 rounded-xl border bg-gray-50/50 text-gray-900 text-sm font-mono transition focus:bg-white focus:outline-none focus:ring-2 ${
                     errors.token
                       ? "border-red-400 focus:ring-red-500"
@@ -251,7 +244,7 @@ function ResetPasswordForm() {
                 <input
                   id="newPassword"
                   type={showPassword ? "text" : "password"}
-                  disabled={isSubmitting}
+                  disabled={resetPasswordMutation.isPending}
                   className={`w-full px-4 py-2 pr-11 rounded-xl border bg-gray-50/50 text-gray-900 text-sm transition focus:bg-white focus:outline-none focus:ring-2 ${
                     errors.newPassword
                       ? "border-red-400 focus:ring-red-500"
@@ -285,7 +278,7 @@ function ResetPasswordForm() {
               <input
                 id="confirmPassword"
                 type={showPassword ? "text" : "password"}
-                disabled={isSubmitting}
+                disabled={resetPasswordMutation.isPending}
                 className={`w-full px-4 py-2 rounded-xl border bg-gray-50/50 text-gray-900 text-sm transition focus:bg-white focus:outline-none focus:ring-2 ${
                   errors.confirmPassword
                     ? "border-red-400 focus:ring-red-500"
@@ -304,10 +297,10 @@ function ResetPasswordForm() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={resetPasswordMutation.isPending}
               className="w-full flex items-center justify-center py-3 px-4 rounded-xl text-white font-medium bg-orange-600 hover:bg-orange-700 disabled:opacity-60 disabled:cursor-not-allowed transition shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-500 mt-2"
             >
-              {isSubmitting ? (
+              {resetPasswordMutation.isPending ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   Đang xử lý...

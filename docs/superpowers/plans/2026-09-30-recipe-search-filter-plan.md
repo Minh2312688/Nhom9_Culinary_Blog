@@ -1,6 +1,14 @@
 # Kế hoạch triển khai tìm kiếm và lọc công thức
 
-> Trạng thái: FR-SRCH-001 và FR-SRCH-002 đã được triển khai và xác minh trên Application/PostgreSQL/API. Route search chuẩn, visibility Draft/Archived và chính sách popularity cache đã được kiểm tra; Redis smoke test thực vẫn chờ vì môi trường không có Redis/Docker.
+> Trạng thái ghi nhận khi lập: FR-SRCH-001 và FR-SRCH-002 đã được triển khai và xác minh trên Application/PostgreSQL/API. Route search chuẩn, visibility Draft/Archived và chính sách popularity cache đã được kiểm tra; Redis smoke test thực vẫn chờ vì môi trường không có Redis/Docker.
+>
+> **Cập nhật trạng thái 17/11/2026:** Search/filter vẫn có trong source. Guest và
+> Admin hiện chỉ thấy Published; Author thấy thêm Draft/Archived của mình.
+> Verifier cũ từng cho Admin xem Draft/Archived nên kết quả đó đã bị policy
+> hiện tại supersede. Redis live smoke test chưa được chạy lại trong lần cập
+> nhật tài liệu. FTS backfill/trigger nay có regression test PostgreSQL
+> Testcontainers trong `PostgresMigrationTests`; migration suite đạt 2/2 ngày
+> 2026-11-17.
 
 **Cập nhật:** 2026-10-02
 
@@ -45,7 +53,7 @@ Hoàn thiện FR-SRCH-001 (tìm kiếm toàn văn) và FR-SRCH-002 (lọc đa ti
 - [x] Kiểm thử prefix/AND và accent-insensitive trên vector đã lưu bằng recipe tiếng Việt tạm; kiểm tra trigger sau cập nhật và xóa recipe thử.
 - [x] Kiểm tra `ts_rank_cd`, tie-break `CreatedAt`, count rỗng, phân trang và `EXPLAIN` dùng GIN khi tắt sequential scan.
 - [x] Chạy migration rollback trên PostgreSQL cluster thử nghiệm riêng; không rollback DB `culinary_blog` đang dùng.
-- [x] Guest visibility, filter AND, phân trang và kết quả rỗng đã xác minh qua API/PostgreSQL; author/Admin với Draft/Archived đã kiểm tra bằng verifier transaction và rollback.
+- [x] Guest visibility, filter AND, phân trang và kết quả rỗng đã xác minh qua API/PostgreSQL; verifier lịch sử kiểm tra Author và Admin với Draft/Archived rồi rollback. Kiểm tra Admin trong kết quả đó đã bị policy hiện tại supersede.
 
 ### 2. Chính sách cache và hợp đồng API
 
@@ -66,5 +74,5 @@ Hoàn thiện FR-SRCH-001 (tìm kiếm toàn văn) và FR-SRCH-002 (lọc đa ti
 - Migration đã có trong history DB `culinary_blog`; verifier mặc định chạy transaction chỉ đọc. Chế độ opt-in thêm/xóa một recipe thử để kiểm tra API tiếng Việt và trigger.
 - Biến `ConnectionStrings__Postgres` từng trỏ `culinary_blog_auth`, khác `culinary_blog`; API live smoke test chỉ pass khi khởi động với DB đích đúng, không đổi biến môi trường toàn máy.
 - Docker, Redis (`6379`) và MinIO (`9000`) không khả dụng; Redis cache TTL/fallback đã kiểm chứng bằng test double nhưng chưa smoke-test Redis thực.
-- Chưa có PostgreSQL/Testcontainers fixture tự động; `backend/tools/CulinaryBlog.PostgresVerification` hỗ trợ kiểm tra thủ công. Rollback migration cần DB thử nghiệm riêng.
+- Tại baseline khi lập kế hoạch chưa có PostgreSQL/Testcontainers fixture tự động; coverage hiện tại nằm trong `backend/tests/CulinaryBlog.Integration.Tests/Persistence/PostgresMigrationTests.cs`, gồm FTS backfill/trigger khi nâng cấp dữ liệu legacy. `backend/tools/CulinaryBlog.PostgresVerification` vẫn hỗ trợ kiểm tra thủ công. Rollback migration cần DB thử nghiệm riêng.
 - Không tự đánh dấu các việc môi trường/nhóm là hoàn tất chỉ dựa vào code hoặc unit test.

@@ -1,5 +1,10 @@
 # Recipe, Category Media, and Nutrition Design
 
+> **Current status (2026-11-17):** Category image seed/upload/display, recipe
+> image workflow, and sample nutrition are represented in current source. The
+> default development sample seed contains 20 recipes; image delivery depends
+> on MinIO. Runtime validation was not repeated for this documentation update.
+
 ## Goal
 
 Use the existing MinIO-backed image storage for seeded category images and user

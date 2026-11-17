@@ -2,13 +2,20 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useAuthorProfile } from "@/lib/queries/authors";
 import type { AuthorProfilePage } from "@/lib/recipes-api";
 import { RecipeCard, SitePage } from "../../site-ui";
 import styles from "../../site-ui.module.css";
 
 export function AuthorProfileClient({
-  author,
+  author: initialAuthor,
 }: Readonly<{ author: AuthorProfilePage }>) {
+  const authorQuery = useAuthorProfile(
+    initialAuthor.id,
+    initialAuthor.recipes.page,
+    initialAuthor,
+  );
+  const author = authorQuery.data ?? initialAuthor;
   const { recipes } = author;
 
   return (

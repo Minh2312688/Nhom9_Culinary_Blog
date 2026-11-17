@@ -1,4 +1,12 @@
 # Đề Xuất Tích Hợp: Ghi Nhận Nhật Ký Kiểm Toán (Audit Trail Logging)
+
+> **Trạng thái hiện tại (17/11/2026):** `AuditLoggingBehavior` đã được đăng ký
+> vào MediatR. Behavior chỉ ghi log thành công cho commands implement
+> `IAuditCommand` (hiện thấy Create, Publish, Delete Recipe); request không
+> implement marker và command thất bại không tạo audit event. Vì vậy không nên
+> diễn giải đây là audit coverage cho mọi HTTP write operation. Mẫu code dưới
+> đây là proposal lịch sử, không phải code đang chạy.
+
 **Dự án:** Culinary Blog – Phát triển Ứng dụng Web Nâng cao (Nhóm 9)
 **Tiêu chuẩn đối chiếu:** SRS v1.0.0 §4.2 trang 42 – `NFR-SEC-006`
 **Người lập đề xuất:** TV1 – Nguyễn Phạm Phú Nam (MSSV: 2312695 – Auth & Security)

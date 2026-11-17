@@ -1,5 +1,11 @@
 # Recipe Dashboard Permissions and Editor Wizard Implementation Plan
 
+> **Trạng thái hiện tại (17/11/2026):** Dashboard recipe wizard và Admin-only
+> category access đã có trong frontend; dùng `FR-UI-001` và mã hiện tại làm
+> bằng chứng. Recipe update/publish/archive và nested resource mutations là
+> owner-only; Admin chỉ xem Published và có thể xóa Published recipe. Các E2E
+> results trong plan là historical, không chạy lại trong lần cập nhật này.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Restrict Category management to Admin users and convert Recipe create/edit into a validated four-step wizard with a final review screen.

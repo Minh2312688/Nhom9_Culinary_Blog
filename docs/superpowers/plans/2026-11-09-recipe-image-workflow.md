@@ -1,5 +1,10 @@
 # Recipe Image Workflow Implementation Plan
 
+> **Trạng thái hiện tại (17/11/2026):** Recipe creation image staging/retry,
+> primary-image display and secondary gallery are represented in current
+> frontend code. Upload still depends on MinIO being available; live storage
+> verification was not run for this documentation update.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let authors choose a recipe image during creation and display the primary and secondary images in the requested order.

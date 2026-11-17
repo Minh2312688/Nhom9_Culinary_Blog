@@ -1,5 +1,13 @@
 # Culinary Blog Author Profiles, UI and Recipe SEO Implementation Plan
 
+> **Trạng thái hiện tại (17/11/2026):** Author profile, publication dates,
+> recipe SEO, brand/layout và responsive/accessibility automation đã được ghi
+> nhận trong [FR-UI-001 checklist](../../features/FR-UI-001-implementation-checklist.md).
+> Manual WCAG review với screen reader vẫn pending; full E2E run 133 tests
+> trước đó timeout. Kết quả cũ không được chạy lại trong lần cập nhật này;
+> riêng PostgreSQL migration tests đạt 2/2 ngày 2026-11-17 và xác nhận recipe
+> Published lịch sử vẫn giữ `PublishedAt=NULL`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build public author profiles and real recipe publication dates, expose them safely through the API and Recipe JSON-LD, and refresh the whole frontend brand while preserving existing recipe/auth behavior.

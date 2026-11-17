@@ -1,5 +1,10 @@
 # TV1 - Giai đoạn 1: Ranh giới tích hợp & Phân định trách nhiệm
 
+> **Phạm vi tài liệu:** Đây là ranh giới và phân công lịch sử cho Phase 1,
+> không phải inventory đầy đủ của repository hiện tại. Các mục “Chưa làm trong
+> giai đoạn 1” chỉ nói về phase đó; không có nghĩa các hạng mục chưa được triển
+> khai ở những phase sau.
+
 ## TV1 sở hữu trong giai đoạn này (Phase 1)
 - Khung backend Clean Architecture chuẩn: Domain, Application, Infrastructure, API/Presentation.
 - MediatR Pipeline: LoggingBehavior -> ValidationBehavior -> Handler.

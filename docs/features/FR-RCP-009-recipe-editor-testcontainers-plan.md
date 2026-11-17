@@ -1,12 +1,25 @@
 # Kế hoạch Triển khai Chi tiết: FR-RCP-009, UI Recipe Editor & PostgreSQL Testcontainers
 
+> **Trạng thái hiện tại (17/11/2026):** Các hạng mục FR-RCP-009, editor dinh
+> dưỡng/ảnh/nguyên liệu và PostgreSQL Testcontainers đã được triển khai theo
+> checklist liên kết. Đây vẫn là kế hoạch lịch sử; các câu khẳng định cũ về
+> quyền Admin trên ảnh/nested data đã bị thay thế: hiện chỉ chủ sở hữu được
+> sửa ingredients, steps và images. Kết quả test ghi trong kế hoạch không được
+> chạy lại trong lần cập nhật tài liệu này, ngoại trừ `PostgresMigrationTests`
+> (2/2 đạt ngày 2026-11-17). Test nâng cấp dữ liệu legacy hiện nằm trong
+> `backend/tests/CulinaryBlog.Integration.Tests/Persistence/PostgresMigrationTests.cs`;
+> project `CulinaryBlog.DataMigration.Tests` bên dưới chỉ là phương án lịch sử.
+>
+> Các mô tả về khoảng trống kỹ thuật ở mục 1 ghi lại baseline tại thời điểm
+> lập kế hoạch, không phải tình hình hiện tại.
+
 > **Tài liệu:** Kế hoạch kỹ thuật chi tiết (Technical Implementation Plan)  
 > **Người thực hiện:** Dương Văn Minh (TV2 – MSSV: 2312688)  
 > **Phạm vi giao việc Tuần 7:**  
 > 1. Chốt hợp đồng FR-RCP-009 (nguyên liệu quản lý qua endpoint riêng).  
 > 2. Xây dựng UI Editor công thức căn bản: upload / xem trước / chọn ảnh chính, nhập và sửa 6 trường dinh dưỡng.  
 > 3. Bổ sung kiểm thử PostgreSQL / Testcontainers cho migration và cập nhật bước nấu đồng thời (`TECH-RISK-002`, `TECH-RISK-003`, `TECH-RISK-012`).  
-> **Trạng thái:** Sẵn sàng triển khai (Ready for Implementation) – **Chỉ lập kế hoạch, không thực thi code**.
+> **Trạng thái tại thời điểm lập:** Sẵn sàng triển khai (Ready for Implementation) – **Chỉ lập kế hoạch, không thực thi code**.
 
 ---
 
@@ -15,9 +28,9 @@
 Hệ thống Culinary Blog hiện đã hoàn thành khung công thức cốt lõi (FR-RCP-001 đến FR-RCP-007), quản lý các bước nấu ăn (FR-RCP-010: `/api/v1/recipes/{id}/steps`), quản lý ảnh công thức qua MinIO (FR-RCP-008: `/api/v1/recipes/{id}/images`), và tìm kiếm toàn văn FTS trên PostgreSQL (FR-SRCH-001 đến 004).
 
 Tuy nhiên, module Recipe vẫn còn các khoảng trống kỹ thuật trọng yếu được giao cho TV2 trong Tuần 7:
-1. **FR-RCP-009 (Quản lý nguyên liệu):** Hiện tại nguyên liệu mới chỉ được nhận gộp trong payload `POST /api/v1/recipes` và `PUT /api/v1/recipes/{id}`. Chưa có các endpoint chuyên biệt để thêm, sửa, xóa từng nguyên liệu độc lập như đặc tả SRS §3.3 trang 35 và §8.6 trang 65–66.
-2. **UI Recipe Editor căn bản (`frontend/src/app/dashboard/recipe-editor.tsx`):** Hiện chỉ là form thô sơ với các ô textarea chia dòng bằng ký tự gạch đứng `|`. Editor hoàn toàn thiếu tính năng upload/xem trước/chọn ảnh chính (chưa kết nối với FR-RCP-008) và hoàn toàn thiếu giao diện nhập/sửa 6 chỉ số dinh dưỡng (chưa hiện thực hóa `CONFLICT-008` trên UI).
-3. **Kiểm thử PostgreSQL / Testcontainers:** Project `backend/tests/CulinaryBlog.DataMigration.Tests` hiện đang rỗng. Toàn bộ các migration của `ApplicationDbContext` (bao gồm `UnifyIdentityAndBlogSchema`, FTS trigger `unaccent`, `AddActiveRecipeStepOrderIndex`, `AddRecipePublishedAt`) mới chỉ được kiểm tra cục bộ hoặc in-memory, chưa có test suite tự động với PostgreSQL container thật. Đồng thời, nguy cơ xung đột số bước khi cập nhật đồng thời (`TECH-RISK-012` và `TECH-RISK-003`) chưa được kiểm chứng tự động.
+1. **FR-RCP-009 (Quản lý nguyên liệu):** Tại thời điểm lập kế hoạch, nguyên liệu mới chỉ được nhận gộp trong payload `POST /api/v1/recipes` và `PUT /api/v1/recipes/{id}`; chưa có endpoint chuyên biệt để thêm, sửa, xóa từng nguyên liệu.
+2. **UI Recipe Editor căn bản (`frontend/src/app/dashboard/recipe-editor.tsx`):** Baseline khi lập kế hoạch là form textarea chia dòng bằng ký tự gạch đứng `|`, chưa có upload/xem trước/chọn ảnh chính hoặc giao diện nhập/sửa 6 chỉ số dinh dưỡng.
+3. **Kiểm thử PostgreSQL / Testcontainers:** Tại baseline khi lập kế hoạch, project `backend/tests/CulinaryBlog.DataMigration.Tests` còn rỗng và chưa có test suite tự động với PostgreSQL container thật; nguy cơ xung đột số bước khi cập nhật đồng thời (`TECH-RISK-012` và `TECH-RISK-003`) chưa được kiểm chứng tự động.
 
 ---
 
@@ -346,7 +359,8 @@ Thay thế hoàn toàn ô `textarea` thô sơ bằng danh sách hàng trực qua
 
 ## 5. Thiết kế Kỹ thuật Chi tiết: Kiểm thử PostgreSQL / Testcontainers
 
-Vị trí: `backend/tests/CulinaryBlog.DataMigration.Tests/` (hoặc tích hợp trong `CulinaryBlog.Integration.Tests/`)
+Vị trí thực tế: `backend/tests/CulinaryBlog.Integration.Tests/Persistence/PostgresMigrationTests.cs`.
+Các project/file riêng trong thiết kế lịch sử bên dưới không được tạo.
 
 ### 5.1. Cấu hình Package & Test Fixture
 
@@ -464,7 +478,7 @@ dotnet build backend/CulinaryBlog.sln --no-restore
 dotnet test backend/CulinaryBlog.sln --no-restore
 
 # 3. Chạy riêng Testcontainers test suite (khi Docker daemon đang chạy)
-dotnet test backend/tests/CulinaryBlog.DataMigration.Tests/CulinaryBlog.DataMigration.Tests.csproj
+dotnet test backend/tests/CulinaryBlog.Integration.Tests/CulinaryBlog.Integration.Tests.csproj --filter "FullyQualifiedName~PostgresMigrationTests"
 
 # 4. Kiểm tra TypeScript & Next.js production build của frontend
 cd frontend

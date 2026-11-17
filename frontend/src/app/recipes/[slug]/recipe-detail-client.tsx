@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useRecipe } from "@/lib/queries/recipes";
 import type { RecipeDetail } from "@/lib/recipes-api";
 import { ErrorNotice, SitePage } from "../../site-ui";
 import styles from "../../site-ui.module.css";
 
 export function RecipeDetailClient({
-  recipe,
+  recipe: initialRecipe,
   backHref = "/recipes",
   backLabel = "CÔNG THỨC",
 }: Readonly<{ recipe: RecipeDetail; backHref?: string; backLabel?: string }>) {
+  const recipeQuery = useRecipe(initialRecipe.slug, initialRecipe);
+  const recipe = recipeQuery.data ?? initialRecipe;
   const images = recipe.images
     .slice()
     .sort((first, second) => Number(second.isPrimary) - Number(first.isPrimary) ||

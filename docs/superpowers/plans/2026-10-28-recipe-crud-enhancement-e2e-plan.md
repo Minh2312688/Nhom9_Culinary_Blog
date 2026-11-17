@@ -1,5 +1,14 @@
 # Kế Hoạch Triển Khai: Bước Nấu Có Cấu Trúc, Cache Redis, Xóa Ảnh & E2E Testing
 
+> **Trạng thái hiện tại (17/11/2026):** Step editor, cache invalidation,
+> synchronous image cleanup, nutrition display, and image processing are
+> represented in current source. PostgreSQL Testcontainers tests exist; Redis/
+> MinIO live verification is environment-dependent. Historical Admin rights
+> in test scenarios do not override the current owner-only mutation policy.
+> Historical test results were not rerun for this documentation update, except
+> `PostgresMigrationTests`, which passed 2/2 on 2026-11-17 and now includes
+> legacy-data upgrade coverage.
+
 > **Phụ trách:** Dương Văn Minh (TV2 – MSSV: 2312688)  
 > **Thời gian:** Tuần 8 (28/10/2026)  
 > **Nhánh thực hiện:** `2312688_DuongVanMinh_feature/recipe-crud-enhancement-e2e`  

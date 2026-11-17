@@ -1,5 +1,11 @@
 # Sample Recipe Nutrition Implementation Plan
 
+> **Trạng thái hiện tại (17/11/2026):** All 20 sample recipes include six
+> per-serving nutrition values in the sample-data JSON; `Lab02DataSeeder`
+> fills missing sample nutrition without replacing existing values. These are
+> estimates, not measured nutrition. The seed is for Development, and no tests
+> were rerun for this documentation update.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add estimated per-serving nutrition to all 20 sample recipes and populate existing seeded rows without overwriting user-maintained nutrition.

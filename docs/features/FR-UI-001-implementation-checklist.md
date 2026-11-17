@@ -1,5 +1,12 @@
 # Checklist triển khai Culinary Blog, hồ sơ tác giả và SEO
 
+> **Trạng thái hiện tại (17/11/2026):** Các route, author profile, Recipe SEO,
+> brand/responsive changes được ghi nhận là đã triển khai. Manual WCAG review
+> với screen reader vẫn chưa thực hiện; lượt full E2E 133 tests trước đó timeout.
+> Các kết quả historical trong checklist không được chạy lại cho lần cập nhật
+> tài liệu này, ngoại trừ migration regression liên quan `PublishedAt` (2/2
+> PostgreSQL migration tests đạt ngày 2026-11-17).
+
 **Trạng thái:** Hoàn thành
 **Đặc tả:** `../superpowers/specs/2026-10-14-frontend-screens-usability-seo-design.md`
 **Kế hoạch:** `../superpowers/plans/2026-10-14-frontend-screens-usability-seo.md`
@@ -10,6 +17,7 @@
 
 - [x] `Recipe.PublishedAt` nullable UTC; publish sets, archive preserves, republish refreshes.
 - [x] Migration adds nullable column without backfill from `CreatedAt`.
+- [x] PostgreSQL Testcontainers upgrade test verifies a pre-existing Published recipe retains `PublishedAt=NULL` after all migrations; không tạo ngày lịch sử giả.
 - [x] Domain/lifecycle tests pass; API builds with migration and EF reports no pending model changes.
 - [x] Commit riêng cho mốc persistence.
 

@@ -1,4 +1,14 @@
 # Quy trình Xoay Vòng Khóa Ký JWT (90-Day JWT Signing Key Rotation)
+
+> **Trạng thái hiện tại (17/11/2026):** Đây là playbook đề xuất, chưa phải
+> quy trình dual-key được hỗ trợ bởi code. Backend và Hangfire dashboard hiện
+> cấu hình một `Jwt:Key` (`IssuerSigningKey`); chưa thấy cấu hình xác minh đồng
+> thời nhiều khóa. Thực hiện rotation theo các bước bên dưới sẽ làm access
+> token ký bằng khóa cũ mất hiệu lực sau khi API dùng khóa mới. Cần triển khai
+> và kiểm thử dual-key trước khi dùng cửa sổ chuyển đổi không gián đoạn. Trong
+> Compose, `JWT_SECRET` ánh xạ sang `Jwt:Key`; Auth.js `AUTH_SECRET` là secret
+> riêng, không dùng thay khóa ký API.
+
 **Dự án:** Culinary Blog – Phát triển Ứng dụng Web Nâng cao (Nhóm 9)
 **Tiêu chuẩn:** SRS v1.0.0 §4.2 trang 42 – `NFR-SEC-007`
 **Chủ sở hữu (Owner):** TV1 – Authentication, Security, Base Infrastructure (Nguyễn Phạm Phú Nam – MSSV: 2312695)

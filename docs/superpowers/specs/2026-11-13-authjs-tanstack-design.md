@@ -1,6 +1,11 @@
 # Auth.js v5 and TanStack Query Design
 
-**Status:** Approved design; implementation has not started.
+**Status at design time:** Approved design; implementation had not started.
+
+> **Current status (2026-11-17):** Auth.js/BFF portions are implemented and
+> documented in the linked plan. TanStack Query remains unimplemented; no
+> QueryClient or query hooks were found in the frontend source. The single
+> Next.js instance constraint remains for refresh coordination.
 **Date:** 2026-11-13
 
 ## Context

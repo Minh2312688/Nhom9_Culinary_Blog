@@ -1,4 +1,13 @@
 # Đề Xuất Tích Hợp: Quản Lý Quyền Sở Hữu Tài Nguyên Recipe (Resource Ownership)
+
+> **Trạng thái hiện tại (17/11/2026):** Các handler hiện dùng imperative
+> ownership checks; chưa xác nhận có `RecipeAuthorizationHandler` như bản đề
+> xuất. Các ví dụ trong tài liệu là proposal, không phải implementation.
+> Quyền hiện tại khác với mẫu “Admin luôn có toàn quyền”: Guest/Admin chỉ xem
+> Published; tác giả xem thêm recipe của mình. Update, publish/archive và
+> mutations ingredients/steps/images chỉ dành cho owner; Admin có thể tạo
+> recipe và xóa recipe Published theo các handler hiện tại.
+
 **Dự án:** Culinary Blog – Phát triển Ứng dụng Web Nâng cao (Nhóm 9)
 **Tiêu chuẩn đối chiếu:** SRS v1.0.0 §4.2 trang 42 – `NFR-SEC-006`
 **Người lập đề xuất:** TV1 – Nguyễn Phạm Phú Nam (MSSV: 2312695 – Auth & Security)

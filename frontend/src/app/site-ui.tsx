@@ -6,6 +6,7 @@ import Image from "next/image";
 import { ChefHat } from "lucide-react";
 import { useSession } from "next-auth/react";
 import type { RecipeSummary } from "@/lib/recipes-api";
+import { useProfile } from "@/lib/queries/auth";
 import styles from "./site-ui.module.css";
 
 export function BrandLink() {
@@ -21,7 +22,9 @@ export function SiteHeader() {
   const { data: session, status } = useSession();
   const user = session?.user;
   const loggedIn = status === "authenticated";
-  const displayName = user?.name || user?.email || "Tài khoản";
+  const profileQuery = useProfile(user?.id ?? "", loggedIn);
+  const displayName = profileQuery.data?.displayName || user?.name || user?.email || "Tài khoản";
+  const avatarUrl = profileQuery.data ? profileQuery.data.avatarUrl : user?.image;
   const isAdmin = user?.roles?.includes("Admin") ?? false;
 
   return (
@@ -42,10 +45,10 @@ export function SiteHeader() {
               className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full bg-orange-50/80 hover:bg-orange-100/90 border border-orange-200/60 transition group max-w-[200px]"
               title={`Tài khoản: ${displayName}`}
             >
-              {user?.image ? (
+              {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={user.image}
+                  src={avatarUrl}
                   alt=""
                   className="w-5 h-5 rounded-full object-cover shrink-0 border border-orange-300"
                 />

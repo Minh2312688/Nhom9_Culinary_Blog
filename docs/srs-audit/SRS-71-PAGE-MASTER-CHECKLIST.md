@@ -2,7 +2,11 @@
 
 > **BẢN QUYỀN TÀI LIỆU:**
 > ĐÂY LÀ BẢNG KIỂM TRA TOÀN DIỆN 71/71 TRANG CỦA SRS v1.0.0 DÀNH CHO CẢ NHÓM (TV1, TV2, TV3, TV4).
-> TÀI LIỆU NẰM TRONG PRIVATE NOTES, **TUYỆT ĐỐI KHÔNG ĐƯỢC ĐƯA LÊN GIT REPOSITORY**.
+> Cảnh báo bên dưới phản ánh quy định áp dụng cho tài liệu SRS gốc.
+
+> **Trạng thái lưu trữ 17/11/2026:** Bản checklist dẫn xuất này đang nằm trong
+> repository. Đây không phải bản SRS gốc; trước khi chia sẻ repository ra ngoài,
+> cần xác nhận quyền phân phối của cả SRS gốc lẫn checklist này.
 
 ---
 

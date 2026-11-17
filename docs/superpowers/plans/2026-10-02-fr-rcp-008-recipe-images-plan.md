@@ -1,6 +1,15 @@
 # Kế hoạch triển khai FR-RCP-008: Quản lý ảnh công thức
 
-> Trạng thái: Core implementation hoàn tất; FR-JOB-002 thumbnail processing và live MinIO/PostgreSQL verification còn mở. Phạm vi gồm contract/API ảnh công thức, nối với MinIO foundation sẵn có, kiểm soát quyền sở hữu và chuyển `Recipe.Difficulty` sang enum domain type theo lựa chọn đã xác nhận.
+> Trạng thái tại thời điểm lập: Core implementation hoàn tất; FR-JOB-002 thumbnail processing và live MinIO/PostgreSQL verification còn mở. Phạm vi gồm contract/API ảnh công thức, nối với MinIO foundation sẵn có, kiểm soát quyền sở hữu và chuyển `Recipe.Difficulty` sang enum domain type theo lựa chọn đã xác nhận.
+
+> **Cập nhật trạng thái 17/11/2026:** Recipe image processing job đã có trong
+> backend. Live MinIO và PostgreSQL manual verification vẫn phụ thuộc môi
+> trường và chưa được chạy lại trong lần cập nhật tài liệu này. Quyền hiện tại là owner-only
+> cho upload/set-primary/delete; các kế hoạch cũ nêu owner/Admin đã bị thay thế.
+> PostgreSQL migration regression hiện nằm trong
+> `CulinaryBlog.Integration.Tests/Persistence/PostgresMigrationTests.cs`;
+> suite đạt 2/2 ngày 2026-11-17. Dòng checklist bên dưới về enum conversion
+> vẫn là việc riêng, chưa được xác minh bởi lần test migration này.
 
 ## 1. Mục tiêu
 
@@ -17,7 +26,7 @@ Hoàn thiện luồng upload, đặt ảnh chính và xóa ảnh cho Recipe; đ�
 
 ## 3. Contract và quyết định
 
-- Upload: `POST /api/v1/recipes/{id:guid}/images` với multipart `file`, `altText?`, `isPrimary?`; yêu cầu authenticated owner hoặc Admin; tối đa 10 ảnh; tối đa 5 MB.
+- Upload: `POST /api/v1/recipes/{id:guid}/images` với multipart `file`, `altText?`, `isPrimary?`; hiện yêu cầu authenticated owner (Admin bị từ chối); tối đa 10 ảnh; tối đa 5 MB.
 - Đặt primary: `PATCH /api/v1/recipes/{id:guid}/images/{imageId:guid}/primary`.
 - Xóa: `DELETE /api/v1/recipes/{id:guid}/images/{imageId:guid}`.
 - Upload response: `201 Created` và `{ imageId, originalUrl, altText, isPrimary }`, theo quyết định DECIDED của CONFLICT-024. Không trả object name/internal bucket path.
@@ -55,7 +64,7 @@ Tạo `RecipeImageEndpoints.cs` cho ba route FR-RCP-008; đăng ký qua `MapReci
 ### Task B: Application use cases cho image
 
 - Tạo request/response contracts cho upload và primary update.
-- Tạo handlers cho upload, set primary và delete; kiểm tra recipe tồn tại và owner/Admin trước mọi thao tác storage.
+- Kế hoạch ban đầu đề xuất owner/Admin; implementation hiện chỉ cho owner thực hiện upload, set primary và delete.
 - Upload: kiểm tra số ảnh hiện tại < 10; nếu upload `isPrimary=true`, bỏ primary cũ trong cùng save; gán `OrderIndex` tiếp theo; gọi storage với folder recipe images; lưu metadata; nếu save DB thất bại, cố gắng xóa object vừa upload để tránh orphan.
 - Set primary: xác nhận image thuộc đúng recipe, bỏ primary các ảnh khác, đặt ảnh đích thành primary, lưu một lần và invalidate recipe cache.
 - Delete: chỉ xóa ảnh thuộc recipe; giữ dữ liệu nhất quán giữa soft-delete và object storage; cache invalidation theo prefix recipe. Xác định rõ lỗi storage để trả 503 và không trả chi tiết nội bộ.
@@ -71,13 +80,13 @@ Tạo `RecipeImageEndpoints.cs` cho ba route FR-RCP-008; đăng ký qua `MapReci
 
 - Tạo `RecipeImageEndpoints.cs` theo pattern Minimal API hiện tại, bind `IFormFile`/multipart và chuyển stream seekable vào Application request.
 - Giới hạn upload 5 MB, đặt metadata multipart; không trust filename/MIME thay magic-byte validation hiện có.
-- Require authorization cho mutations; xác thực owner/Admin trong handler để giữ quy tắc domain.
+- Require authorization cho mutations; implementation xác thực owner-only trong handler.
 - Khai báo `Produces` cho 201/200/204 và Problem Details 400/401/403/404/503.
 - Map module trong `Program.cs`; xác nhận endpoint routing không xung đột với `{slug}` hoặc `{id}`.
 
 ### Task E: Test và tài liệu
 
-- Unit tests: file valid/invalid, 10-image boundary, owner/Admin, wrong recipe-image pair, primary replacement, deletion, cache invalidation, storage errors và DB save compensation.
+- Unit tests: file valid/invalid, 10-image boundary, owner-only, wrong recipe-image pair, primary replacement, deletion, cache invalidation, storage errors và DB save compensation.
 - API integration tests: anonymous 401, owner success, forbidden owner 403, invalid file 400, not found 404, upload response shape, primary route 200/204 theo contract, delete 204.
 - MinIO adapter tests mock object client; nếu có MinIO Testcontainer thì thêm smoke test upload/delete, không làm unit suite phụ thuộc service ngoài.
 - Chạy focused tests, toàn bộ `CulinaryBlog.sln`, build API và frontend nếu contract DTO/API có ảnh hưởng UI.
@@ -86,7 +95,7 @@ Tạo `RecipeImageEndpoints.cs` cho ba route FR-RCP-008; đăng ký qua `MapReci
 ## 6. Acceptance criteria
 
 - Tối đa 10 ảnh cho mỗi recipe; upload chỉ nhận JPEG/PNG/WebP/AVIF, magic bytes khớp MIME/extension, tối đa 5 MB.
-- Chỉ owner/Admin thao tác; các route chỉ thay đổi đúng recipe và image id được truyền.
+- Chỉ owner thao tác theo policy hiện tại; các route chỉ thay đổi đúng recipe và image id được truyền.
 - Mỗi recipe có tối đa một ảnh primary active; chọn ảnh mới bỏ primary trước đó.
 - Upload response đúng `{ imageId, originalUrl, altText, isPrimary }`; upload thành công trả 201, set primary trả 200, delete trả 204.
 - File storage lỗi trả 503; error response không lộ credential/bucket internals.
@@ -105,7 +114,7 @@ Tạo `RecipeImageEndpoints.cs` cho ba route FR-RCP-008; đăng ký qua `MapReci
 
 - [x] Tạo `RecipeDifficulty` enum (Easy/Medium/Hard/Expert), đổi `Recipe.Difficulty`, lưu qua EF string conversion và cập nhật snapshot; DTO/API tiếp tục dùng string.
 - [x] Cập nhật create/update validation, mapping, list/search projections, seeders và test fixtures cho enum.
-- [x] Thêm Application commands upload/set-primary/delete, owner/Admin guard, giới hạn 10 ảnh, first-image primary, promotion khi xóa primary và cache invalidation.
+- [x] Thêm Application commands upload/set-primary/delete, owner-only guard, giới hạn 10 ảnh, first-image primary, promotion khi xóa primary và cache invalidation.
 - [x] Thêm bù trừ xóa object nếu DB save upload thất bại; MinIO operation errors được map thành 503 Problem Details.
 - [x] Đăng ký MinIO client, object storage adapter, validator và `IFileStorageService` trong Infrastructure DI; nếu config MinIO thiếu thì các image operations dùng unavailable adapter và trả 503, không chặn startup phần còn lại.
 - [x] Thêm `RecipeImageEndpoints.cs`, map vào `Program.cs`: POST upload, PATCH primary chuyên biệt, DELETE ảnh.
@@ -114,5 +123,5 @@ Tạo `RecipeImageEndpoints.cs` cho ba route FR-RCP-008; đăng ký qua `MapReci
 - [x] Solution build thành công sau khi cập nhật model snapshot.
 - [ ] Nối FR-JOB-002 Hangfire/thumbnail worker thật; không có queue/worker trong backend hiện tại.
 - [ ] Chạy upload/delete thật với MinIO và kiểm tra extension/magic bytes/storage 503.
-- [ ] Apply migration FTS/schema hiện hành và xác minh SQL/EF enum conversion trên PostgreSQL thật; chưa có recipe Testcontainers fixture.
+- [ ] Apply migration FTS/schema hiện hành và xác minh SQL/EF enum conversion trên PostgreSQL thật. Testcontainers migration suite hiện đã có; lần kiểm thử dữ liệu legacy này chưa xác minh riêng enum conversion.
 - [ ] Bổ sung concurrency-safe enforcement cho giới hạn 10 ảnh/primary uniqueness nếu acceptance yêu cầu bảo đảm dưới request đồng thời.

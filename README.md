@@ -76,16 +76,26 @@ Các thành phần được tích hợp theo tiến độ module tương ứng:
 - Các thư viện khác được tích hợp theo từng module.
 
 Các màn hình chính hiện có: trang chủ, danh sách/chi tiết công thức, danh mục,
-tìm kiếm, đăng nhập/đăng ký, hồ sơ và dashboard quản lý công thức/danh mục.
-Các màn hình công thức và danh mục đọc/ghi qua API `/api/v1`; thao tác quản trị
-cần access token và quyền tương ứng.
+tìm kiếm, hồ sơ, xác thực và dashboard quản lý công thức/danh mục. Recipe
+Editor hỗ trợ nhập thông tin chung, nguyên liệu, bước chế biến và xem lại trước
+khi lưu; ảnh và dinh dưỡng được quản lý cùng công thức. Chi tiết công thức hiển
+thị tác giả/ngày xuất bản khi có, ảnh, nguyên liệu, các bước và thông tin dinh
+dưỡng khi dữ liệu có sẵn.
+
+Dashboard của tác giả hiển thị công thức Published cùng Draft/Archived của
+chính họ. Dashboard Admin chỉ hiển thị công thức Published; Admin không được
+xem Draft/Archived qua danh sách hoặc trang chi tiết riêng tư.
 
 Chạy frontend từ thư mục `frontend`:
 
 ```powershell
-npm install
-npm run dev -- --port 3001
+npm ci
+npm run dev
 ```
+
+Frontend chạy tại `http://localhost:3000` theo mặc định. E2E hướng dẫn trong
+[docs/run-project.md](docs/run-project.md) dùng cổng `3001` để tránh xung đột
+với frontend đang chạy từ Compose.
 
 Chạy kiểm tra route và luồng tạo công thức:
 
@@ -163,14 +173,23 @@ Cấu trúc có thể được bổ sung khi các module mới được tích h�
 2. Chạy `docker compose up --build -d` từ thư mục gốc.
 3. API lắng nghe tại `http://localhost:5000`; PostgreSQL, Redis và MinIO được khởi chạy cùng Compose.
 
-Để seed tài khoản Admin cho môi trường local, đặt `ADMIN_SEED_ENABLED=true`, `ADMIN_SEED_EMAIL` và `ADMIN_SEED_PASSWORD` trong `.env` trước khi khởi chạy API. Không đưa credential thật vào `.env.example`, image hoặc Git; triển khai web nên lấy chúng từ secret manager của nền tảng.
+Để seed tài khoản Admin cho môi trường local, bật `ADMIN_SEED_ENABLED=true` và
+đặt `ADMIN_SEED_EMAIL`, `ADMIN_SEED_PASSWORD` riêng trong `.env` trước khi khởi
+chạy API. Không đưa credential thật vào image hoặc Git; triển khai web nên lấy
+chúng từ secret manager của nền tảng.
 
 `FRONTEND_BASE_URL` là địa chỉ frontend mà trình duyệt truy cập được; Compose dùng nó cho Auth.js redirect và liên kết đặt lại mật khẩu. Khi triển khai web, đặt biến này thành origin HTTPS thực tế, không dùng `0.0.0.0` (địa chỉ bind nội bộ).
 
 `JWT_SECRET` là bắt buộc. Nếu không có biến này, API dừng khi khởi tạo cấu hình JWT. Redis có thể bỏ cấu hình để dùng cache trong bộ nhớ; khi Redis đã cấu hình nhưng tạm thời không truy cập được, cache bỏ qua lỗi và tiếp tục đọc database.
 
-Identity, refresh token, category, recipe và search dùng chung `ApplicationDbContext` cùng một migration stream. Trong Development, API tự áp dụng migration; `Seed__Enabled=true` bật seed danh mục và 20 công thức từ `tools/sample-data/20_cong_thuc_mon_an.json`, đồng thời tải ảnh từ `tools/sample-data/images/` lên MinIO. Hướng dẫn chạy toàn dự án ở [docs/run-project.md](docs/run-project.md); chi tiết
-database và tài khoản ở [docs/postgresql-setup.md](docs/postgresql-setup.md).
+Identity, refresh token, category, recipe và search dùng chung
+`ApplicationDbContext` cùng một migration stream. Trong Development, API tự áp
+dụng migration; `Seed__Enabled=true` bật seed danh mục và 20 công thức từ
+`tools/sample-data/20_cong_thuc_mon_an.json`, đồng thời tải ảnh từ
+`tools/sample-data/images/` lên MinIO. `RandomDataSeeder` là mã phục vụ dataset
+báo cáo riêng, không được gọi tự động khi API khởi động. Hướng dẫn chạy toàn dự
+án ở [docs/run-project.md](docs/run-project.md); chi tiết database và tài khoản
+ở [docs/postgresql-setup.md](docs/postgresql-setup.md).
 
 Dữ liệu dinh dưỡng của 20 công thức mẫu là giá trị ước tính trên mỗi khẩu phần
 để tham khảo, không thay thế tư vấn chuyên môn. Seed chỉ bổ sung dinh dưỡng còn
@@ -616,7 +635,7 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 | Hạng mục | Trạng thái | Đã hoàn thành | Còn lại / Phụ thuộc |
 |---|---|---|---|
 | FR-RCP-001 → FR-RCP-007 | Xong | Backend Recipe CRUD, Step, Ingredient, Status, CQRS handlers | Đã nghiệm thu |
-| Database chung & Migration | Xong | ApplicationDbContext, PostgreSQL Migrations, sửa lỗi FK testcontainers (138/138 integration tests pass) | Đã nghiệm thu |
+| Database chung & Migration | Xong | ApplicationDbContext, PostgreSQL Migrations, Testcontainers kiểm tra database rỗng và nâng cấp dữ liệu legacy (2/2 migration tests đạt ngày 17/11/2026); lượt 138/138 integration tests là evidence lịch sử | Đã nghiệm thu |
 | FR-SRCH-001 → FR-SRCH-004 | Xong | Search/filter/sort/pagination có backend và UI; Application 725/725, Integration 138/138; Playwright pass | Đã nghiệm thu |
 | Redis Caching & File Cleanup | Xong | Generation key pattern cho RemoveByPrefixAsync, chuẩn hóa lowercase cache keys; eager load & xóa file ảnh MinIO khi xóa công thức (TECH-RISK-004) | Đã nghiệm thu |
 | FR-RCP-008 → FR-RCP-010 (Tuần 8) | Xong | Form bước nấu có cấu trúc (title, duration, description, image), sắp xếp thứ tự bước (move up/down), bảng dinh dưỡng 6 chỉ số; bộ kiểm thử E2E Playwright hoàn chỉnh 7/7 pass 100% | Đã nghiệm thu |

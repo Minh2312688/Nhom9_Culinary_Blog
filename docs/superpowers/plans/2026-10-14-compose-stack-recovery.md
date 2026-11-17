@@ -1,5 +1,11 @@
 # CulinaryBlog Compose Stack Recovery Implementation Plan
 
+> **Trạng thái hiện tại (17/11/2026):** Compose configuration và run guides đã
+> được đồng bộ với code hiện tại. Các bước reset volumes và rollout trong plan
+> này là thủ tục có tính phá hủy, chỉ thực hiện khi có yêu cầu/duyệt riêng;
+> không được chạy trong lần cập nhật tài liệu này. Nội dung checklist bên dưới
+> là plan lịch sử, không phải báo cáo rằng runtime đang chạy.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Run the CulinaryBlog frontend, API, PostgreSQL, Redis, and MinIO together in Docker Compose with verified API/data connectivity.

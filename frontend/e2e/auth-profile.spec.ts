@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { signInAs, signInAsByApi } from "./support/auth";
+import { clearMockApiRequests } from "./support/mock-api";
 
 const mockApiUrl = "http://127.0.0.1:5055";
 
@@ -38,16 +39,16 @@ test.describe("Auth.js Profile and logout", () => {
     await page.goto("/profile");
     await expect(page).toHaveURL(/\/auth\/login\?callbackUrl=/);
 
-    await signInAs(page);
-
-    await expect(page).toHaveURL(new URL("/", page.url()).toString());
-    await expect(page.getByTestId("nav-profile")).toBeVisible();
-    const profileAfterAccountClick = page.waitForResponse((response) =>
+    const profileAfterSignIn = page.waitForResponse((response) =>
       response.url().includes("/api/backend/auth/me") &&
       response.request().method() === "GET",
     );
+    await signInAs(page);
+    expect((await profileAfterSignIn).status()).toBe(200);
+
+    await expect(page).toHaveURL(new URL("/", page.url()).toString());
+    await expect(page.getByTestId("nav-profile")).toBeVisible();
     await page.getByTestId("nav-profile").click();
-    expect((await profileAfterAccountClick).status()).toBe(200);
     await expect(page).toHaveURL(/\/profile$/);
     await expect(page.getByRole("heading", { name: "Chef Example" })).toBeVisible();
 
@@ -134,11 +135,11 @@ test.describe("Auth.js Profile and logout", () => {
       roles: ["Author"],
     };
     await setProfile(page, "chef@example.com", profile);
-    await signInAs(page);
     const profileResponse = page.waitForResponse((response) =>
       response.url().includes("/api/backend/auth/me") &&
       response.request().method() === "GET",
     );
+    await signInAs(page);
     await page.goto("/profile");
 
     expect((await profileResponse).status()).toBe(200);
@@ -158,6 +159,90 @@ test.describe("Auth.js Profile and logout", () => {
     await expect(page.getByText("Cập nhật hồ sơ thành công!")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Master Chef Phu Nam" })).toBeVisible();
     await expect(page.getByText("Refined master of traditional Vietnamese spices.")).toBeVisible();
+  });
+
+  test("shares updated Profile data with the header", async ({ page }) => {
+    await clearMockApiRequests(page);
+    const profileResponse = page.waitForResponse((response) =>
+      response.url().includes("/api/backend/auth/me") &&
+      response.request().method() === "GET",
+    );
+    await signInAsByApi(page);
+    expect((await profileResponse).status()).toBe(200);
+    await expect(page.getByTestId("nav-profile")).toContainText("Chef Example");
+    await clearMockApiRequests(page);
+    await page.getByTestId("nav-profile").click();
+    await expect(page.getByRole("heading", { name: "Chef Example" })).toBeVisible();
+    await page.getByRole("button", { name: "Chỉnh sửa" }).click();
+    await page.locator("#edit-display-name").fill("Updated Header Chef");
+    await page.getByRole("button", { name: "Lưu thay đổi" }).click();
+    await expect(page.getByRole("heading", { name: "Updated Header Chef" })).toBeVisible();
+
+    await page.getByRole("link", { name: "Culinary Blog, trang chủ" }).click();
+    await expect(page.getByTestId("nav-profile")).toContainText("Updated Header Chef");
+
+    const recordsResponse = await page.context().request.get(`${mockApiUrl}/__test__/requests`);
+    const records = await recordsResponse.json();
+    expect(records.filter((record: { method: string; path: string }) =>
+      record.method === "GET" && record.path === "/api/v1/auth/me",
+    )).toHaveLength(0);
+  });
+
+  test("clears cached Profile data after logout before the next login", async ({ page }) => {
+    const firstProfileResponse = page.waitForResponse((response) =>
+      response.url().includes("/api/backend/auth/me") &&
+      response.request().method() === "GET",
+    );
+    await signInAsByApi(page);
+    expect((await firstProfileResponse).status()).toBe(200);
+    await page.getByTestId("nav-profile").click();
+    await expect(page.getByRole("heading", { name: "Chef Example" })).toBeVisible();
+    await page.getByRole("button", { name: /đăng xuất/i }).click();
+    await expect(page.getByTestId("nav-login")).toBeVisible();
+
+    await clearMockApiRequests(page);
+    await setProfile(page, "chef@example.com", {
+      id: "chef-123",
+      email: "chef@example.com",
+      displayName: "Reconnected Chef",
+      avatarUrl: null,
+      bio: "Profile loaded after logout.",
+      emailConfirmed: true,
+      createdAt: "2026-01-15T00:00:00Z",
+      roles: ["Author"],
+    });
+    const nextProfileResponse = page.waitForResponse((response) =>
+      response.url().includes("/api/backend/auth/me") &&
+      response.request().method() === "GET",
+    );
+    await signInAsByApi(page);
+    expect((await nextProfileResponse).status()).toBe(200);
+    await expect(page.getByTestId("nav-profile")).toContainText("Reconnected Chef");
+
+    const recordsResponse = await page.context().request.get(`${mockApiUrl}/__test__/requests`);
+    const records = await recordsResponse.json();
+    expect(records.filter((record: { method: string; path: string }) =>
+      record.method === "GET" && record.path === "/api/v1/auth/me",
+    ).length).toBeGreaterThan(0);
+  });
+
+  test("changes the account password through a mutation", async ({ page }) => {
+    await signInAsByApi(page);
+    await page.getByTestId("nav-profile").click();
+    await expect(page.getByRole("heading", { name: "Chef Example" })).toBeVisible();
+    await page.getByRole("button", { name: "Đổi mật khẩu tài khoản" }).click();
+    await page.locator("#current-password").fill("Password123!");
+    await page.locator("#new-password").fill("NewPassword123!");
+    await page.locator("#confirm-password").fill("NewPassword123!");
+
+    const changeResponse = page.waitForResponse((response) =>
+      response.url().includes("/api/backend/auth/change-password") &&
+      response.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: "Cập nhật mật khẩu" }).click();
+
+    expect((await changeResponse).status()).toBe(200);
+    await expect(page.getByText("Đổi mật khẩu thành công!")).toBeVisible();
   });
 
   test("validates an invalid avatar URL before sending a Profile update", async ({ page }) => {

@@ -1,5 +1,12 @@
 # Auth.js v5 and Secure BFF Implementation Plan
 
+> **Trạng thái hiện tại (17/11/2026):** Auth.js v5 session, Credentials/GIS
+> sign-in flow, same-origin authenticated BFF, server-only `API_INTERNAL_URL`
+> và server-side token lifecycle đã được triển khai theo design. Giới hạn
+> single Next.js instance vẫn còn; dual-key API JWT rotation chưa được hỗ trợ.
+> Các validation results trong plan là lịch sử, không chạy lại trong lần cập
+> nhật này.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace browser-held backend tokens with Auth.js v5 sessions and a protected same-origin BFF while preserving current login, Google GIS, and authenticated application flows.

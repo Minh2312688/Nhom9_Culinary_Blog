@@ -74,10 +74,10 @@ function publicRequest<T>(
   }, fallbackMessage);
 }
 
-export function getProfileApi(): Promise<UserProfile> {
+export function getProfileApi(signal?: AbortSignal): Promise<UserProfile> {
   return privateRequest(
     "/auth/me",
-    { method: "GET" },
+    { method: "GET", signal },
     "Không thể tải thông tin trang cá nhân.",
   );
 }

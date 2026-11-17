@@ -1,38 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
-import { ApiRequestError, getPrivateRecipe, type RecipeDetail } from "@/lib/recipes-api";
+import { ApiRequestError } from "@/lib/recipes-api";
+import { useRecipeForEdit } from "@/lib/queries/recipes";
 import { RecipeDetailClient, RecipeDetailError } from "@/app/recipes/[slug]/recipe-detail-client";
 import { LoadingSkeleton } from "@/app/site-ui";
 
 export default function DashboardRecipeViewPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id;
-  const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!id) {
-      setError("Không thể xác định công thức cần xem.");
-      return;
-    }
-
-    const controller = new AbortController();
-    getPrivateRecipe(id, controller.signal)
-      .then(setRecipe)
-      .catch((reason: unknown) => {
-        if (controller.signal.aborted) return;
-        setError(reason instanceof ApiRequestError && reason.status === 403
-          ? "Bạn không có quyền xem công thức này."
-          : reason instanceof Error ? reason.message : "Không thể tải công thức.");
-      });
-
-    return () => controller.abort();
-  }, [id]);
+  const { data: session, status: sessionStatus } = useSession();
+  const recipeQuery = useRecipeForEdit(
+    session?.user.id ?? "",
+    id ?? "",
+    Boolean(id) && sessionStatus !== "loading",
+  );
+  const recipe = recipeQuery.data;
+  const error = !id
+    ? "Không thể xác định công thức cần xem."
+    : recipeQuery.error instanceof ApiRequestError && recipeQuery.error.status === 403
+      ? "Bạn không có quyền xem công thức này."
+      : recipeQuery.error instanceof Error
+        ? recipeQuery.error.message
+        : recipeQuery.error ? "Không thể tải công thức." : null;
 
   if (error) return <RecipeDetailError message={error} />;
-  if (!recipe) return <LoadingSkeleton variant="cards" />;
+  if (sessionStatus === "loading" || recipeQuery.isPending || !recipe) {
+    return <LoadingSkeleton variant="cards" />;
+  }
 
   return (
     <RecipeDetailClient

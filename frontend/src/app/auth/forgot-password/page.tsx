@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { forgotPasswordApi } from "@/lib/auth-api";
-import { ApiError } from "@/lib/api";
+import { useForgotPassword } from "@/lib/queries/auth";
 import { Mail, Loader2, AlertCircle, CheckCircle2, ArrowLeft, KeyRound, RotateCcw, Inbox } from "lucide-react";
 import { BrandLink } from "../../site-ui";
 
@@ -17,39 +16,32 @@ const forgotPasswordSchema = z.object({
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPasswordPage() {
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [submittedEmail, setSubmittedEmail] = useState<string>("");
+  const forgotPasswordMutation = useForgotPassword();
+  const serverError = forgotPasswordMutation.isError
+    ? forgotPasswordMutation.error?.detail
+      || "Không thể gửi yêu cầu đặt lại mật khẩu. Vui lòng thử lại sau."
+    : null;
+  const successMessage = forgotPasswordMutation.isSuccess
+    ? forgotPasswordMutation.data?.message
+      || "Nếu email tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu đã được gửi đến hộp thư của bạn."
+    : null;
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
     mode: "onBlur",
   });
 
-  const onSubmit = async (data: ForgotPasswordFormData) => {
-    setServerError(null);
-    setSuccessMessage(null);
-    try {
-      const response = await forgotPasswordApi({ email: data.email });
-      setSubmittedEmail(data.email);
-      setSuccessMessage(
-        response.message ||
-          "Nếu email tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu đã được gửi đến hộp thư của bạn."
-      );
-    } catch (err) {
-      const apiErr = err as ApiError;
-      setServerError(apiErr.detail || "Không thể gửi yêu cầu đặt lại mật khẩu. Vui lòng thử lại sau.");
-    }
+  const onSubmit = (data: ForgotPasswordFormData) => {
+    forgotPasswordMutation.mutate({ email: data.email });
   };
 
   const handleResetForm = () => {
-    setSuccessMessage(null);
-    setServerError(null);
+    forgotPasswordMutation.reset();
     reset();
   };
 
@@ -144,7 +136,7 @@ export default function ForgotPasswordPage() {
                   id="email"
                   type="email"
                   autoComplete="email"
-                  disabled={isSubmitting}
+                  disabled={forgotPasswordMutation.isPending}
                   className={`w-full px-4 py-2.5 pl-11 rounded-xl border bg-gray-50/50 text-gray-900 text-sm transition focus:bg-white focus:outline-none focus:ring-2 ${
                     errors.email
                       ? "border-red-400 focus:ring-red-500"
@@ -163,10 +155,10 @@ export default function ForgotPasswordPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={forgotPasswordMutation.isPending}
               className="w-full flex items-center justify-center py-3 px-4 rounded-xl text-white font-medium bg-orange-600 hover:bg-orange-700 disabled:opacity-60 disabled:cursor-not-allowed transition shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              {isSubmitting ? (
+              {forgotPasswordMutation.isPending ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   Đang gửi yêu cầu...

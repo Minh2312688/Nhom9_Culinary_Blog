@@ -1,5 +1,10 @@
 # Category Media Implementation Plan
 
+> **Trạng thái hiện tại (17/11/2026):** Category image seed, admin upload
+> endpoint, admin dashboard controls, and public category image display are
+> present in source. MinIO runtime verification depends on the configured
+> service; no runtime test was run in this documentation update.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Seed matching category images into MinIO, let administrators upload category images, and show them on public category cards.

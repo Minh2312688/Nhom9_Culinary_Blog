@@ -229,6 +229,15 @@ export async function getRecipe(slug: string, signal?: AbortSignal): Promise<Rec
   return publicRequest(`/api/v1/recipes/${encodeURIComponent(slug)}`, { signal });
 }
 
+export async function getAuthorProfile(
+  id: string,
+  page: number,
+  signal: AbortSignal,
+): Promise<AuthorProfilePage> {
+  const params = new URLSearchParams({ page: String(page), pageSize: "12" });
+  return publicRequest(`/api/v1/authors/${encodeURIComponent(id)}?${params.toString()}`, { signal });
+}
+
 export async function getRecipeCategories(signal: AbortSignal): Promise<RecipeCategory[]> {
   const result = await publicRequest<PaginatedResult<RecipeCategory>>(
     "/api/v1/categories/?pageSize=100",
@@ -268,6 +277,12 @@ export async function deleteRecipe(id: string): Promise<void> {
 
 export async function publishRecipe(id: string): Promise<void> {
   return privateRequest(`/recipes/${encodeURIComponent(id)}/publish`, {
+    method: "PATCH",
+  });
+}
+
+export async function archiveRecipe(id: string): Promise<void> {
+  return privateRequest(`/recipes/${encodeURIComponent(id)}/archive`, {
     method: "PATCH",
   });
 }

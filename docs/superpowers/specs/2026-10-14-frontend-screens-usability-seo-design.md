@@ -1,7 +1,12 @@
 # Đặc tả giao diện Public, Author Dashboard và NFR
 
 **Ngày:** 2026-10-14  
-**Trạng thái:** Bản cập nhật theo phạm vi đã duyệt, chờ người dùng rà soát
+**Trạng thái tại thời điểm lập:** Bản cập nhật theo phạm vi đã duyệt, chờ người dùng rà soát
+
+> **Cập nhật trạng thái 17/11/2026:** Phạm vi author profile, Recipe SEO,
+> responsive UI và accessibility automation đã được triển khai theo checklist
+> FR-UI-001. Manual WCAG screen-reader review vẫn chưa thực hiện; tài liệu này
+> là thiết kế tham chiếu lịch sử, không phải công việc đang chờ duyệt.
 **Phạm vi:** Hoàn thiện frontend, thêm API public hồ sơ tác giả và thời điểm xuất bản recipe; làm mới nhận diện trên toàn bộ giao diện.
 
 ## 1. Mục tiêu

@@ -1,8 +1,15 @@
 # Đặc tả triển khai Recipe Core và dữ liệu báo cáo
 
+> **Trạng thái hiện tại: 17/11/2026.** Tài liệu này gồm ghi nhận báo cáo và đặc
+> tả backend/frontend qua nhiều thời điểm. Mục mang ngày cũ là lịch sử; các
+> quyền hiện tại, sample seed và giới hạn còn lại được cập nhật theo code/tests.
+
 ## Phạm vi
 
-Module gồm domain recipe, persistence EF Core/PostgreSQL, CQRS, API `/api/v1/recipes`, cache detail bằng Redis, migration và dataset ngẫu nhiên phục vụ báo cáo.
+Module gồm domain recipe, persistence EF Core/PostgreSQL, CQRS, API
+`/api/v1/recipes`, cache, migration, sample seed Development và UI công thức.
+Dataset báo cáo ngẫu nhiên là một helper riêng, không được gọi tự động khi API
+khởi động.
 
 ## Hợp đồng dữ liệu báo cáo
 
@@ -25,7 +32,10 @@ Dataset báo cáo phải thỏa các bất biến sau:
 
 ## Async random seeding
 
-`RandomDataSeeder.SeedAsync` là lớp duy nhất chịu trách nhiệm tạo dữ liệu báo cáo. Nó nhận `ApplicationDbContext`, `ILogger` và `CancellationToken`, dùng toàn bộ API bất đồng bộ của EF Core.
+`RandomDataSeeder.SeedAsync` là helper tạo dataset báo cáo, nhận
+`ApplicationDbContext`, `ILogger` và `CancellationToken`, dùng API bất đồng bộ
+của EF Core. Helper còn trong source nhưng không có call site trong startup;
+đừng coi nó là seed mặc định của Compose.
 
 Seeder dùng author cố định, prefix slug `report-category-`/`report-recipe-` và random seed `20260921`. Nó tìm dữ liệu đã tồn tại, tạo phần còn thiếu, rồi gọi `SaveChangesAsync`. Recipe mới có:
 
@@ -38,11 +48,20 @@ Nếu dữ liệu đã tồn tại nhưng thiếu children, seeder bổ sung chi
 
 ## Kích hoạt
 
-Khi `Seed:Enabled=true`, `Program.cs` gọi `Lab02DataSeeder` trên cùng `ApplicationDbContext`, tạo danh mục cần thiết và nạp 20 công thức từ `tools/sample-data/20_cong_thuc_mon_an.json`; ảnh được tải từ `tools/sample-data/images/` lên MinIO. Compose mount bộ dữ liệu chỉ đọc vào API container. `RandomDataSeeder` là tùy chọn riêng cho dataset báo cáo, không phải seeder mặc định.
+Khi `Seed:Enabled=true` trong Development, `Program.cs` gọi
+`Lab02DataSeeder` trên cùng `ApplicationDbContext`, tạo danh mục cần thiết và
+nạp 20 công thức từ `tools/sample-data/20_cong_thuc_mon_an.json`; ảnh được tải
+từ `tools/sample-data/images/` lên MinIO. Compose mount bộ dữ liệu chỉ đọc vào
+API container. `RandomDataSeeder` là helper riêng cho dataset báo cáo, không
+phải seeder mặc định và không được startup gọi.
 
 ## Robot Framework report
 
-`robot/recipe_report.robot` dùng RequestsLibrary để gọi API public. Suite không chèn dữ liệu; nó kiểm chứng dữ liệu do seeder trong Development tạo:
+`robot/recipe_report.robot` dùng RequestsLibrary để gọi API public và không tự
+chèn dữ liệu. Suite vẫn yêu cầu tối thiểu 100 recipes cùng 10 ingredients/5
+steps mỗi recipe, trong khi sample seed mặc định chỉ nạp 20 công thức. Vì
+`RandomDataSeeder` không được gọi từ startup, suite này là legacy report
+verification và không xác nhận được môi trường Compose mặc định:
 
 1. Kiểm tra list categories có tối thiểu 20 items.
 2. Kiểm tra list recipes có tối thiểu 100 items.
@@ -55,7 +74,8 @@ python -m pip install -r robot/requirements.txt
 robot -d robot/results robot/recipe_report.robot
 ```
 
-`BASE_URL` mặc định là `http://localhost:5000`; có thể override bằng biến Robot:
+`BASE_URL` mặc định là `http://localhost:5000`; chỉ chạy khi database đã được
+nạp dataset phù hợp. Có thể override bằng biến Robot:
 
 ```powershellcd D:\Nhom9_Culinary_Blog
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
@@ -83,16 +103,16 @@ Compose pins `bitnamilegacy/minio:2025.7.23-debian-12-r5` because the configured
 
 ## Luồng triển khai báo cáo
 
-1. Khởi động PostgreSQL, Redis và API bằng Docker Compose.
+1. Khởi động PostgreSQL, Redis, MinIO, API và frontend bằng Docker Compose.
 2. Xác nhận migration `ApplicationDbContext` thành công trên database mới.
-3. Trong Development, `Seed__Enabled=true` gọi `Lab02DataSeeder` để tạo dữ liệu mẫu.
-4. Chạy Robot suite và lưu kết quả trong `robot/results`; hướng dẫn đầy đủ ở `docs/postgresql-setup.md`.
+3. Trong Development, `Seed__Enabled=true` gọi `Lab02DataSeeder` để tạo 20 công thức mẫu.
+4. Chỉ chạy Robot report suite khi đã có dataset tối thiểu 100 recipe được chuẩn bị riêng; suite hiện không phải verification mặc định của sample seed.
 
 ## Giới hạn
 
 - Database cũ được khởi tạo bằng migration `AuthDbContext` cần quy trình chuyển dữ liệu riêng; không xóa volume để né lỗi.
-- Seeder dành cho báo cáo, không nên bật trong production nghiệp vụ.
-- Robot cần API và database đang chạy; nó không thay thế migration hoặc seeder.
+- `Lab02DataSeeder` là dữ liệu mẫu Development; không bật seeding trong môi trường production nghiệp vụ.
+- `RandomDataSeeder` là helper report còn trong source nhưng không được startup gọi; Robot suite phụ thuộc dataset riêng và không thay thế migration/seeder.
 - Khi Redis không chạy, cache read/write/remove được bỏ qua có log cảnh báo và request detail tiếp tục đọc PostgreSQL. Nếu không cấu hình Redis, DI dùng distributed memory cache.
 # Đặc tả triển khai Recipe Core
 
@@ -109,7 +129,11 @@ Phạm vi đã triển khai gồm:
 - Soft delete, optimistic concurrency bằng `RowVersion` và cache-aside cho chi tiết.
 - FluentValidation và test cho các input chính.
 
-Phạm vi chưa hoàn tất được ghi rõ ở cuối tài liệu, đặc biệt là Hangfire cleanup ảnh, integration test với Testcontainers và migration production. Frontend Auth.js/BFF được mô tả ở mục 3; backend vẫn quyết định quyền truy cập Recipe. Module không tự tạo dữ liệu demo hoặc dữ liệu kiểm thử ngẫu nhiên.
+Đặc tả này ghi cả kết quả cũ và trạng thái hiện hành. Backend có migration,
+sample seeding Development, Auth.js/BFF integration, ingredient/step/image
+routes và các PostgreSQL Testcontainers tests. Backend vẫn là nơi quyết định
+quyền truy cập Recipe. Việc xóa ảnh nằm trong luồng lệnh hiện tại; chưa có
+Hangfire job riêng để dọn ảnh sau khi xóa recipe.
 
 ## 2. Quyết định nghiệp vụ
 
@@ -119,8 +143,10 @@ Các quyết định trong plan được dùng làm hợp đồng hiện tại:
 |---|---|
 | Xóa | Soft delete: gọi `Remove` sẽ được `ApplicationDbContext.SaveChangesAsync` chuyển thành `IsDeleted = true`. |
 | Trạng thái | `Draft = 0`, `Published = 1`, `Archived = 2`. |
-| Hiển thị danh sách | Recipe `Published` được xem công khai; recipe khác chỉ hiện cho tác giả hoặc Admin. |
-| Hiển thị chi tiết | `Draft`/`Archived` yêu cầu owner hoặc Admin; recipe Published cho anonymous. |
+| Hiển thị danh sách | Anonymous và Admin chỉ thấy Published; tác giả thấy Published cùng Draft/Archived của chính họ. |
+| Hiển thị chi tiết công khai theo slug | Published cho anonymous; recipe chưa Published chỉ tác giả xem được, Admin bị từ chối. |
+| Xem chi tiết riêng tư theo ID | Tác giả xem recipe của mình; Admin chỉ xem Published, không xem Draft/Archived. |
+| Mutation | Update/publish/archive và ingredient/step/image operations chỉ owner; Admin có thể tạo recipe và chỉ xóa được Published recipe theo policy hiện tại. |
 | Sort | Dùng `sortBy` và `sortOrder`, không dùng prefix `-`. |
 | Pagination | Dùng `PaginatedResult<T>` dạng phẳng: `items`, `totalCount`, `page`, `pageSize`, `totalPages`, `hasNextPage`, `hasPreviousPage`. |
 | Concurrency | RowVersion không khớp trả HTTP 409 Conflict. |
@@ -189,6 +215,12 @@ Các request riêng tư từ browser gọi `/api/backend/{resource}`. Route Hand
 
 Thiết kế refresh single-flight hiện dựa trên một Next.js instance. Nếu triển khai nhiều instance, cần thay thế bằng cơ chế phối hợp refresh dùng chung; mỗi môi trường triển khai cũng phải cấu hình `AUTH_SECRET`, `API_INTERNAL_URL` và HTTPS phù hợp.
 
+### TanStack Query ở frontend
+
+`frontend/src/app/providers.tsx` tạo một `QueryClient` cho ứng dụng. Cache query mặc định tươi trong 30 giây; mutation không tự retry. Query key của dữ liệu riêng tư có user ID để tách cache theo tài khoản. Khi một phiên đã xác thực đăng xuất hoặc đổi danh tính, QueryClient được xóa; lần chuyển đầu từ khách sang người dùng không xóa cache.
+
+Các trang duyệt Recipe, Category, Search, Author và Dashboard dùng query cho server state; Recipe Editor giữ nội dung form và file đang chọn trong state cục bộ. Trang Profile và header dùng chung query Profile; cập nhật Profile ghi dữ liệu mới vào cache để cả hai nơi phản ánh ngay. Các thao tác ghi dùng mutation với invalidation theo domain. Đăng ký, quên mật khẩu, đặt lại mật khẩu và đổi mật khẩu cũng dùng mutation; Auth.js vẫn phụ trách đăng nhập/đăng xuất.
+
 ### Dữ liệu ứng dụng
 
 Ứng dụng không tự động tạo user, category, recipe hoặc payload kiểm thử. Dữ liệu phải được cung cấp qua API, migration chính thức hoặc quy trình triển khai riêng của môi trường.
@@ -214,7 +246,11 @@ Handler áp dụng visibility trước, sau đó filter, count, sort và Skip/Ta
 
 ### GET `/api/v1/recipes/{slug}`
 
-Handler đọc cache trước. Cache miss sẽ query recipe cùng Ingredients, Steps, Images và Nutrition bằng eager loading với `AsSplitQuery()` để tránh nhân chéo dữ liệu từ nhiều collection. Recipe không tồn tại trả 404. Recipe không Published và không thuộc owner/Admin trả 403. Kết quả hợp lệ được cache 5 phút.
+Handler đọc cache trước. Cache miss sẽ query recipe cùng Ingredients, Steps,
+Images và Nutrition bằng eager loading với `AsSplitQuery()` để tránh nhân chéo
+dữ liệu từ nhiều collection. Recipe không tồn tại trả 404. Recipe không
+Published chỉ cho owner xem; Admin không được đọc Draft/Archived qua route này.
+Kết quả hợp lệ được cache 5 phút.
 
 ### POST `/api/v1/recipes`
 
@@ -232,21 +268,24 @@ Validation chính:
 
 ### PUT `/api/v1/recipes/{id}`
 
-Yêu cầu authorization. Route id được gán vào command, nên client không thể cập nhật nhầm resource khác route. Body phải chứa `RowVersion` byte array. Handler tải recipe, kiểm tra owner/Admin, đặt `OriginalValue` của RowVersion rồi lưu. EF concurrency exception được đổi thành `ConcurrencyException`, middleware trả 409.
+Yêu cầu authorization. Route id được gán vào command, nên client không thể cập nhật nhầm resource khác route. Body phải chứa `RowVersion` byte array. Handler tải recipe, chỉ cho owner sửa (Admin bị từ chối), đặt `OriginalValue` của RowVersion rồi lưu. EF concurrency exception được đổi thành `ConcurrencyException`, middleware trả 409.
 
-Update hiện thay thế các ingredient/step đang có bằng tập nested mới và giữ các entity cũ ở trạng thái soft-deleted. Nutrition được thay thế theo payload.
+Update hiện thay thế các ingredient/step đang có bằng tập nested mới và giữ các entity cũ ở trạng thái soft-deleted. Nutrition được thay thế theo payload. Chỉ owner được update; Admin bị từ chối.
 
 ### PATCH `/api/v1/recipes/{id}/publish`
 
-Yêu cầu owner/Admin. Chỉ chuyển sang Published khi recipe có ít nhất một ingredient và một step. Vi phạm điều kiện trả 400.
+Yêu cầu owner. Admin không được publish/archive recipe qua các handler hiện tại. Chỉ chuyển sang Published khi recipe có ít nhất một ingredient và một step. Vi phạm điều kiện trả 400.
 
 ### PATCH `/api/v1/recipes/{id}/archive`
 
-Yêu cầu owner/Admin. Chuyển status sang Archived.
+Yêu cầu owner. Admin không được chuyển status sang Archived.
 
 ### DELETE `/api/v1/recipes/{id}`
 
-Yêu cầu owner/Admin. `DbContext` biến delete thành soft delete, vì vậy record vẫn còn trong database nhưng không xuất hiện qua query thông thường. API trả 204.
+Owner được xóa recipe của mình; Admin chỉ được xóa recipe Published. `DbContext` biến delete thành soft delete, vì vậy record vẫn còn trong database nhưng không xuất hiện qua query thông thường. API trả 204.
+
+Ingredient, step và image mutations yêu cầu owner; Admin không được sửa nested
+resources dù có quyền quản trị category hoặc xóa Published recipe.
 
 ## 5. Authorization và lỗi
 
@@ -270,7 +309,10 @@ Detail cache dùng key `recipes:slug:{slug}` với TTL 5 phút. List không có 
 
 Sau các thay đổi Recipe, handler gọi `RemoveByPrefixAsync("recipes:")`. Cache list và search thêm generation hiện tại vào resolved key; tăng generation làm các kết quả cũ không còn được đọc mà không cần quét key Redis. Detail cache được xóa theo slug. Khi không cấu hình Redis, app dùng distributed memory cache; lỗi kết nối Redis được ghi log và request tiếp tục truy vấn database.
 
-## 7. Kiểm thử đã thực hiện
+## 7. Kết quả kiểm thử được ghi nhận tại thời điểm 2026-10-06
+
+> Các lệnh và kết quả dưới đây là bằng chứng lịch sử, không phải kết quả chạy
+> lại trong lần cập nhật tài liệu ngày 17/11/2026.
 
 Đã thêm `RecipeValidatorsTests.cs` với các trường hợp:
 
@@ -288,17 +330,16 @@ dotnet test backend\tests\CulinaryBlog.Application.Tests\CulinaryBlog.Applicatio
 
 Kết quả xác minh ngày 2026-10-06: MinIO thật chạy từ Compose bằng image legacy đã pin; riêng MinIO tests đạt `6/6`, toàn bộ Integration project đạt `76/76` (không Skip). Test upload riêng cũng đạt 5 lần liên tục. Dùng `MINIO_TEST_ENDPOINT=127.0.0.1:9000`; `localhost:9000` gây lỗi reset kết nối không ổn định trên Docker Desktop. FR-JOB-002 thumbnail queue chưa có trong backend.
 
-## 8. Việc còn lại và hướng phát triển
+## 8. Trạng thái hiện tại và việc cần xác minh theo môi trường (2026-11-17)
 
-1. Thêm migration PostgreSQL và seed Category/User/Recipe mẫu.
-2. Viết integration tests bằng WebApplicationFactory với PostgreSQL và Redis Testcontainers.
-3. Kiểm thử HTTP 409 bằng hai update request có cùng RowVersion.
-4. Khi triển khai, xác nhận `AUTH_SECRET`, `API_INTERNAL_URL`, HTTPS/Secure cookie và giới hạn một Next.js instance phù hợp với cấu hình môi trường; frontend Auth.js/BFF đã được tích hợp nhưng backend vẫn giữ quyền xác thực và resource authorization cuối cùng.
-5. Thêm Hangfire job xóa các URL ảnh sau soft delete, hoặc xác định rõ chính sách giữ ảnh.
-6. Smoke-test cache list/search và generation invalidation với Redis đang chạy trong môi trường tích hợp.
-7. FR-RCP-008 image routes/handlers đã được thêm; FR-RCP-009 ingredients endpoints còn lại. FR-RCP-010 step endpoints đã được triển khai.
-8. Chuẩn hóa toàn bộ package EF Core về cùng một phiên bản để loại cảnh báo build.
-9. Chạy manual flow: create Draft -> add nested data -> publish -> archive -> delete; kiểm tra record vẫn tồn tại với `IsDeleted = true`.
+1. Migration hợp nhất và seed Development bằng 20 công thức mẫu đã có; `RandomDataSeeder` không được gọi tự động.
+2. PostgreSQL Testcontainers tests cho migration, sample seeding và recipe-step concurrency đã có. `PostgresMigrationTests` bao gồm cả nâng cấp schema có dữ liệu legacy: giữ RowVersion và Identity/role, backfill/duy trì `SearchVector`, đặt `VariantStatus=Pending` cho ảnh cũ và giữ `PublishedAt=NULL` cho recipe lịch sử. Lượt test migration gần nhất ngày 2026-11-17 đạt 2/2; không có bằng chứng về Testcontainers Redis trong phạm vi tài liệu này.
+3. Migration mới nhất được ghi nhận là chưa áp dụng vào PostgreSQL tại thời điểm báo cáo FR-RCP-010; cần xác minh với đúng database đích trước khi triển khai.
+4. Cấu hình `AUTH_SECRET`, `API_INTERNAL_URL`, HTTPS/Secure cookie và giới hạn instance phụ thuộc môi trường triển khai; Auth.js/BFF không thay thế authorization ở backend.
+5. Ảnh được dọn đồng bộ trong luồng xóa recipe; chưa có Hangfire job riêng cho cleanup.
+6. Smoke-test cache list/search với Redis thật và manual flow CRUD phụ thuộc dịch vụ/môi trường, chưa được xác nhận trong lần cập nhật tài liệu này.
+7. FR-RCP-008 image workflow và FR-RCP-009 ingredient endpoints đã có; FR-RCP-010 step endpoints và editor cũng đã có.
+8. Các kết quả build/test và manual verification dưới đây giữ nguyên ngày ghi nhận ban đầu; không xem là xác nhận môi trường hiện tại.
 
 ## 9. Ma trận trạng thái
 
@@ -311,12 +352,15 @@ Kết quả xác minh ngày 2026-10-06: MinIO thật chạy từ Compose bằng 
 | FR-RCP-005 | DONE | `PublishRecipeCommand`, child-data precondition |
 | FR-RCP-006 | DONE | `ArchiveRecipeCommand` |
 | FR-RCP-007 | DONE | `DeleteRecipeCommand`, DbContext soft delete |
-| FR-RCP-008 | PARTIAL | Image routes and handlers exist; MinIO integration tests require a live service and remain unverified; FR-JOB-002 thumbnail queue is pending |
+| FR-RCP-008 | IMPLEMENTED; live-service verification is environment-dependent | Image routes, handlers, and image processing workflow exist; MinIO integration requires the service and was not re-run for this documentation update |
+| FR-RCP-009 | IMPLEMENTED | Dedicated ingredient endpoints, owner-only checks, editor and PostgreSQL integration tests exist |
 | FR-RCP-010 | DONE (backend) | Step commands, authenticated endpoints, validation, soft delete and renumbering; PostgreSQL migration and handler/HTTP tests |
+| FR-JOB-002 thumbnail processing | IMPLEMENTED | Recipe image job enqueuer and processing job exist; deployment/runtime verification is environment-dependent |
 | Recipe cache | IMPLEMENTED | Detail cache-aside 5 phút; list cache-aside 60 giây, key có visibility/filter/pagination/sort; generation invalidation cho list/search |
-| Hangfire cleanup | NOT STARTED | Chưa có Hangfire job trong repository |
-| Integration verification | NOT STARTED | Chưa có Testcontainers recipe suite |
-| Mock/demo data implementation | REMOVED | Seeder, seed configuration and generated-data Robot suite removed |
+| Image cleanup on recipe delete | IMPLEMENTED synchronously | Luồng xóa recipe dọn object ảnh; chưa có Hangfire cleanup job riêng |
+| PostgreSQL integration tests | IMPLEMENTED | Testcontainers tests có cho migration rỗng, nâng cấp dữ liệu legacy, sample seeding và step concurrency; `PostgresMigrationTests` đạt 2/2 ngày 2026-11-17 |
+| Redis live-service verification | ENVIRONMENT-DEPENDENT | Không ghi nhận kết quả chạy lại Redis thật trong lần cập nhật tài liệu |
+| Sample/report data | PARTIAL / distinct paths | Development sample seed nạp 20 recipes; report helper và Robot suite còn nhưng không tự chạy |
 
 ## FR-RCP-010 — Recipe step management
 
@@ -328,7 +372,7 @@ The backend exposes authenticated step management routes under `/api/v1/recipes/
 
 Only the recipe owner or an administrator can mutate its steps. Missing recipes/steps return 404; invalid payloads return 400 Problem Details; unauthorized ownership returns 403. Mutations invalidate the recipe detail cache and request recipe-list prefix invalidation through the existing cache contract.
 
-The `AddActiveRecipeStepOrderIndex` PostgreSQL migration increases `RecipeSteps.Title` from 150 to 200 characters and adds a unique `(RecipeId, StepNumber)` index filtered to active rows. FR-RCP-010 handler tests cover number assignment, content updates, soft delete/renumbering, authorization, validation and historical deleted-number collisions. HTTP integration tests cover authentication and Problem Details validation responses. Verification: targeted tests passed 9/9; full solution build passed with 0 warnings and 0 errors; all solution tests passed 68/68 (Application 45, Integration 20, Architecture 3). EF tooling discovers the new migration as pending; it has not been applied to PostgreSQL. Testcontainers/PostgreSQL execution and concurrent step changes remain follow-up verification; the step-renumbering race documented as `TECH-RISK-012` is not fully eliminated by these changes.
+The `AddActiveRecipeStepOrderIndex` PostgreSQL migration increases `RecipeSteps.Title` from 150 to 200 characters and adds a unique `(RecipeId, StepNumber)` index filtered to active rows. FR-RCP-010 handler tests cover number assignment, content updates, soft delete/renumbering, authorization, validation and historical deleted-number collisions. HTTP integration tests cover authentication and Problem Details validation responses. Verification recorded with this implementation: targeted tests passed 9/9; full solution build passed with 0 warnings and 0 errors; all solution tests passed 68/68 (Application 45, Integration 20, Architecture 3). EF tooling discovered the migration as pending at that time; it was not applied to PostgreSQL. PostgreSQL Testcontainers migration/concurrency tests exist in the repository. The step-renumbering race documented as `TECH-RISK-012` is not fully eliminated by these changes. No tests were rerun for this documentation update.
 
 ## Conflict compliance audit — FR-RCP-001 through FR-RCP-007
 

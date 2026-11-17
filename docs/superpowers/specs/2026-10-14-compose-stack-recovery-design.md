@@ -1,5 +1,10 @@
 # CulinaryBlog Compose stack recovery
 
+> **Trạng thái hiện tại (17/11/2026):** Các cấu hình Compose và hướng dẫn chạy
+> đã được đồng bộ với repository. Thiết kế khôi phục dữ liệu bên dưới là quyết
+> định có tính phá hủy và không phải khuyến nghị reset mặc định; việc cập nhật
+> tài liệu này không thực hiện reset volume hay xác minh runtime.
+
 ## Goal
 
 Make `Program.cs`, the frontend, API, PostgreSQL, and MinIO work as one

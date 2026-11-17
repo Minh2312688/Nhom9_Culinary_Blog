@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { deleteRecipe, getMyRecipes, getRecipes, publishRecipe, type PaginatedResult, type RecipeSummary } from "@/lib/recipes-api";
+import { useDashboardRecipes } from "@/lib/queries/recipes";
+import { useDeleteRecipe, usePublishRecipe } from "@/lib/queries/recipe-mutations";
 import { useFeedback } from "../../feedback";
 import { ErrorNotice, LoadingSkeleton, Pagination, SectionTitle } from "../../site-ui";
 import styles from "../../site-ui.module.css";
@@ -12,28 +13,25 @@ export default function DashboardRecipesPage() {
   const { showToast } = useFeedback();
   const { data: session, status: sessionStatus } = useSession();
   const isAdmin = session?.user.roles?.includes("Admin") ?? false;
-  const [result, setResult] = useState<PaginatedResult<RecipeSummary> | null>(null);
+  const userId = session?.user.id ?? "";
   const [page, setPage] = useState(1);
   const [initialized, setInitialized] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadRecipes = useCallback(async (requestedPage = page) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const signal = new AbortController().signal;
-      setResult(isAdmin
-        ? await getRecipes(signal, 12, requestedPage)
-        : await getMyRecipes(signal, 12, requestedPage));
-    } catch (reason) {
-      const message = reason instanceof Error ? reason.message : "Không thể tải công thức.";
-      setError(message);
-      showToast(message, "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [isAdmin, page, showToast]);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const recipesQuery = useDashboardRecipes(
+    userId,
+    page,
+    isAdmin ? "all" : "mine",
+    initialized && sessionStatus === "authenticated",
+  );
+  const deleteRecipeMutation = useDeleteRecipe(userId);
+  const publishRecipeMutation = usePublishRecipe(userId);
+  const result = recipesQuery.data ?? null;
+  const loading = !initialized || sessionStatus === "loading" || recipesQuery.isFetching;
+  const error = actionError ?? (
+    recipesQuery.error instanceof Error
+      ? recipesQuery.error.message
+      : recipesQuery.error ? "Không thể tải công thức." : null
+  );
 
   useEffect(() => {
     const requestedPage = Number(new URLSearchParams(window.location.search).get("page"));
@@ -44,17 +42,26 @@ export default function DashboardRecipesPage() {
   useEffect(() => {
     if (!initialized || sessionStatus === "loading") return;
     window.history.replaceState(null, "", page === 1 ? "/dashboard/recipes" : `/dashboard/recipes?page=${page}`);
-    void loadRecipes(page);
-  }, [initialized, loadRecipes, page, sessionStatus]);
+    setActionError(null);
+  }, [initialized, page, sessionStatus]);
+
+  useEffect(() => {
+    if (!recipesQuery.error) return;
+    const message = recipesQuery.error instanceof Error
+      ? recipesQuery.error.message
+      : "Không thể tải công thức.";
+    showToast(message, "error");
+  }, [recipesQuery.error, showToast]);
 
   async function handlePublish(id: string) {
     try {
-      await publishRecipe(id);
+      const recipe = result?.items.find((item) => item.id === id);
+      await publishRecipeMutation.mutateAsync({ id, slug: recipe?.slug });
+      setActionError(null);
       showToast("Đã xuất bản công thức.", "success");
-      await loadRecipes();
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "Không thể xuất bản công thức.";
-      setError(message);
+      setActionError(message);
       showToast(message, "error");
     }
   }
@@ -62,12 +69,13 @@ export default function DashboardRecipesPage() {
   async function handleDelete(id: string) {
     if (!window.confirm("Bạn có chắc muốn xóa công thức này?")) return;
     try {
-      await deleteRecipe(id);
+      const recipe = result?.items.find((item) => item.id === id);
+      await deleteRecipeMutation.mutateAsync({ id, slug: recipe?.slug });
+      setActionError(null);
       showToast("Đã xóa công thức.", "success");
-      await loadRecipes();
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "Không thể xóa công thức.";
-      setError(message);
+      setActionError(message);
       showToast(message, "error");
     }
   }

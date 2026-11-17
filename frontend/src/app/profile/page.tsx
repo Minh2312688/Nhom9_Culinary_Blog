@@ -1,15 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { signOut } from "next-auth/react";
+import React, { useEffect, useState } from "react";
+import { signOut, useSession } from "next-auth/react";
 import type { ApiError } from "@/lib/api";
-import {
-  getProfileApi,
-  updateProfileApi,
-  changePasswordApi,
-  type UpdateProfileRequest,
-  type UserProfile,
-} from "@/lib/auth-api";
+import type { UpdateProfileRequest } from "@/lib/auth-api";
+import { useChangePassword, useProfile, useUpdateProfile } from "@/lib/queries/auth";
 import {
   ChefHat,
   LogOut,
@@ -31,9 +26,18 @@ import {
 import { BrandLink } from "../site-ui";
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: session, status: sessionStatus } = useSession();
+  const userId = session?.user?.id ?? "";
+  const profileQuery = useProfile(userId, sessionStatus === "authenticated");
+  const profile = profileQuery.data ?? null;
+  const loading = sessionStatus === "loading" || (Boolean(userId) && profileQuery.isPending);
+  const error = profileQuery.isError
+    ? profileQuery.error?.detail || "Không thể tải thông tin hồ sơ. Vui lòng thử lại."
+    : sessionStatus === "unauthenticated" ? "Vui lòng đăng nhập để xem hồ sơ." : null;
+  const updateProfileMutation = useUpdateProfile(userId);
+  const changePasswordMutation = useChangePassword();
+  const isSaving = updateProfileMutation.isPending;
+  const isSavingPassword = changePasswordMutation.isPending;
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Edit Mode States (FR-AUTH-007)
@@ -41,7 +45,6 @@ export default function ProfilePage() {
   const [editDisplayName, setEditDisplayName] = useState("");
   const [editAvatarUrl, setEditAvatarUrl] = useState("");
   const [editBio, setEditBio] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState<string | null>(null);
 
@@ -52,31 +55,14 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
-  const [isSavingPassword, setIsSavingPassword] = useState(false);
-
   // Logout Error State
   const [logoutError, setLogoutError] = useState<string | null>(null);
 
-  const fetchProfileWithRetry = useCallback(async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      setProfile(await getProfileApi());
-      setLoading(false);
-    } catch (err) {
-      const apiErr = err as ApiError;
-      if (apiErr.status === 401) {
-        await signOut({ redirectTo: "/auth/login" });
-        return;
-      }
-      setError(apiErr.detail || "Không thể tải thông tin hồ sơ. Vui lòng thử lại.");
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchProfileWithRetry();
-  }, [fetchProfileWithRetry]);
+    if (profileQuery.error?.status === 401) {
+      void signOut({ redirectTo: "/auth/login" });
+    }
+  }, [profileQuery.error]);
 
   // Handle Logout
   const handleLogout = async () => {
@@ -145,10 +131,8 @@ export default function ProfilePage() {
       return;
     }
 
-    setIsSavingPassword(true);
-
     try {
-      await changePasswordApi({
+      await changePasswordMutation.mutateAsync({
         currentPassword,
         newPassword,
         confirmPassword,
@@ -167,8 +151,6 @@ export default function ProfilePage() {
       } else {
         setPasswordError(apiErr.detail || "Không thể đổi mật khẩu. Vui lòng kiểm tra lại mật khẩu hiện tại.");
       }
-    } finally {
-      setIsSavingPassword(false);
     }
   };
 
@@ -207,11 +189,8 @@ export default function ProfilePage() {
       bio: trimmedBio || null,
     };
 
-    setIsSaving(true);
-
     try {
-      const updated = await updateProfileApi(payload);
-      setProfile(updated);
+      await updateProfileMutation.mutateAsync(payload);
       setIsEditing(false);
       setEditSuccess("Cập nhật hồ sơ thành công!");
     } catch (err) {
@@ -226,8 +205,6 @@ export default function ProfilePage() {
       } else {
         setEditError(apiErr.detail || "Không thể cập nhật hồ sơ. Vui lòng thử lại.");
       }
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -391,7 +368,7 @@ export default function ProfilePage() {
               <div className="flex justify-center">
                 <button
                   type="button"
-                  onClick={fetchProfileWithRetry}
+                  onClick={() => { void profileQuery.refetch(); }}
                   className="inline-flex items-center px-4 py-2 rounded-xl text-white font-medium bg-orange-600 hover:bg-orange-700 transition shadow-sm text-sm"
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />

@@ -91,7 +91,9 @@ Remove-Item Env:ConnectionStrings__Postgres
 Migration `20261014123827_AddRecipePublishedAt` thêm `Recipes.PublishedAt`
 dưới dạng nullable. Recipe đã Published trước migration vẫn có `NULL`; không
 suy diễn ngày từ `CreatedAt`. Chỉ lần chuyển trạng thái thực sự sang Published
-mới ghi UTC publication time.
+mới ghi UTC publication time. PostgreSQL Testcontainers regression cho hành vi
+này và các data migrations khác được hướng dẫn tại
+[postgresql-setup.md](./postgresql-setup.md).
 
 ## 2. Chạy giao diện
 
@@ -116,6 +118,14 @@ Trang `/recipes/{slug}` render dữ liệu API ở server và thêm `author` /
 `datePublished` vào Recipe JSON-LD khi dữ liệu nguồn có sẵn; trường thiếu, kể cả
 ngày xuất bản lịch sử còn NULL, được bỏ qua. Để tạo tài khoản thử nghiệm, dùng
 chức năng đăng ký trên trang web.
+
+Chi tiết công thức hiển thị ảnh chính và gallery ảnh phụ, thời gian/khẩu phần/
+độ khó, nguyên liệu theo thứ tự, các bước có tiêu đề/thời lượng/ảnh minh họa và
+dinh dưỡng theo khẩu phần khi dữ liệu có sẵn. Nếu thiếu nguyên liệu hoặc bước,
+trang hiển thị trạng thái rỗng thay vì danh sách trống. Tác giả xem công thức
+chưa xuất bản trong `/dashboard/recipes/{id}`; trang public `/recipes/{slug}`
+chỉ tải công thức Published. Dashboard Admin chỉ liệt kê công thức Published
+và không mở được chi tiết Draft/Archived.
 
 ## 3. Chạy thử Welcome Email
 

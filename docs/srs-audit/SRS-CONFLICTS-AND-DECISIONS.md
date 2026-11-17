@@ -1,5 +1,12 @@
 # SRS Conflicts & Architectural Decision Log
 
+> **Cập nhật hiện trạng 17/11/2026:** Decision log giữ lịch sử các quyết định
+> SRS. Về Recipe visibility hiện tại, Guest và Admin chỉ thấy Published;
+> Author thấy thêm Draft/Archived của chính mình. Admin không có quyền sửa
+> ingredients/steps/images và không thể update/publish/archive recipe qua các
+> handler hiện tại; riêng Admin có thể xóa recipe Published. Đây là quy tắc
+> triển khai hiện hành, không thay đổi nội dung quyết định lịch sử trong bảng.
+
 Tài liệu này ghi nhận toàn bộ các điểm mâu thuẫn thực tế, chưa thống nhất giữa các phần trong tài liệu SRS (Software Requirements Specification) v1.0.0 (71 trang) và thiết kế hệ thống của CulinaryBlog cho toàn bộ 4 thành viên (TV1, TV2, TV3, TV4).
 
 ---

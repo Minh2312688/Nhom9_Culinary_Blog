@@ -1,32 +1,47 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useCallback, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import {
-  createCategory,
-  deleteCategory,
-  getRecipeCategories,
-  uploadCategoryImage,
-  updateCategory,
   type RecipeCategory,
 } from "@/lib/recipes-api";
+import { useDashboardCategories } from "@/lib/queries/categories";
+import {
+  useCreateCategory,
+  useDeleteCategory,
+  useUpdateCategory,
+  useUploadCategoryImage,
+} from "@/lib/queries/category-mutations";
 import { getFormErrorDetails, useFeedback } from "../../feedback";
 import { ErrorNotice, LoadingNotice, SectionTitle } from "../../site-ui";
 import styles from "../../site-ui.module.css";
 
 export default function DashboardCategoriesPage() {
   const { showToast } = useFeedback();
-  const [categories, setCategories] = useState<RecipeCategory[]>([]);
+  const { data: session, status: sessionStatus } = useSession();
+  const userId = session?.user.id ?? "";
+  const categoriesQuery = useDashboardCategories(userId, sessionStatus === "authenticated");
+  const createCategoryMutation = useCreateCategory(userId);
+  const updateCategoryMutation = useUpdateCategory(userId);
+  const deleteCategoryMutation = useDeleteCategory(userId);
+  const uploadCategoryImageMutation = useUploadCategoryImage(userId);
+  const categories = categoriesQuery.data ?? [];
+  const loading = sessionStatus === "loading"
+    || (sessionStatus === "authenticated" && categoriesQuery.isFetching);
   const [selected, setSelected] = useState<RecipeCategory | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [pendingUploadCategoryId, setPendingUploadCategoryId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const uploadingImage = uploadCategoryImageMutation.isPending;
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+  const queryError = categoriesQuery.error instanceof Error
+    ? categoriesQuery.error.message
+    : categoriesQuery.error ? "Không thể tải danh mục." : null;
+  const displayedError = error ?? queryError;
 
   useEffect(() => {
     if (!pendingImageFile) {
@@ -39,26 +54,9 @@ export default function DashboardCategoriesPage() {
     return () => URL.revokeObjectURL(url);
   }, [pendingImageFile]);
 
-  const loadCategories = useCallback(async (signal?: AbortSignal) => {
-    try {
-      setCategories(await getRecipeCategories(signal ?? new AbortController().signal));
-      setError(null);
-    } catch (reason) {
-      if (!signal?.aborted) {
-        const message = reason instanceof Error ? reason.message : "Không thể tải danh mục.";
-        setError(message);
-        showToast(message, "error");
-      }
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
-  }, [showToast]);
-
   useEffect(() => {
-    const controller = new AbortController();
-    void loadCategories(controller.signal);
-    return () => controller.abort();
-  }, [loadCategories]);
+    if (queryError) showToast(queryError, "error");
+  }, [queryError, showToast]);
 
   function startEdit(category: RecipeCategory) {
     setSelected(category);
@@ -95,13 +93,11 @@ export default function DashboardCategoriesPage() {
   async function finishImageUpload(categoryId: string): Promise<boolean> {
     if (!pendingImageFile) return true;
 
-    setUploadingImage(true);
     try {
-      await uploadCategoryImage(categoryId, pendingImageFile);
+      await uploadCategoryImageMutation.mutateAsync({ categoryId, file: pendingImageFile });
       setPendingUploadCategoryId(null);
       resetForm();
       showToast(selected ? "Đã cập nhật danh mục." : "Đã tạo danh mục.", "success");
-      await loadCategories();
       return true;
     } catch (reason) {
       const uploadMessage = reason instanceof Error ? reason.message : "Không thể tải ảnh danh mục lên.";
@@ -110,8 +106,6 @@ export default function DashboardCategoriesPage() {
       setError(message);
       showToast(message, "error");
       return false;
-    } finally {
-      setUploadingImage(false);
     }
   }
 
@@ -138,14 +132,20 @@ export default function DashboardCategoriesPage() {
 
       let savedCategory: RecipeCategory;
       if (selected) {
-        savedCategory = await updateCategory(selected.id, {
-          name: name.trim(),
-          description: description.trim() || null,
-          imageUrl: selected.imageUrl ?? null,
-          orderIndex: selected.orderIndex ?? 0,
+        savedCategory = await updateCategoryMutation.mutateAsync({
+          id: selected.id,
+          payload: {
+            name: name.trim(),
+            description: description.trim() || null,
+            imageUrl: selected.imageUrl ?? null,
+            orderIndex: selected.orderIndex ?? 0,
+          },
         });
       } else {
-        savedCategory = await createCategory({ name: name.trim(), description: description.trim() || null });
+        savedCategory = await createCategoryMutation.mutateAsync({
+          name: name.trim(),
+          description: description.trim() || null,
+        });
       }
 
       if (pendingImageFile) {
@@ -156,7 +156,6 @@ export default function DashboardCategoriesPage() {
 
       resetForm();
       showToast(selected ? "Đã cập nhật danh mục." : "Đã tạo danh mục.", "success");
-      await loadCategories();
     } catch (reason) {
       const details = getFormErrorDetails(reason, ["name", "description"]);
       setFieldErrors(details.fieldErrors);
@@ -170,9 +169,8 @@ export default function DashboardCategoriesPage() {
   async function handleDelete(category: RecipeCategory) {
     if (!window.confirm(`Xóa danh mục "${category.name}"?`)) return;
     try {
-      await deleteCategory(category.id);
+      await deleteCategoryMutation.mutateAsync(category.id);
       showToast("Đã xóa danh mục.", "success");
-      await loadCategories();
     } catch (reason) {
       const message = reason instanceof Error ? reason.message : "Không thể xóa danh mục.";
       setError(message);
@@ -183,7 +181,7 @@ export default function DashboardCategoriesPage() {
   return (
       <main className={styles.content}>
         <SectionTitle eyebrow="QUẢN TRỊ NỘI DUNG" title="Quản lý danh mục" description="Thêm, cập nhật hoặc xóa danh mục công thức." />
-        {error && <ErrorNotice><span data-error-summary>{error}</span></ErrorNotice>}
+        {displayedError && <ErrorNotice><span data-error-summary>{displayedError}</span></ErrorNotice>}
         <form className={styles.formStack} onSubmit={(event) => void onSubmit(event)}>
           <h2>{selected ? "Cập nhật danh mục" : "Thêm danh mục"}</h2>
           <div className={styles.formGrid}>

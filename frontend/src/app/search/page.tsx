@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, Clock3, Search, SlidersHorizontal, Users, X } from "lucide-react";
-import { getRecipeCategories, searchRecipes, type PaginatedResult, type RecipeCategory, type RecipeSummary } from "@/lib/recipes-api";
+import { useCategories } from "@/lib/queries/categories";
+import { useSearchRecipes } from "@/lib/queries/recipes";
 import { LoadingSkeleton, SitePage } from "../site-ui";
 import styles from "./search.module.css";
 
@@ -63,11 +64,18 @@ function buildQuery(filters: SearchFilters): URLSearchParams {
 export default function RecipeSearchPage() {
   const [filters, setFilters] = useState(emptyFilters);
   const [initialized, setInitialized] = useState(false);
-  const [categories, setCategories] = useState<RecipeCategory[]>([]);
-  const [categoryError, setCategoryError] = useState<string | null>(null);
-  const [result, setResult] = useState<PaginatedResult<RecipeSummary> | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [debouncedFilters, setDebouncedFilters] = useState<SearchFilters | null>(null);
+  const categoriesQuery = useCategories();
+
+  const categories = categoriesQuery.data ?? [];
+  const categoryError = categoriesQuery.error?.message ?? null;
+  const searchQuery = useSearchRecipes(
+    buildQuery(debouncedFilters ?? emptyFilters),
+    initialized && debouncedFilters !== null,
+  );
+  const result = searchQuery.isError ? null : searchQuery.data ?? null;
+  const loading = searchQuery.isFetching;
+  const error = searchQuery.error?.message ?? null;
 
   useEffect(() => {
     setFilters(readFiltersFromUrl());
@@ -75,43 +83,17 @@ export default function RecipeSearchPage() {
   }, []);
 
   useEffect(() => {
-    const controller = new AbortController();
-    getRecipeCategories(controller.signal).then(setCategories).catch((reason) => {
-      if (!controller.signal.aborted) {
-        setCategories([]);
-        setCategoryError(reason instanceof Error ? reason.message : "Không thể tải danh mục.");
-      }
-    });
-    return () => controller.abort();
-  }, []);
-
-  useEffect(() => {
     if (!initialized) return;
     const query = buildQuery(filters);
     const search = query.toString();
     window.history.replaceState(null, "", search ? `/search?${search}` : "/search");
+  }, [filters, initialized]);
 
-    const controller = new AbortController();
-    const timeout = window.setTimeout(async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await searchRecipes(query, controller.signal);
-        setResult(data);
-      } catch (requestError) {
-        if (!controller.signal.aborted) {
-          setError(requestError instanceof Error ? requestError.message : "Không thể tải công thức.");
-          setResult(null);
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }, 300);
+  useEffect(() => {
+    if (!initialized) return;
+    const timeout = window.setTimeout(() => setDebouncedFilters(filters), 300);
 
-    return () => {
-      window.clearTimeout(timeout);
-      controller.abort();
-    };
+    return () => window.clearTimeout(timeout);
   }, [filters, initialized]);
 
   function updateFilter<K extends keyof SearchFilters>(key: K, value: SearchFilters[K]) {

@@ -1,10 +1,15 @@
 # Đặc tả triển khai FR-SRCH-003 và FR-SRCH-004
 
+> **Trạng thái hiện tại (17/11/2026):** Sort, pagination và các UI controls
+> được triển khai. Guest/Admin chỉ thấy Published; Author thấy thêm recipe
+> Draft/Archived của mình. Các test/build/API results trong tài liệu là lịch sử;
+> E2E dùng API mock và không chứng minh kết nối PostgreSQL hiện tại.
+
 ## Phạm vi và trạng thái
 
 - FR-SRCH-003: sắp xếp kết quả công thức; triển khai trong backend và trang tìm kiếm.
 - FR-SRCH-004: phân trang offset-based cho danh sách và tìm kiếm; API và UI hiện đã có cơ chế nền, cần xác minh và giữ tương thích.
-- Tác nhân: khách, tác giả và quản trị viên; giữ nguyên visibility hiện tại của Recipe Core.
+- Tác nhân: khách, tác giả và quản trị viên; Guest/Admin chỉ thấy Published, tác giả còn thấy recipe riêng của mình.
 - Số yêu cầu trong phạm vi: 2.
 
 ## Quyết định theo tài liệu

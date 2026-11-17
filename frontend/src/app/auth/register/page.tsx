@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { registerApi, ApiError } from "@/lib/api";
+import { useRegisterAccount } from "@/lib/queries/auth";
 import { Eye, EyeOff, Loader2, CheckCircle2, AlertCircle, ChefHat } from "lucide-react";
 import { BrandLink } from "../../site-ui";
 
@@ -37,32 +37,28 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const registerMutation = useRegisterAccount();
+  const serverError = registerMutation.isError
+    ? registerMutation.error?.detail || "Đã xảy ra lỗi trong quá trình đăng ký."
+    : null;
+  const success = registerMutation.isSuccess;
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     mode: "onBlur",
   });
 
-  const onSubmit = async (data: RegisterFormData) => {
-    setServerError(null);
-    try {
-      // NOTE: confirmPassword is UI CONVENIENCE ONLY. Not sent to backend.
-      await registerApi({
-        email: data.email,
-        password: data.password,
-        displayName: data.displayName,
-      });
-      setSuccess(true);
-    } catch (err) {
-      const apiErr = err as ApiError;
-      setServerError(apiErr.detail || "Đã xảy ra lỗi trong quá trình đăng ký.");
-    }
+  const onSubmit = (data: RegisterFormData) => {
+    // NOTE: confirmPassword is UI CONVENIENCE ONLY. Not sent to backend.
+    registerMutation.mutate({
+      email: data.email,
+      password: data.password,
+      displayName: data.displayName,
+    });
   };
 
   return (
@@ -129,7 +125,7 @@ export default function RegisterPage() {
                 id="displayName"
                 type="text"
                 autoComplete="name"
-                disabled={isSubmitting}
+                disabled={registerMutation.isPending}
                 aria-invalid={errors.displayName ? "true" : "false"}
                 aria-describedby={errors.displayName ? "displayName-error" : undefined}
                 className={`w-full px-4 py-2.5 rounded-xl border bg-gray-50/50 text-gray-900 text-sm transition focus:bg-white focus:outline-none focus:ring-2 ${
@@ -156,7 +152,7 @@ export default function RegisterPage() {
                 id="email"
                 type="email"
                 autoComplete="email"
-                disabled={isSubmitting}
+                disabled={registerMutation.isPending}
                 aria-invalid={errors.email ? "true" : "false"}
                 aria-describedby={errors.email ? "email-error" : undefined}
                 className={`w-full px-4 py-2.5 rounded-xl border bg-gray-50/50 text-gray-900 text-sm transition focus:bg-white focus:outline-none focus:ring-2 ${
@@ -187,7 +183,7 @@ export default function RegisterPage() {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
-                  disabled={isSubmitting}
+                  disabled={registerMutation.isPending}
                   aria-invalid={errors.password ? "true" : "false"}
                   aria-describedby={errors.password ? "password-error" : "password-hint"}
                   className={`w-full px-4 py-2.5 pr-11 rounded-xl border bg-gray-50/50 text-gray-900 text-sm transition focus:bg-white focus:outline-none focus:ring-2 ${
@@ -230,7 +226,7 @@ export default function RegisterPage() {
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
                   autoComplete="new-password"
-                  disabled={isSubmitting}
+                  disabled={registerMutation.isPending}
                   aria-invalid={errors.confirmPassword ? "true" : "false"}
                   aria-describedby={
                     errors.confirmPassword ? "confirmPassword-error" : undefined
@@ -270,10 +266,10 @@ export default function RegisterPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={registerMutation.isPending}
               className="w-full flex items-center justify-center py-3 px-4 rounded-xl text-white font-medium bg-orange-600 hover:bg-orange-700 disabled:opacity-60 disabled:cursor-not-allowed transition shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
             >
-              {isSubmitting ? (
+              {registerMutation.isPending ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" aria-hidden="true" />
                   Đang xử lý đăng ký...

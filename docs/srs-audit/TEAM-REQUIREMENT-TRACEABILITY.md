@@ -2,7 +2,13 @@
 
 > **BẢN QUYỀN TÀI LIỆU:**
 > ĐÂY LÀ TÀI LIỆU MA TRẬN TRUY VẾT YÊU CẦU TOÀN DIỆN CHO CẢ 4 THÀNH VIÊN (TV1, TV2, TV3, TV4).
-> TÀI LIỆU NẰM TRONG PRIVATE NOTES, **TUYỆT ĐỐI KHÔNG ĐƯỢC ĐƯA LÊN GIT REPOSITORY**.
+> Cảnh báo bên dưới phản ánh quy định áp dụng cho tài liệu SRS gốc.
+
+> **Lưu ý hiện trạng 17/11/2026:** Bảng trạng thái bên dưới là snapshot lịch sử
+> phân công/triển khai, không phải ma trận tổng thể đã được kiểm chứng lại
+> theo repository hiện tại. Các checklist mới hơn là nguồn tham chiếu cho FR
+> tương ứng; không dùng các nhãn `BLOCKED`/`NOT_STARTED` cũ như trạng thái
+> hiện tại nếu mâu thuẫn với code và checklist đã cập nhật.
 
 ---
 
@@ -70,11 +76,11 @@ Quy ước trạng thái:
 | **FR-RCP-005** | | **X** | X | | **TV2** | Backend publish implemented; Dashboard UI (TV3) | None | **IN_PROGRESS** |
 | **FR-RCP-006** | | **X** | X | | **TV2** | Backend archive implemented; Dashboard UI (TV3) | None | **IN_PROGRESS** |
 | **FR-RCP-007** | | **X** | X | X | **TV2** | Backend soft delete implemented; Hangfire image cleanup (TV4), UI (TV3) | None (conflict decided; see audit) | **IN_PROGRESS** |
-| **FR-RCP-008** | | **X** | X | X | **TV2** | Recipe image API, MinIO/unavailable storage adapter và owner/Admin guard đã triển khai; Hangfire thumbnail (TV4) còn thiếu | FR-JOB-002, TECH-RISK-011 | **IN_PROGRESS** |
+| **FR-RCP-008** | | **X** | X | X | **TV2** | Snapshot lịch sử: image API, MinIO/unavailable storage adapter và owner/Admin guard; hiện image mutations owner-only, workflow xử lý ảnh đã có | FR-JOB-002, TECH-RISK-011 | **IN_PROGRESS** |
 | **FR-RCP-009** | | **X** | X | | **TV2** | Backend: 3 ingredient sub-resource endpoints (POST/PUT/DELETE) + CQRS handlers; Frontend: dynamic ingredient/step list, 6 nutrition fields, image gallery upload/setPrimary/delete; Optimistic concurrency (409 banner) | CONFLICT-004 ✓, CONFLICT-005 ✓ đã chốt. Commit: `feat(backend): implement recipe ingredient sub-resource endpoints for FR-RCP-009` | **DONE** |
 | **FR-RCP-010** | | **X** | X | | **TV2** | Form bước nấu có cấu trúc (title, duration, description, image), sắp xếp thứ tự bước (move up/down), bảng dinh dưỡng 6 chỉ số; Redis generation cache & MinIO cleanup on delete; 7/7 kịch bản E2E Playwright pass 100% | Đã hoàn thành toàn diện (Commit: `eaf17043`, `e7c7bdd2`, `68a7ee7f`) | **DONE** |
-| **FR-SRCH-001** | | **X** | X | | **TV2** | FTS/API/PostgreSQL, route §8.3, popularity cache và regression fallback đã kiểm tra; verifier Draft/Archived author/Admin seed/rollback thành công | TECH-RISK-004; smoke-test Redis thực chưa chạy do môi trường | **DONE** |
-| **FR-SRCH-002** | | **X** | X | | **TV2** | Bộ lọc API/UI; AND filter và visibility Draft/Archived guest/author/Admin đã xác minh trên PostgreSQL bằng transaction tạm | Rollback migration cần DB riêng | **DONE** |
+| **FR-SRCH-001** | | **X** | X | | **TV2** | FTS/API/PostgreSQL, route §8.3, popularity cache và regression fallback; verifier visibility Draft/Archived là kết quả lịch sử, Admin hiện chỉ thấy Published | TECH-RISK-004; smoke-test Redis thực chưa chạy do môi trường | **DONE** |
+| **FR-SRCH-002** | | **X** | X | | **TV2** | Bộ lọc API/UI; verifier visibility PostgreSQL là kết quả lịch sử; Guest/Admin hiện chỉ thấy Published, Author thêm Draft/Archived của mình | Rollback migration cần DB riêng | **DONE** |
 | **FR-SRCH-003** | | **X** | X | | **TV2** | Backend list/search sorting, UI và test đã triển khai; người dùng xác nhận list/search truy xuất dữ liệu PostgreSQL thành công; probe độc lập sau đó khi API offline | CONFLICT-003 đã quyết định explicit params | **DONE** |
 | **FR-SRCH-004** | | **X** | X | | **TV2** | Offset pagination/backend metadata và UI trên search, list, category, dashboard; page overflow/validation và E2E đã kiểm tra | CONFLICT-012 đã quyết định flat response | **DONE** |
 | **FR-FILE-001** | | X | X | **X** | **TV4** | MinIO S3 SDK, Image upload form (TV3) | TECH-RISK-006, TECH-RISK-015 | **NOT_STARTED** |

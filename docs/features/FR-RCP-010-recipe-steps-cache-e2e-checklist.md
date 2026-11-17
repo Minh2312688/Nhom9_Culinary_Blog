@@ -1,5 +1,12 @@
 # Checklist Triển Khai: Bước Nấu Có Cấu Trúc, Cache Redis, Xóa Ảnh & E2E Testing
 
+> **Trạng thái hiện tại (17/11/2026):** Backend step commands, editor bước có cấu
+> trúc, detail UI, cache invalidation và PostgreSQL Testcontainers tests đều có
+> trong repository. Test results phía dưới là lịch sử, không được chạy lại trong
+> lần cập nhật tài liệu này. Step/ingredient/image mutations hiện chỉ dành cho
+> chủ sở hữu; Admin không được sửa nested data. Riêng migration regression
+> đạt 2/2 ngày 2026-11-17.
+
 > **Trạng thái:** `[x]` Đã hoàn thành (Completed)  
 > **Người phụ trách:** Dương Văn Minh (TV2 – MSSV: 2312688)  
 > **Kế hoạch chi tiết:** [2026-10-28-recipe-crud-enhancement-e2e-plan.md](../superpowers/plans/2026-10-28-recipe-crud-enhancement-e2e-plan.md)  
@@ -26,6 +33,7 @@
 
 - [x] **Sửa lỗi Foreign Key Testcontainers**:
   - [x] `PostgresMigrationTests.cs`: Tạo `ApplicationUser` trước khi tạo `Recipe` để thỏa mãn ràng buộc `FK_Recipes_AspNetUsers_AuthorId`.
+  - [x] `PostgresMigrationTests.cs`: nâng cấp schema với dữ liệu legacy và kiểm tra bảo toàn RowVersion, Identity/role, SearchVector, ảnh cũ cùng `PublishedAt`.
   - [x] `RecipeStepConcurrencyTests.cs`: Tạo `ApplicationUser` trước khi tạo `Recipe`.
   - [x] Kiểm tra chạy testcontainer PostgreSQL: 138/138 integration tests pass 100% (0 failed, 9 skipped).
 - [x] **Tối ưu hóa Cache Redis (`DistributedRecipeCache.cs`)**:

@@ -2,6 +2,13 @@
 
 Phạm vi: tìm kiếm toàn văn và lọc đa tiêu chí công thức. Trạng thái: `[x]` đã hoàn tất, `[~]` chờ xác minh, `[ ]` chưa hoàn tất.
 
+> **Cập nhật trạng thái 17/11/2026:** Search/filter đã có trong backend và
+> frontend. Quy tắc hiện tại: khách và Admin chỉ thấy Published; tác giả còn
+> thấy Draft/Archived của chính mình. Các live Redis/MinIO/Docker checks vẫn
+> phụ thuộc môi trường; các kết quả lịch sử dưới đây không được chạy lại trong
+> lần cập nhật này, ngoại trừ `PostgresMigrationTests` (2/2 đạt ngày
+> 2026-11-17).
+
 ## Code và lược đồ
 
 - [x] Endpoint chuẩn `GET /api/v1/recipes/search?q=` theo SRS §8.3; list cũ còn tương thích; giới hạn từ khóa 100 ký tự.
@@ -9,10 +16,11 @@ Phạm vi: tìm kiếm toàn văn và lọc đa tiêu chí công thức. Trạng
 - [x] Tách token Unicode, loại cú pháp `tsquery` do người dùng nhập, ghép AND và tìm tiền tố an toàn.
 - [x] Mã nguồn FTS dùng `unaccent`, `simple`, `tsvector`, GIN và `ts_rank_cd`.
 - [x] Vector tìm kiếm chỉ chứa Title + Description; trigger cập nhật khi thêm/sửa hai trường này.
-- [x] Mã nguồn áp dụng quy tắc hiển thị Published/owner/Admin giống luồng danh sách.
+- [x] Mã nguồn áp dụng visibility hiện tại: Published cho khách/Admin; tác giả thấy thêm Draft/Archived của chính mình.
 - [x] Kết quả phân trang dùng `PaginatedResult<RecipeSummaryDto>` hiện hành.
 - [x] Cache search phổ biến theo CONFLICT-016: ngưỡng 3 lần/5 phút, cache kết quả 60 giây; chỉ query không filter; key tách theo query/phân trang/sort/visibility.
 - [x] Migration FTS đã áp dụng trên DB cục bộ `culinary_blog`; extension/vector/trigger/GIN đã xác minh, không còn vector NULL.
+- [x] `PostgresMigrationTests` nâng cấp dữ liệu legacy xác nhận FTS backfill và trigger; migration suite chạy trên PostgreSQL 16 Testcontainers, 2/2 đạt ngày 2026-11-17.
 - [x] Đồng bộ EF model snapshot.
 - [x] FR-SRCH-002 nhận `categoryId`, `difficulty`, `maxCookTime`, `minServings`; kết hợp tất cả điều kiện bằng AND trong list và search.
 - [x] Validator yêu cầu `maxCookTime > 0`, `minServings > 0`, difficulty thuộc `Easy|Medium|Hard` (không phân biệt hoa thường).
@@ -28,9 +36,10 @@ Phạm vi: tìm kiếm toàn văn và lọc đa tiêu chí công thức. Trạng
 - [x] Thêm recipe tiếng Việt tạm; API tìm được cả có dấu và không dấu trên vector đã lưu.
 - [x] Endpoint từ chối filter sai và search quá 100 ký tự bằng 400 Problem Details.
 - [x] Frontend TypeScript, production build và smoke test `/search` với API giả lập đạt; viewport 390px không tràn ngang.
-- [x] InMemory tests xác nhận visibility guest/author/Admin và AND filter; PostgreSQL verifier tự seed Draft/Archived, xác nhận guest/author/Admin ở list/search rồi rollback transaction.
-- [x] PostgreSQL verifier chạy trên `culinary_blog`: build 0, verifier exit 0; 12/12 visibility checks Draft/Archived đạt và temporary data rollback.
+- [x] InMemory tests xác nhận visibility guest/author/Admin và AND filter; PostgreSQL verifier lịch sử từng xác nhận Draft/Archived cho Guest/Author/Admin rồi rollback. **Kết quả verifier Admin này không còn khớp policy hiện tại:** Admin hiện chỉ thấy Published; xem status note đầu tài liệu.
+- [x] PostgreSQL verifier chạy trên `culinary_blog`: build 0, verifier exit 0; 12/12 visibility checks Draft/Archived theo policy tại thời điểm đó đạt và temporary data rollback. Admin visibility trong kết quả cũ đã được policy hiện tại supersede.
 - [x] Kiểm tra trigger sau insert/update title/description với recipe thử; cleanup recipe sau kiểm tra.
+- [x] Lệnh migration regression: `dotnet test backend\tests\CulinaryBlog.Integration.Tests\CulinaryBlog.Integration.Tests.csproj --filter "FullyQualifiedName~PostgresMigrationTests"`.
 - [x] Rollback migration trên cluster/database tạm riêng đạt; FTS artifacts bị gỡ đúng và DB `culinary_blog` không rollback.
 - [x] Kiểm thử popularity hit/miss và fallback cache: làm nóng sau lần quan sát thứ 3, hit ở lần sau, filter động bypass cache, Redis connection/JSON hỏng fallback vào database.
 - [x] Route chuẩn `/recipes/search?q=` được thống nhất theo SRS §8.3; SRS audit, decision log, frontend và verifier đã cập nhật.

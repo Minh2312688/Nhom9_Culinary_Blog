@@ -6,6 +6,11 @@
 > rethrow. Behavior nằm ngoài validation để ghi nhận cả validation failure.
 > Chỉ metadata được ghi, không có command payload, exception message hay
 > credentials. `IAuditCommand` hiện là metadata bổ sung tùy chọn.
+>
+> **Nghiệm thu 17/11/2026:** Đại diện nhóm xác nhận NFR-SEC-006 đã hoàn thành
+> và được kiểm thử trên Docker. Các giới hạn kỹ thuật liệt kê ở mục 3 mô tả
+> ranh giới triển khai hiện tại, không phải đầu việc còn mở theo nghiệm thu của
+> nhóm. Người cập nhật không chạy lại Docker độc lập.
 
 **Dự án:** Culinary Blog – Phát triển Ứng dụng Web Nâng cao (Nhóm 9)
 **Tiêu chuẩn đối chiếu:** SRS v1.0.0 §4.2 trang 42 – `NFR-SEC-006`

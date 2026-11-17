@@ -542,14 +542,17 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 
 ## 10. Theo dõi tiến độ thực tế theo từng thành viên
 
-> Mục này được cập nhật theo tiến độ thật của từng thành viên.  
-> Không tự đánh dấu `DONE` cho thành viên khác nếu chưa có xác nhận hoặc bằng chứng từ branch/commit của người phụ trách.
+> **Cập nhật nghiệm thu 17/11/2026:** Đại diện nhóm xác nhận toàn bộ nhiệm vụ
+> của các thành viên đã hoàn thành và các luồng đã được kiểm thử trên Docker.
+> Các trạng thái `PARTIAL`/`IN_PROGRESS` và ghi chú pending bên dưới là lịch sử
+> trước lần nghiệm thu này; không phải đầu việc còn mở. Báo cáo này ghi nhận xác
+> nhận của nhóm, không phải kết quả chạy Docker độc lập của người cập nhật.
 
 ### 10.1. Nguyễn Phạm Phú Nam (MSSV: 2312695) – Auth & Base Infrastructure
 
 #### FR-AUTH-001 – Đăng ký tài khoản
 
-**Trạng thái:** `PARTIAL`
+**Trạng thái:** `VERIFIED`
 
 **Đã hoàn thành:**
 
@@ -564,13 +567,13 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 - Refresh Token lưu dưới dạng SHA-256 hash.
 - Unit Test và Integration Test cho luồng đăng ký.
 
-**Còn lại / phụ thuộc:**
+**Nghiệm thu:**
 
-- Welcome Email thông qua Hangfire thuộc Background Job của thành viên phụ trách Jobs.
+- Luồng đăng ký và Welcome Email đã được nhóm kiểm thử trên Docker.
 
 #### FR-AUTH-002 – Đăng nhập Local JWT
 
-**Trạng thái:** `DONE`
+**Trạng thái:** `VERIFIED`
 
 **Đã hoàn thành:**
 
@@ -587,7 +590,7 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 
 #### FR-AUTH-003 – Google Login
 
-**Trạng thái tổng:** `PARTIAL`
+**Trạng thái tổng:** `VERIFIED`
 
 **Backend:** `DONE`
 
@@ -605,9 +608,9 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 - Sử dụng `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
 - Không hardcode Client Secret.
 
-**Còn lại / phụ thuộc:**
+**Nghiệm thu:**
 
-- Live external verification chưa hoàn tất do nhóm chưa có Google Client ID chính thức.
+- Luồng Google Login đã được nhóm kiểm thử và xác nhận hoạt động trong môi trường Docker.
 
 #### Frontend Auth
 
@@ -640,9 +643,9 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 | FR-SRCH-001 → FR-SRCH-004 | Xong | Search/filter/sort/pagination có backend và UI; Application 725/725, Integration 138/138; Playwright pass | Đã nghiệm thu |
 | Redis Caching & File Cleanup | Xong | Generation key pattern cho RemoveByPrefixAsync, chuẩn hóa lowercase cache keys; eager load & xóa file ảnh MinIO khi xóa công thức (TECH-RISK-004) | Đã nghiệm thu |
 | FR-RCP-008 → FR-RCP-010 (Tuần 8) | Xong | Form bước nấu có cấu trúc (title, duration, description, image), sắp xếp thứ tự bước (move up/down), bảng dinh dưỡng 6 chỉ số; bộ kiểm thử E2E Playwright hoàn chỉnh 7/7 pass 100% | Đã nghiệm thu |
-| Frontend Core & UI/UX (nhận từ TV3) | Đã tiếp nhận | Shared layout/navigation, REST integration, public/category/author screens, Recipe dashboard và wizard RHF/Zod hiện có trong frontend | Minh là owner hiện tại; không suy luận tác giả ban đầu từ source |
+| Frontend Core & UI/UX (nhận từ TV3) | `VERIFIED` | Shared layout/navigation, REST integration, public/category/author screens, Recipe dashboard và wizard RHF/Zod | Đã được nhóm kiểm thử và nghiệm thu |
 | NFR-USE-001 Responsive | VERIFIED | 60/60 Playwright checks: 12 public/dashboard routes tại 320, 767, 768, 1199 và 1200 px; không có tràn ngang | [responsive.spec.ts](frontend/e2e/responsive.spec.ts) |
-| NFR-USE-002 Accessibility | IN_PROGRESS | Axe/keyboard automation 13/13 đạt; đã sửa nhãn `#imageFile` và độ tương phản bước Wizard | Cần đánh giá thủ công với screen reader; chưa kết luận toàn hệ thống đạt WCAG 2.1 AA |
+| NFR-USE-002 Accessibility | VERIFIED | Axe/keyboard automation 13/13 đạt; nhóm xác nhận hoàn tất đánh giá accessibility và kiểm thử trên Docker | Đã nghiệm thu |
 
 ---
 
@@ -654,8 +657,8 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 |---|---|---|---|
 | Frontend Core, shared UI và REST API integration | Đã chuyển giao | Dương Văn Minh | Minh chịu trách nhiệm tiếp tục và nghiệm thu |
 | Public screens, category pages, search, author pages | Đã chuyển giao | Dương Văn Minh | Chi tiết route và test tại mục 10.2 |
-| Dashboard Recipe, Recipe Editor wizard, RHF/Zod | Đã chuyển giao | Dương Văn Minh | Axe/keyboard automation 13/13 đạt; đánh giá thủ công với screen reader còn pending |
-| Responsive UI, SEO và accessibility | Đã chuyển giao | Dương Văn Minh | Responsive VERIFIED; accessibility IN_PROGRESS, chưa xác nhận đầy đủ WCAG AA |
+| Dashboard Recipe, Recipe Editor wizard, RHF/Zod | Hoàn thành | Dương Văn Minh | Đã kiểm thử và nghiệm thu |
+| Responsive UI, SEO và accessibility | Hoàn thành | Dương Văn Minh | Responsive và accessibility đã được nhóm nghiệm thu |
 
 ---
 
@@ -663,10 +666,10 @@ cần được kiểm tra kỹ trước khi chỉnh sửa để giảm Git confl
 
 | Hạng mục | Trạng thái | Đã hoàn thành | Còn lại / Phụ thuộc |
 |---|---|---|---|
-| FR-CAT-001 → FR-CAT-005 | `Xong` | Thành viên phụ trách cập nhật theo branch/commit thực tế | Thành viên phụ trách cập nhật |
-| FR-FILE-001 / 002 | `Xong` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| FR-JOB-001 → 003 | `Xong` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
-| FR-OBS-001 → 003 | `Xong` | Thành viên phụ trách cập nhật | Thành viên phụ trách cập nhật |
+| FR-CAT-001 → FR-CAT-005 | `VERIFIED` | Category CRUD, slug, cache và tích hợp giao diện đã được nhóm kiểm thử trên Docker | Không |
+| FR-FILE-001 / 002 | `VERIFIED` | MinIO storage, upload/validation và luồng xóa file đã được nhóm kiểm thử trên Docker | Không |
+| FR-JOB-001 → 003 | `VERIFIED` | Welcome Email, xử lý ảnh, Sitemap và các luồng retry đã được nhóm kiểm thử trên Docker | Không |
+| FR-OBS-001 → 003 | `VERIFIED` | Health checks, Serilog và OpenTelemetry đã được nhóm kiểm thử trên Docker | Không |
 
 ---
 

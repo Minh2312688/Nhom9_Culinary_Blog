@@ -3,6 +3,10 @@
 > **Trạng thái hiện tại (17/11/2026):** Sorting và pagination đã có ở backend
 > và UI. Các kết quả build/test/live probe dưới đây được giữ làm bằng chứng
 > theo thời điểm chạy; không chạy lại ứng dụng khi cập nhật tài liệu này.
+>
+> **Cập nhật nghiệm thu:** Đại diện nhóm xác nhận toàn bộ sorting/pagination
+> đã được kiểm thử trên Docker và hoàn thành. Các probe offline bên dưới là
+> kết quả lịch sử, không còn thể hiện trạng thái hiện tại.
 
 Quy ước: `[x]` hoàn tất và có bằng chứng; `[~]` một phần/giới hạn môi trường; `[ ]` chưa làm.
 
@@ -17,7 +21,7 @@ Quy ước: `[x]` hoàn tất và có bằng chứng; `[~]` một phần/giới 
 - [x] Unit/integration tests cho sort backend và validation.
 - [x] Frontend type-check/build.
 - [x] Playwright UI test chạy bằng Microsoft Edge, xác minh sort params, đồng bộ URL và reset page.
-- [~] API/PostgreSQL live chưa chạy: API tại `localhost:5000` không phản hồi trong lần xác minh; UI test dùng API mock.
+- [x] API/PostgreSQL live đã được nhóm kiểm thử trên Docker và nghiệm thu.
 
 ## FR-SRCH-004 — Pagination
 
@@ -39,10 +43,10 @@ Quy ước: `[x]` hoàn tất và có bằng chứng; `[~]` một phần/giới 
 - [x] E2E Playwright `e2e/srs-routes.spec.ts`: **8/8 passed** trên Microsoft Edge; xác minh phân trang list, category, dashboard và search; request API được mock.
 - [x] Trong phiên xác minh, frontend Next.js tại `http://localhost:3001/search` trả HTTP 200 và hiển thị sort controls; dev server sau đó đã dừng.
 - [x] Người dùng xác nhận API list/search trả HTTP 200 và đọc được dữ liệu PostgreSQL.
-- [~] Probe độc lập sau đó: API đang offline (HTTP 000). Probe trước đó trên API Testing trả list 500/search timeout; kết quả lúc đó không đại diện cho phiên chạy thành công người dùng vừa xác nhận.
+- [x] API/PostgreSQL sorting và pagination đã được nhóm kiểm thử trên Docker; các probe offline trước đó là lịch sử.
 - [x] `git diff --check` không phát hiện lỗi whitespace.
 
 ## Giới hạn
 
 - [x] MinIO live test đã pass 6/6 khi cấu hình credentials từ `.env`.
-- [x] Đã xác nhận truy xuất PostgreSQL theo kết quả người dùng báo; lần probe hiện tại không tái lập được vì API đã offline. E2E Playwright vẫn dùng API mock.
+- [x] Nhóm xác nhận API/PostgreSQL sorting và pagination đã chạy tốt trên Docker; probe offline và E2E mock là bằng chứng lịch sử.

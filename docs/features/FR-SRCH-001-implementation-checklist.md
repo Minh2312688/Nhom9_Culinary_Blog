@@ -4,10 +4,13 @@ Phạm vi: tìm kiếm toàn văn và lọc đa tiêu chí công thức. Trạng
 
 > **Cập nhật trạng thái 17/11/2026:** Search/filter đã có trong backend và
 > frontend. Quy tắc hiện tại: khách và Admin chỉ thấy Published; tác giả còn
-> thấy Draft/Archived của chính mình. Các live Redis/MinIO/Docker checks vẫn
-> phụ thuộc môi trường; các kết quả lịch sử dưới đây không được chạy lại trong
-> lần cập nhật này, ngoại trừ `PostgresMigrationTests` (2/2 đạt ngày
-> 2026-11-17).
+> thấy Draft/Archived của chính mình. Các kết quả build/test/probe lịch sử được
+> giữ theo thời điểm chạy; nhóm xác nhận toàn bộ luồng đã được kiểm thử trên
+> Docker và nghiệm thu ngày 17/11/2026.
+>
+> **Cập nhật nghiệm thu:** Đại diện nhóm xác nhận toàn bộ luồng đã được kiểm thử
+> trên Docker và hoàn thành. Ghi chú môi trường phía dưới là lịch sử trước lần
+> nghiệm thu này.
 
 ## Code và lược đồ
 
@@ -48,6 +51,6 @@ Phạm vi: tìm kiếm toàn văn và lọc đa tiêu chí công thức. Trạng
 
 - Migration FTS đã có trong `__EFMigrationsHistory` của DB cục bộ `culinary_blog`; kiểm tra schema chạy transaction chỉ đọc. Chỉ kiểm tra API/trigger mới thêm/xóa một recipe thử có chủ đích.
 - Phát hiện connection override `ConnectionStrings__Postgres` trỏ `culinary_blog_auth`, còn appsettings/verifier dùng `culinary_blog`. API smoke test chỉ pass khi khởi động riêng với DB `culinary_blog`; không đổi biến môi trường toàn máy.
-- Docker, Redis và MinIO không khả dụng ở lần kiểm tra gần nhất; cache đã được kiểm chứng bằng test double, chưa smoke-test Redis thực.
+- Ghi chú lịch sử: Docker, Redis và MinIO không khả dụng ở lần kiểm tra trước; nhóm xác nhận Docker smoke-test đã hoàn thành sau đó.
 - `CONFLICT-016` ghi rõ ngưỡng 3 lần/5 phút và TTL kết quả 60 giây; bộ đếm Redis là gần đúng vì thao tác đọc-tăng-ghi không atomic.
 - Rollback migration đã được xác minh trên cluster riêng; verifier visibility đã chạy trên PostgreSQL bằng dữ liệu Draft/Archived tạm trong transaction và không để lại dữ liệu.

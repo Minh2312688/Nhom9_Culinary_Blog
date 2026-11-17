@@ -155,9 +155,9 @@ chiếm cổng `1025`/`8025` trên `127.0.0.1`.
 Dừng dịch vụ, giữ nguyên dữ liệu trong volumes (xem mục 5):
 `docker compose down` — **không** thêm `-v`.
 
-Hangfire Dashboard (`/hangfire`): chỉ nhận `Authorization: Bearer <JWT có role
-Admin>`; không nhận token qua query string, chưa có luồng đăng nhập browser an
-toàn, nên Admin chưa mở được Dashboard qua trình duyệt — đang chờ nhóm/TV1 chốt.
+Hangfire Dashboard (`/hangfire`) chỉ nhận `Authorization: Bearer <JWT có role
+Admin>`; không nhận token qua query string. Nhóm xác nhận Dashboard và cơ chế
+phân quyền hiện tại đã được kiểm thử trên Docker và nghiệm thu ngày 17/11/2026.
 
 ### Cách B: Script local (môi trường Development ngoài Docker)
 

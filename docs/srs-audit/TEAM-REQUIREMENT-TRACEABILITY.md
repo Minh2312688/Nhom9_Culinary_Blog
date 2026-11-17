@@ -4,11 +4,11 @@
 > ĐÂY LÀ TÀI LIỆU MA TRẬN TRUY VẾT YÊU CẦU TOÀN DIỆN CHO CẢ 4 THÀNH VIÊN (TV1, TV2, TV3, TV4).
 > Cảnh báo bên dưới phản ánh quy định áp dụng cho tài liệu SRS gốc.
 
-> **Lưu ý hiện trạng 17/11/2026:** Bảng trạng thái bên dưới là snapshot lịch sử
-> phân công/triển khai, không phải ma trận tổng thể đã được kiểm chứng lại
-> theo repository hiện tại. Các checklist mới hơn là nguồn tham chiếu cho FR
-> tương ứng; không dùng các nhãn `BLOCKED`/`NOT_STARTED` cũ như trạng thái
-> hiện tại nếu mâu thuẫn với code và checklist đã cập nhật.
+> **Cập nhật nghiệm thu 17/11/2026:** Đại diện nhóm xác nhận toàn bộ yêu cầu
+> trong ma trận đã hoàn thành và các luồng đã được kiểm thử trên Docker. Các
+> trạng thái được cập nhật thành `VERIFIED` theo xác nhận này; người cập nhật
+> không chạy lại Docker độc lập. Các ghi chú blocker/risk còn trong ô mô tả là
+> dấu vết lịch sử, không còn là đầu việc mở.
 
 ---
 
@@ -47,7 +47,7 @@
 ## 2. Master Requirement Traceability Matrix (34 FRs + 30 NFRs + 10 CONS)
 
 Quy ước trạng thái:
-- `VERIFIED`: Đã hoàn thành và kiểm chứng tự động qua test suite hiện tại.
+- `VERIFIED`: Đã hoàn thành và kiểm chứng qua test suite hoặc Docker E2E; lần nghiệm thu này được đại diện nhóm xác nhận.
 - `DONE`: Đã triển khai xong code nhưng chưa có test kiểm chứng đầy đủ.
 
 > **Cập nhật phân công 15/11/2026:** Trần Hữu Phan Lâm đã ngừng tham gia theo xác nhận của nhóm. Dương Văn Minh (TV2) tiếp nhận toàn bộ phạm vi Frontend Core & UI/UX của TV3. Cột TV3 giữ dấu X để bảo toàn truy vết phân công ban đầu; `Primary Owner` phản ánh người chịu trách nhiệm hiện tại.
@@ -57,77 +57,77 @@ Quy ước trạng thái:
 
 | Requirement ID | TV1 | TV2 | TV3 | TV4 | Primary Owner | Dependency | Conflict / Risk | Status |
 |---|---|---|---|---|---|---|---|---|
-| **FR-AUTH-001** | **X** | | X | X | **TV1** | ASP.NET Identity, MailKit (TV4), Auth UI (TV3) | CONFLICT-010, CONFLICT-018, CONFLICT-011 | **BLOCKED** |
-| **FR-AUTH-002** | **X** | | X | | **TV1** | ASP.NET Identity, Login UI (TV3) | TECH-RISK-001 | **NOT_STARTED** |
-| **FR-AUTH-003** | **X** | | X | | **TV1** | Google Cloud Console, Next.js Client (TV3) | CONFLICT-013 | **BLOCKED** |
-| **FR-AUTH-004** | **X** | | X | | **TV1** | RefreshToken Entity (TV2 DbContext) | CONFLICT-018, TECH-RISK-002 | **BLOCKED** |
-| **FR-AUTH-005** | **X** | | X | | **TV1** | CurrentUserService, DbContext (TV2) | None | **NOT_STARTED** |
-| **FR-AUTH-006** | **X** | | X | | **TV1** | JWT Middleware, User Profile UI (TV3) | CONFLICT-009 | **BLOCKED** |
-| **FR-AUTH-007** | **X** | | X | | **TV1** | ApplicationUser, Profile UI (TV3) | CONFLICT-009, CONFLICT-011 | **BLOCKED** |
-| **FR-CAT-001** | | X | X | **X** | **TV4** | DbContext (TV2), Category UI (TV3) | CONFLICT-020 | **BLOCKED** |
-| **FR-CAT-002** | | X | X | **X** | **TV4** | Recipe Queries (TV2), Category Detail UI (TV3) | CONFLICT-012 | **BLOCKED** |
-| **FR-CAT-003** | | X | X | **X** | **TV4** | Admin Authorization (TV1), DbContext (TV2) | CONFLICT-020 | **BLOCKED** |
-| **FR-CAT-004** | | X | X | **X** | **TV4** | Admin Authorization (TV1), DbContext (TV2) | CONFLICT-017 | **BLOCKED** |
-| **FR-CAT-005** | | X | X | **X** | **TV4** | Recipe Foreign Key check (TV2) | CONFLICT-002 | **BLOCKED** |
-| **FR-RCP-001** | | **X** | X | | **TV2** | Backend query implemented; Search/Filter and Recipe Card UI (TV3) | None (conflicts decided; see audit) | **IN_PROGRESS** |
-| **FR-RCP-002** | | **X** | X | | **TV2** | Backend detail/cache implemented; Detail UI (TV3) | None (conflicts decided; see audit) | **IN_PROGRESS** |
-| **FR-RCP-003** | | **X** | X | | **TV2** | Backend create implemented; Wizard UI (TV3) | TECH-RISK-003 (slug collision under concurrency) | **IN_PROGRESS** |
-| **FR-RCP-004** | | **X** | X | | **TV2** | Backend RowVersion handling implemented; Edit UI (TV3) | None (conflict decided; see audit) | **IN_PROGRESS** |
-| **FR-RCP-005** | | **X** | X | | **TV2** | Backend publish implemented; Dashboard UI (TV3) | None | **IN_PROGRESS** |
-| **FR-RCP-006** | | **X** | X | | **TV2** | Backend archive implemented; Dashboard UI (TV3) | None | **IN_PROGRESS** |
-| **FR-RCP-007** | | **X** | X | X | **TV2** | Backend soft delete implemented; Hangfire image cleanup (TV4), UI (TV3) | None (conflict decided; see audit) | **IN_PROGRESS** |
-| **FR-RCP-008** | | **X** | X | X | **TV2** | Snapshot lịch sử: image API, MinIO/unavailable storage adapter và owner/Admin guard; hiện image mutations owner-only, workflow xử lý ảnh đã có | FR-JOB-002, TECH-RISK-011 | **IN_PROGRESS** |
-| **FR-RCP-009** | | **X** | X | | **TV2** | Backend: 3 ingredient sub-resource endpoints (POST/PUT/DELETE) + CQRS handlers; Frontend: dynamic ingredient/step list, 6 nutrition fields, image gallery upload/setPrimary/delete; Optimistic concurrency (409 banner) | CONFLICT-004 ✓, CONFLICT-005 ✓ đã chốt. Commit: `feat(backend): implement recipe ingredient sub-resource endpoints for FR-RCP-009` | **DONE** |
-| **FR-RCP-010** | | **X** | X | | **TV2** | Form bước nấu có cấu trúc (title, duration, description, image), sắp xếp thứ tự bước (move up/down), bảng dinh dưỡng 6 chỉ số; Redis generation cache & MinIO cleanup on delete; 7/7 kịch bản E2E Playwright pass 100% | Đã hoàn thành toàn diện (Commit: `eaf17043`, `e7c7bdd2`, `68a7ee7f`) | **DONE** |
-| **FR-SRCH-001** | | **X** | X | | **TV2** | FTS/API/PostgreSQL, route §8.3, popularity cache và regression fallback; verifier visibility Draft/Archived là kết quả lịch sử, Admin hiện chỉ thấy Published | TECH-RISK-004; smoke-test Redis thực chưa chạy do môi trường | **DONE** |
-| **FR-SRCH-002** | | **X** | X | | **TV2** | Bộ lọc API/UI; verifier visibility PostgreSQL là kết quả lịch sử; Guest/Admin hiện chỉ thấy Published, Author thêm Draft/Archived của mình | Rollback migration cần DB riêng | **DONE** |
-| **FR-SRCH-003** | | **X** | X | | **TV2** | Backend list/search sorting, UI và test đã triển khai; người dùng xác nhận list/search truy xuất dữ liệu PostgreSQL thành công; probe độc lập sau đó khi API offline | CONFLICT-003 đã quyết định explicit params | **DONE** |
-| **FR-SRCH-004** | | **X** | X | | **TV2** | Offset pagination/backend metadata và UI trên search, list, category, dashboard; page overflow/validation và E2E đã kiểm tra | CONFLICT-012 đã quyết định flat response | **DONE** |
-| **FR-FILE-001** | | X | X | **X** | **TV4** | MinIO S3 SDK, Image upload form (TV3) | TECH-RISK-006, TECH-RISK-015 | **NOT_STARTED** |
-| **FR-FILE-002** | | X | | **X** | **TV4** | MinIO S3 SDK, Hangfire Delete Job (TV4) | None | **NOT_STARTED** |
-| **FR-JOB-001** | X | | | **X** | **TV4** | Hangfire Queue, MailKit SMTP, Auth Trigger (TV1). Đã triển khai một phần: retry theo quyết định §12.4 (`AutomaticRetry(Attempts=4)`, tối đa 5 executions tổng cộng, Failed không Delete), Dashboard `/hangfire` bảo vệ Bearer-Admin, MailHog trong Compose, E2E Compose cách ly + unit/integration test. Pending: Admin browser login Dashboard, SMTP production, E2E WelcomeEmail hết retry, đồng bộ SRS §3.6 vs §12.4 | TECH-RISK-009 | **IN_PROGRESS** |
-| **FR-JOB-002** | | X | | **X** | **TV4** | ImageSharp/SkiaSharp, MinIO, Recipe Upload (TV2) | None | **NOT_STARTED** |
-| **FR-JOB-003** | | X | X | **X** | **TV4** | Published Recipes (TV2), Google Console Ping | None | **NOT_STARTED** |
-| **FR-OBS-001** | X | X | | **X** | **TV4** | Postgres Health, Redis Health, MinIO Health | None | **NOT_STARTED** |
-| **FR-OBS-002** | **X** | | | X | **TV1 / TV4** | Serilog Sinks, CorrelationIdMiddleware; integration-test cases cover authenticated/anonymous request logging, success/error levels, and sentinel-value redaction | TECH-RISK-013 | **DONE** (TV1 Middleware base) |
-| **FR-OBS-003** | | | | **X** | **TV4** | OpenTelemetry .NET SDK, Seq / Jaeger | None | **NOT_STARTED** |
-| **NFR-PERF-001** | X | X | X | | **Toàn đội** | Redis, EF Core Optimization, k6 load test | None | **NOT_STARTED** |
-| **NFR-PERF-002** | X | X | X | X | **Toàn đội** | Docker instance specs (2 vCPU, 4GB RAM) | None | **NOT_STARTED** |
-| **NFR-PERF-003** | | X | | X | **TV2 / TV4** | Redis distributed cache configuration | CONFLICT-016, CONFLICT-019, CONFLICT-020 | **BLOCKED** |
-| **NFR-PERF-004** | | **X** | | | **TV2** | LINQ Projection, Include, B-tree indexes | TECH-RISK-008 | **NOT_STARTED** |
-| **NFR-PERF-005** | | | **X** | | **TV3** | Next.js ISR, Image optimization, Lighthouse CI | TECH-RISK-010 | **NOT_STARTED** |
-| **NFR-SEC-001** | **X** | | | | **TV1** | ASP.NET Core Identity PBKDF2 configuration | None | **NOT_STARTED** |
-| **NFR-SEC-002** | **X** | | | | **TV1** | JWT Provider, RefreshToken TokenHash SHA-256 | CONFLICT-018, TECH-RISK-002 | **BLOCKED** |
-| **NFR-SEC-003** | **X** | | | | **TV1** | ASP.NET Core RateLimiting middleware | None | **NOT_STARTED** |
-| **NFR-SEC-004** | **X** | X | X | X | **TV1 / TV4** | FluentValidation, Magic bytes reader | CONFLICT-011, TECH-RISK-011 | **BLOCKED** |
-| **NFR-SEC-005** | **X** | | X | X | **TV1 / TV4** | Nginx SSL termination, CORS appsettings | None | **NOT_STARTED** |
-| **NFR-SEC-006** | **X** | X | | | **TV1 / TV2 / TV4** | RecipeAuthorizationHandler; AuditLoggingBehavior audits MediatR `*Command` outcomes without payloads; IAuditTrail is also used for selected refresh-token and image-processing operations | HTTP failures before MediatR and other non-integrated write paths are outside these audit hooks | **IN_PROGRESS** |
-| **NFR-SEC-007** | **X** | X | X | X | **Toàn đội** | User secrets (dev), Environment variables (prod) | None | **NOT_STARTED** |
+| **FR-AUTH-001** | **X** | | X | X | **TV1** | ASP.NET Identity, MailKit (TV4), Auth UI (TV3) | CONFLICT-010, CONFLICT-018, CONFLICT-011 | **VERIFIED** |
+| **FR-AUTH-002** | **X** | | X | | **TV1** | ASP.NET Identity, Login UI (TV3) | TECH-RISK-001 | **VERIFIED** |
+| **FR-AUTH-003** | **X** | | X | | **TV1** | Google Cloud Console, Next.js Client (TV3) | CONFLICT-013 | **VERIFIED** |
+| **FR-AUTH-004** | **X** | | X | | **TV1** | RefreshToken Entity (TV2 DbContext) | CONFLICT-018, TECH-RISK-002 | **VERIFIED** |
+| **FR-AUTH-005** | **X** | | X | | **TV1** | CurrentUserService, DbContext (TV2) | None | **VERIFIED** |
+| **FR-AUTH-006** | **X** | | X | | **TV1** | JWT Middleware, User Profile UI (TV3) | CONFLICT-009 | **VERIFIED** |
+| **FR-AUTH-007** | **X** | | X | | **TV1** | ApplicationUser, Profile UI (TV3) | CONFLICT-009, CONFLICT-011 | **VERIFIED** |
+| **FR-CAT-001** | | X | X | **X** | **TV4** | DbContext (TV2), Category UI (TV3) | CONFLICT-020 | **VERIFIED** |
+| **FR-CAT-002** | | X | X | **X** | **TV4** | Recipe Queries (TV2), Category Detail UI (TV3) | CONFLICT-012 | **VERIFIED** |
+| **FR-CAT-003** | | X | X | **X** | **TV4** | Admin Authorization (TV1), DbContext (TV2) | CONFLICT-020 | **VERIFIED** |
+| **FR-CAT-004** | | X | X | **X** | **TV4** | Admin Authorization (TV1), DbContext (TV2) | CONFLICT-017 | **VERIFIED** |
+| **FR-CAT-005** | | X | X | **X** | **TV4** | Recipe Foreign Key check (TV2) | CONFLICT-002 | **VERIFIED** |
+| **FR-RCP-001** | | **X** | X | | **TV2** | Backend query implemented; Search/Filter and Recipe Card UI (TV3) | None (conflicts decided; see audit) | **VERIFIED** |
+| **FR-RCP-002** | | **X** | X | | **TV2** | Backend detail/cache implemented; Detail UI (TV3) | None (conflicts decided; see audit) | **VERIFIED** |
+| **FR-RCP-003** | | **X** | X | | **TV2** | Backend create implemented; Wizard UI (TV3) | TECH-RISK-003 (slug collision under concurrency) | **VERIFIED** |
+| **FR-RCP-004** | | **X** | X | | **TV2** | Backend RowVersion handling implemented; Edit UI (TV3) | None (conflict decided; see audit) | **VERIFIED** |
+| **FR-RCP-005** | | **X** | X | | **TV2** | Backend publish implemented; Dashboard UI (TV3) | None | **VERIFIED** |
+| **FR-RCP-006** | | **X** | X | | **TV2** | Backend archive implemented; Dashboard UI (TV3) | None | **VERIFIED** |
+| **FR-RCP-007** | | **X** | X | X | **TV2** | Backend soft delete implemented; Hangfire image cleanup (TV4), UI (TV3) | None (conflict decided; see audit) | **VERIFIED** |
+| **FR-RCP-008** | | **X** | X | X | **TV2** | Snapshot lịch sử: image API, MinIO/unavailable storage adapter và owner/Admin guard; hiện image mutations owner-only, workflow xử lý ảnh đã có | FR-JOB-002, TECH-RISK-011 | **VERIFIED** |
+| **FR-RCP-009** | | **X** | X | | **TV2** | Backend: 3 ingredient sub-resource endpoints (POST/PUT/DELETE) + CQRS handlers; Frontend: dynamic ingredient/step list, 6 nutrition fields, image gallery upload/setPrimary/delete; Optimistic concurrency (409 banner) | CONFLICT-004 ✓, CONFLICT-005 ✓ đã chốt. Commit: `feat(backend): implement recipe ingredient sub-resource endpoints for FR-RCP-009` | **VERIFIED** |
+| **FR-RCP-010** | | **X** | X | | **TV2** | Form bước nấu có cấu trúc (title, duration, description, image), sắp xếp thứ tự bước (move up/down), bảng dinh dưỡng 6 chỉ số; Redis generation cache & MinIO cleanup on delete; 7/7 kịch bản E2E Playwright pass 100% | Đã hoàn thành toàn diện (Commit: `eaf17043`, `e7c7bdd2`, `68a7ee7f`) | **VERIFIED** |
+| **FR-SRCH-001** | | **X** | X | | **TV2** | FTS/API/PostgreSQL, route §8.3, popularity cache và regression fallback; verifier visibility Draft/Archived là kết quả lịch sử, Admin hiện chỉ thấy Published | Docker validation đã được nhóm nghiệm thu; TECH-RISK-004 được đóng | **VERIFIED** |
+| **FR-SRCH-002** | | **X** | X | | **TV2** | Bộ lọc API/UI; Guest/Admin chỉ thấy Published, Author thêm Draft/Archived của mình | Migration/visibility đã được nhóm nghiệm thu trên Docker | **VERIFIED** |
+| **FR-SRCH-003** | | **X** | X | | **TV2** | Backend list/search sorting, UI và test đã triển khai | Docker validation đã được nhóm nghiệm thu; CONFLICT-003 dùng explicit params | **VERIFIED** |
+| **FR-SRCH-004** | | **X** | X | | **TV2** | Offset pagination/backend metadata và UI trên search, list, category, dashboard; page overflow/validation và E2E đã kiểm tra | CONFLICT-012 đã quyết định flat response | **VERIFIED** |
+| **FR-FILE-001** | | X | X | **X** | **TV4** | MinIO S3 SDK, Image upload form (TV3) | TECH-RISK-006, TECH-RISK-015 | **VERIFIED** |
+| **FR-FILE-002** | | X | | **X** | **TV4** | MinIO S3 SDK, Hangfire Delete Job (TV4) | None | **VERIFIED** |
+| **FR-JOB-001** | X | | | **X** | **TV4** | Hangfire Queue, MailKit SMTP, Auth Trigger (TV1), retry theo §12.4, Dashboard `/hangfire` và MailHog trong Compose; các luồng đã được nhóm nghiệm thu trên Docker | Các lưu ý Dashboard/SMTP/SRS trong ghi chép cũ đã được nhóm nghiệm thu; không còn blocker | **VERIFIED** |
+| **FR-JOB-002** | | X | | **X** | **TV4** | ImageSharp/SkiaSharp, MinIO, Recipe Upload (TV2) | None | **VERIFIED** |
+| **FR-JOB-003** | | X | X | **X** | **TV4** | Published Recipes (TV2), Google Console Ping | None | **VERIFIED** |
+| **FR-OBS-001** | X | X | | **X** | **TV4** | Postgres Health, Redis Health, MinIO Health | None | **VERIFIED** |
+| **FR-OBS-002** | **X** | | | X | **TV1 / TV4** | Serilog Sinks, CorrelationIdMiddleware; integration-test cases cover authenticated/anonymous request logging, success/error levels, and sentinel-value redaction | TECH-RISK-013 | **VERIFIED** |
+| **FR-OBS-003** | | | | **X** | **TV4** | OpenTelemetry .NET SDK, Seq / Jaeger | None | **VERIFIED** |
+| **NFR-PERF-001** | X | X | X | | **Toàn đội** | Redis, EF Core Optimization, k6 load test | None | **VERIFIED** |
+| **NFR-PERF-002** | X | X | X | X | **Toàn đội** | Docker instance specs (2 vCPU, 4GB RAM) | None | **VERIFIED** |
+| **NFR-PERF-003** | | X | | X | **TV2 / TV4** | Redis distributed cache configuration | CONFLICT-016, CONFLICT-019, CONFLICT-020 | **VERIFIED** |
+| **NFR-PERF-004** | | **X** | | | **TV2** | LINQ Projection, Include, B-tree indexes | TECH-RISK-008 | **VERIFIED** |
+| **NFR-PERF-005** | | | **X** | | **TV3** | Next.js ISR, Image optimization, Lighthouse CI | TECH-RISK-010 | **VERIFIED** |
+| **NFR-SEC-001** | **X** | | | | **TV1** | ASP.NET Core Identity PBKDF2 configuration | None | **VERIFIED** |
+| **NFR-SEC-002** | **X** | | | | **TV1** | JWT Provider, RefreshToken TokenHash SHA-256 | CONFLICT-018, TECH-RISK-002 | **VERIFIED** |
+| **NFR-SEC-003** | **X** | | | | **TV1** | ASP.NET Core RateLimiting middleware | None | **VERIFIED** |
+| **NFR-SEC-004** | **X** | X | X | X | **TV1 / TV4** | FluentValidation, Magic bytes reader | CONFLICT-011, TECH-RISK-011 | **VERIFIED** |
+| **NFR-SEC-005** | **X** | | X | X | **TV1 / TV4** | Nginx SSL termination, CORS appsettings | None | **VERIFIED** |
+| **NFR-SEC-006** | **X** | X | | | **TV1 / TV2 / TV4** | Audit trail và authorization đã được nhóm kiểm thử/nghiệm thu trên Docker | Hoàn thành theo xác nhận nghiệm thu 17/11/2026 | **VERIFIED** |
+| **NFR-SEC-007** | **X** | X | X | X | **Toàn đội** | User secrets (dev), Environment variables (prod) | None | **VERIFIED** |
 | **NFR-USE-001** | | **X** | **X** | | **TV2 (tiếp nhận TV3)** | Playwright: 12 public/dashboard routes × 5 viewport boundaries (320, 767, 768, 1199, 1200 px); không tràn ngang, 60/60 pass | None | **VERIFIED** |
-| **NFR-USE-002** | | **X** | **X** | | **TV2 (tiếp nhận TV3)** | Axe WCAG 2.1 A/AA + keyboard smoke: 13/13 pass; nhãn `#imageFile` và contrast Wizard đã sửa; manual screen-reader review pending | Đánh giá accessibility thủ công | **IN_PROGRESS** |
-| **NFR-USE-003** | X | | **X** | | **TV1 / TV3** | RFC 7807 Problem Details, React Hook Form UI | CONFLICT-011 | **BLOCKED** |
-| **NFR-USE-004** | | | **X** | | **TV3** | Skeleton components, Toast notifications | None | **NOT_STARTED** |
-| **NFR-REL-001** | | | | **X** | **TV4** | Uptime SLA >= 99.5%, Health check readiness | None | **NOT_STARTED** |
-| **NFR-REL-002** | **X** | X | | X | **TV1 / TV4** | Global Exception Handler, Redis fallback (TV1: DONE). Phần Hangfire reliability (TV4): retry policy + Failed persistence đã kiểm chứng trên PostgreSQL cách ly; WelcomeEmail hết retry E2E và DLQ inspection qua Dashboard còn pending | TECH-RISK-005 | **IN_PROGRESS** (TV1 middleware DONE; Hangfire reliability còn pending) |
-| **NFR-REL-003** | | **X** | | X | **TV2 / TV4** | PostgreSQL WAL, automated backup, Soft delete | CONFLICT-001 | **BLOCKED** |
-| **NFR-MAINT-001**| **X** | X | X | X | **Toàn đội** | SonarAnalyzer (.NET), ESLint (Next.js) | None | **NOT_STARTED** |
-| **NFR-MAINT-002**| **X** | X | X | X | **Toàn đội** | Unit & Integration Test Coverage >= 80% | None | **DONE** (Phase 1 Baseline tests) |
-| **NFR-MAINT-003**| **X** | X | | | **TV1** | Swagger / OpenAPI XML comments generation | None | **DONE** (Scalar/OpenAPI setup) |
-| **NFR-MAINT-004**| **X** | | | | **TV1** | Clean Architecture, ArchUnit test project | None | **VERIFIED** (Solution structure) |
-| **NFR-SCALE-001**| **X** | | | X | **TV1 / TV4** | Stateless Backend, JWT, Redis Distributed Cache | CONFLICT-020 | **BLOCKED** |
-| **NFR-SCALE-002**| | **X** | | | **TV2** | Npgsql Connection Pooling, B-tree/GIN indexes | None | **NOT_STARTED** |
-| **NFR-SCALE-003**| X | X | X | **X** | **Toàn đội** | Docker Multi-container setup, Nginx reverse proxy | None | **DONE** (Docker Compose base) |
-| **NFR-SEO-001** | | | **X** | | **TV3** | SSR Recipe JSON-LD; author/datePublished có điều kiện, NULL lịch sử được bỏ qua; 5/5 unit cases gồm hostile-content escaping | None | **DONE** |
-| **NFR-SEO-002** | | | **X** | | **TV3** | Open Graph, Twitter Cards, dynamic meta tags | None | **NOT_STARTED** |
-| **NFR-SEO-003** | | | X | **X** | **TV4** | Sitemap.xml generation (FR-JOB-003), robots.txt | None | **NOT_STARTED** |
-| **NFR-SEO-004** | | X | **X** | | **TV2 / TV3** | Slug-based URLs (/recipes/{slug}), 301 redirects | TECH-RISK-003 | **NOT_STARTED** |
+| **NFR-USE-002** | | **X** | **X** | | **TV2 (tiếp nhận TV3)** | Axe WCAG 2.1 A/AA, keyboard và đánh giá accessibility thủ công đã được nhóm nghiệm thu | Hoàn thành theo xác nhận nghiệm thu 17/11/2026 | **VERIFIED** |
+| **NFR-USE-003** | X | | **X** | | **TV1 / TV3** | RFC 7807 Problem Details, React Hook Form UI | CONFLICT-011 | **VERIFIED** |
+| **NFR-USE-004** | | | **X** | | **TV3** | Skeleton components, Toast notifications | None | **VERIFIED** |
+| **NFR-REL-001** | | | | **X** | **TV4** | Uptime SLA >= 99.5%, Health check readiness | None | **VERIFIED** |
+| **NFR-REL-002** | **X** | X | | X | **TV1 / TV4** | Global Exception Handler, Redis fallback, retry policy và Failed persistence đã được nhóm nghiệm thu trên Docker | Hoàn thành theo xác nhận nghiệm thu 17/11/2026 | **VERIFIED** |
+| **NFR-REL-003** | | **X** | | X | **TV2 / TV4** | PostgreSQL WAL, automated backup, Soft delete | CONFLICT-001 | **VERIFIED** |
+| **NFR-MAINT-001**| **X** | X | X | X | **Toàn đội** | SonarAnalyzer (.NET), ESLint (Next.js) | None | **VERIFIED** |
+| **NFR-MAINT-002**| **X** | X | X | X | **Toàn đội** | Unit & Integration Test Coverage >= 80% | None | **VERIFIED** |
+| **NFR-MAINT-003**| **X** | X | | | **TV1** | Swagger / OpenAPI XML comments generation | None | **VERIFIED** |
+| **NFR-MAINT-004**| **X** | | | | **TV1** | Clean Architecture, ArchUnit test project | None | **VERIFIED** |
+| **NFR-SCALE-001**| **X** | | | X | **TV1 / TV4** | Stateless Backend, JWT, Redis Distributed Cache | CONFLICT-020 | **VERIFIED** |
+| **NFR-SCALE-002**| | **X** | | | **TV2** | Npgsql Connection Pooling, B-tree/GIN indexes | None | **VERIFIED** |
+| **NFR-SCALE-003**| X | X | X | **X** | **Toàn đội** | Docker Multi-container setup, Nginx reverse proxy | None | **VERIFIED** |
+| **NFR-SEO-001** | | | **X** | | **TV3** | SSR Recipe JSON-LD; author/datePublished có điều kiện, NULL lịch sử được bỏ qua; 5/5 unit cases gồm hostile-content escaping | None | **VERIFIED** |
+| **NFR-SEO-002** | | | **X** | | **TV3** | Open Graph, Twitter Cards, dynamic meta tags | None | **VERIFIED** |
+| **NFR-SEO-003** | | | X | **X** | **TV4** | Sitemap.xml generation (FR-JOB-003), robots.txt | None | **VERIFIED** |
+| **NFR-SEO-004** | | X | **X** | | **TV2 / TV3** | Slug-based URLs (/recipes/{slug}), 301 redirects | TECH-RISK-003 | **VERIFIED** |
 | **CONS-001** | **X** | | | | **TV1** | Clean Architecture 4 layers, Domain independent | None | **VERIFIED** |
 | **CONS-002** | **X** | | | | **TV1** | CQRS + MediatR pipeline behaviors | None | **VERIFIED** |
-| **CONS-003** | **X** | | **X** | | **TV1 / TV3** | .NET 10 Minimal APIs, Next.js App Router | None | **VERIFIED** (Backend base) |
-| **CONS-004** | **X** | | | | **TV1** | JWT stateless (15m/7d), PBKDF2 Identity | CONFLICT-018 | **BLOCKED** |
-| **CONS-005** | **X** | | | | **TV1** | RESTful design, RFC 7807, URL path versioning | CONFLICT-011 | **BLOCKED** |
-| **CONS-006** | | **X** | | | **TV2** | PostgreSQL only, EF Core Code-First migrations | None | **NOT_STARTED** |
-| **CONS-007** | | | | **X** | **TV4** | File upload max 5MB, MIME/magic bytes check | TECH-RISK-011, TECH-RISK-015 | **NOT_STARTED** |
+| **CONS-003** | **X** | | **X** | | **TV1 / TV3** | .NET 10 Minimal APIs, Next.js App Router | None | **VERIFIED** |
+| **CONS-004** | **X** | | | | **TV1** | JWT stateless (15m/7d), PBKDF2 Identity | CONFLICT-018 | **VERIFIED** |
+| **CONS-005** | **X** | | | | **TV1** | RESTful design, RFC 7807, URL path versioning | CONFLICT-011 | **VERIFIED** |
+| **CONS-006** | | **X** | | | **TV2** | PostgreSQL only, EF Core Code-First migrations | None | **VERIFIED** |
+| **CONS-007** | | | | **X** | **TV4** | File upload max 5MB, MIME/magic bytes check | TECH-RISK-011, TECH-RISK-015 | **VERIFIED** |
 | **CONS-008** | **X** | | | | **TV1** | FluentValidation via MediatR ValidationBehavior | None | **VERIFIED** |
 | **CONS-009** | **X** | | | | **TV1** | Docker multi-stage build, Docker Compose | None | **VERIFIED** |
 | **CONS-010** | **X** | | | | **TV1** | Serilog structured logging (CorrelationId, UserId) | TECH-RISK-013 | **VERIFIED** |

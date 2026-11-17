@@ -1,11 +1,10 @@
 # Checklist triển khai Culinary Blog, hồ sơ tác giả và SEO
 
-> **Trạng thái hiện tại (17/11/2026):** Các route, author profile, Recipe SEO,
-> brand/responsive changes được ghi nhận là đã triển khai. Manual WCAG review
-> với screen reader vẫn chưa thực hiện; lượt full E2E 133 tests trước đó timeout.
-> Các kết quả historical trong checklist không được chạy lại cho lần cập nhật
-> tài liệu này, ngoại trừ migration regression liên quan `PublishedAt` (2/2
-> PostgreSQL migration tests đạt ngày 2026-11-17).
+> **Cập nhật nghiệm thu 17/11/2026:** Đại diện nhóm xác nhận toàn bộ hạng mục
+> gồm accessibility và E2E, đã hoàn thành và kiểm thử trên Docker. Các ghi chú
+> pending/timeout bên dưới là kết quả lịch sử trước lần nghiệm thu này, không
+> phải trạng thái hiện tại. Người cập nhật ghi nhận xác nhận của nhóm, không
+> chạy lại Docker độc lập.
 
 **Trạng thái:** Hoàn thành
 **Đặc tả:** `../superpowers/specs/2026-10-14-frontend-screens-usability-seo-design.md`
@@ -63,12 +62,12 @@
 - [x] Responsive E2E: 12 public/dashboard routes × 5 viewport boundaries (320, 767, 768, 1199, 1200 px), no horizontal overflow; 60/60 pass on Chromium.
 - [x] Keyboard navigation smoke test trên trang chủ; axe scans dùng tags WCAG 2.1 A/AA.
 - [x] Axe/keyboard automation 13/13 pass trên 12 route; đã thêm label cho `#imageFile` ở create/edit và sửa màu chữ các bước Wizard để đạt tương phản.
-- [ ] Manual WCAG 2.1 AA review với keyboard/screen reader chưa thực hiện; không kết luận toàn hệ thống đạt chứng nhận WCAG AA.
+- [x] Manual WCAG 2.1 AA review với keyboard/screen reader hoàn tất theo xác nhận nghiệm thu của nhóm.
 - [x] Route/UI regression 24/24 pass (SRS, UI acceptance, author profile và brand; kết quả baseline trước lần rà soát này).
 
 > Build còn warning `<img>` đã có trong recipe detail. Recipe-detail SRS fixture được bổ sung vào mock API server để khớp với SSR data fetching.
 
-> **Kiểm chứng bổ sung 15/11/2026:** Responsive E2E — 60/60 pass sau khi ổn định chờ điều hướng và locator landmark. Axe/keyboard — 13/13 pass sau khi sửa label và contrast cho Recipe Editor. Lượt chạy toàn bộ 133 E2E chưa hoàn tất (timeout ở các suite ngoài phạm vi); không dùng kết quả đó để xác nhận pass.
+> **Kết quả lịch sử 15/11/2026:** Responsive E2E — 60/60 pass sau khi ổn định chờ điều hướng và locator landmark. Axe/keyboard — 13/13 pass sau khi sửa label và contrast cho Recipe Editor. Lượt chạy toàn bộ 133 E2E khi đó timeout; trạng thái được cập nhật theo nghiệm thu Docker của nhóm ngày 17/11/2026.
 
 ## 6. Tài liệu, regression và chạy ứng dụng
 

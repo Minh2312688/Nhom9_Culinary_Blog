@@ -117,6 +117,9 @@ function allowedMethods(segments: string[]): HttpMethod[] | null {
   if (segments.length === 2 && resource === "auth" && first === "change-password") {
     return ["POST"];
   }
+  if (segments.length === 2 && resource === "admin" && first === "users") {
+    return ["GET"];
+  }
 
   return null;
 }

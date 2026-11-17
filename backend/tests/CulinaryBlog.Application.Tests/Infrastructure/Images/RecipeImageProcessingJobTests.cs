@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Files;
+using CulinaryBlog.Application.Common.Contracts;
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Storage;
 using CulinaryBlog.Domain.Entities;
@@ -142,7 +143,8 @@ public sealed class RecipeImageProcessingJobTests
 
         public RecipeImageProcessingJob CreateJob(IFileStorageService storage)
             => new(Db, storage, Cache, new RecipeImageProcessor(),
-                NullLogger<RecipeImageProcessingJob>.Instance);
+                NullLogger<RecipeImageProcessingJob>.Instance,
+                Mock.Of<IAuditTrail>());
 
         public Mock<IFileStorageService> CreateStorage()
         {

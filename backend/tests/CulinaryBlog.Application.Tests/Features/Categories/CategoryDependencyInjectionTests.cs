@@ -1,9 +1,12 @@
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Persistence;
+using CulinaryBlog.Application.Common.Behaviors;
+using CulinaryBlog.Application.DTOs;
 using CulinaryBlog.Application.Features.Categories.Commands.CreateCategory;
 using CulinaryBlog.Application.Features.Categories.Commands.UpdateCategory;
 using CulinaryBlog.Application.Features.Categories.Queries.GetCategories;
 using CulinaryBlog.Application.Features.Categories.Queries.GetCategoryBySlug;
+using CulinaryBlog.Application.Tests.Common;
 using CulinaryBlog.Infrastructure.Persistence;
 using CulinaryBlog.Infrastructure.Repositories;
 using FluentAssertions;
@@ -11,6 +14,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -22,7 +26,9 @@ namespace CulinaryBlog.Application.Tests.Features.Categories;
 /// </summary>
 public class CategoryDependencyInjectionTests
 {
-    private static ServiceProvider BuildProvider(CategoryTestDbContext context)
+    private static ServiceProvider BuildProvider(
+        CategoryTestDbContext context,
+        ListLogger<AuditLoggingBehavior<CreateCategoryCommand, CategoryDto>>? auditLogger = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -36,6 +42,10 @@ public class CategoryDependencyInjectionTests
         services.AddScoped<ICategoryRepository>(_ => new CategoryRepository(context));
         // Category handlers phụ thuộc ICategoryCache; unit test dùng fake in-memory.
         services.AddSingleton<ICategoryCache, FakeCategoryCache>();
+        if (auditLogger is not null)
+        {
+            services.AddSingleton<ILogger<AuditLoggingBehavior<CreateCategoryCommand, CategoryDto>>>(auditLogger);
+        }
 
         return services.BuildServiceProvider();
     }
@@ -70,6 +80,28 @@ public class CategoryDependencyInjectionTests
 
         var storedCount = await context.Categories.CountAsync();
         storedCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Send_InvalidCreateCategoryCommand_ShouldLogAuditFailure()
+    {
+        using var context = CategoryTestDbContext.CreateInMemory();
+        var auditLogger = new ListLogger<AuditLoggingBehavior<CreateCategoryCommand, CategoryDto>>();
+        using var provider = BuildProvider(context, auditLogger);
+        var sender = provider.GetRequiredService<ISender>();
+
+        var act = async () => await sender.Send(new CreateCategoryCommand("A", "not logged"));
+
+        await act.Should().ThrowAsync<ValidationException>();
+        var auditLogs = auditLogger.Entries
+            .Where(entry => entry.Message.StartsWith("Audit", StringComparison.Ordinal))
+            .ToList();
+
+        auditLogs.Should().ContainSingle();
+        auditLogs[0].Message.Should().Contain("CreateCategoryCommand");
+        auditLogs[0].Message.Should().Contain("Failure");
+        auditLogs[0].Message.Should().Contain(nameof(ValidationException));
+        auditLogs[0].Message.Should().NotContain("not logged");
     }
 
     [Fact]

@@ -76,6 +76,9 @@ public interface IIdentityService
         string userId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<UserProfileResult>> GetAllUserProfilesAsync(
+        CancellationToken cancellationToken = default);
+
     Task<UserProfileResult?> UpdateUserProfileAsync(
         string userId,
         string? displayName,

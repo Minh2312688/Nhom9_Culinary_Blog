@@ -10,6 +10,7 @@ const navigation = [
   { href: "/dashboard", label: "Tổng quan" },
   { href: "/dashboard/recipes", label: "Công thức" },
   { href: "/dashboard/categories", label: "Danh mục" },
+  { href: "/dashboard/users", label: "Người dùng" },
 ];
 
 export function DashboardShell({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -17,7 +18,7 @@ export function DashboardShell({ children }: Readonly<{ children: React.ReactNod
   const { data: session } = useSession();
   const isAdmin = session?.user.roles?.includes("Admin") ?? false;
   const visibleNavigation = navigation.filter(({ href }) =>
-    href !== "/dashboard/categories" || isAdmin,
+    !["/dashboard/categories", "/dashboard/users"].includes(href) || isAdmin,
   );
 
   return (

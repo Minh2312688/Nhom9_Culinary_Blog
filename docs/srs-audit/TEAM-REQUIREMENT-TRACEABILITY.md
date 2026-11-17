@@ -89,7 +89,7 @@ Quy ước trạng thái:
 | **FR-JOB-002** | | X | | **X** | **TV4** | ImageSharp/SkiaSharp, MinIO, Recipe Upload (TV2) | None | **NOT_STARTED** |
 | **FR-JOB-003** | | X | X | **X** | **TV4** | Published Recipes (TV2), Google Console Ping | None | **NOT_STARTED** |
 | **FR-OBS-001** | X | X | | **X** | **TV4** | Postgres Health, Redis Health, MinIO Health | None | **NOT_STARTED** |
-| **FR-OBS-002** | **X** | | | X | **TV1 / TV4** | Serilog Sinks, CorrelationIdMiddleware | TECH-RISK-013 | **DONE** (TV1 Middleware base) |
+| **FR-OBS-002** | **X** | | | X | **TV1 / TV4** | Serilog Sinks, CorrelationIdMiddleware; integration-test cases cover authenticated/anonymous request logging, success/error levels, and sentinel-value redaction | TECH-RISK-013 | **DONE** (TV1 Middleware base) |
 | **FR-OBS-003** | | | | **X** | **TV4** | OpenTelemetry .NET SDK, Seq / Jaeger | None | **NOT_STARTED** |
 | **NFR-PERF-001** | X | X | X | | **Toàn đội** | Redis, EF Core Optimization, k6 load test | None | **NOT_STARTED** |
 | **NFR-PERF-002** | X | X | X | X | **Toàn đội** | Docker instance specs (2 vCPU, 4GB RAM) | None | **NOT_STARTED** |
@@ -101,7 +101,7 @@ Quy ước trạng thái:
 | **NFR-SEC-003** | **X** | | | | **TV1** | ASP.NET Core RateLimiting middleware | None | **NOT_STARTED** |
 | **NFR-SEC-004** | **X** | X | X | X | **TV1 / TV4** | FluentValidation, Magic bytes reader | CONFLICT-011, TECH-RISK-011 | **BLOCKED** |
 | **NFR-SEC-005** | **X** | | X | X | **TV1 / TV4** | Nginx SSL termination, CORS appsettings | None | **NOT_STARTED** |
-| **NFR-SEC-006** | **X** | X | | | **TV1** | RecipeAuthorizationHandler (Resource ownership) | None | **NOT_STARTED** |
+| **NFR-SEC-006** | **X** | X | | | **TV1 / TV2 / TV4** | RecipeAuthorizationHandler; AuditLoggingBehavior audits MediatR `*Command` outcomes without payloads; IAuditTrail is also used for selected refresh-token and image-processing operations | HTTP failures before MediatR and other non-integrated write paths are outside these audit hooks | **IN_PROGRESS** |
 | **NFR-SEC-007** | **X** | X | X | X | **Toàn đội** | User secrets (dev), Environment variables (prod) | None | **NOT_STARTED** |
 | **NFR-USE-001** | | **X** | **X** | | **TV2 (tiếp nhận TV3)** | Playwright: 12 public/dashboard routes × 5 viewport boundaries (320, 767, 768, 1199, 1200 px); không tràn ngang, 60/60 pass | None | **VERIFIED** |
 | **NFR-USE-002** | | **X** | **X** | | **TV2 (tiếp nhận TV3)** | Axe WCAG 2.1 A/AA + keyboard smoke: 13/13 pass; nhãn `#imageFile` và contrast Wizard đã sửa; manual screen-reader review pending | Đánh giá accessibility thủ công | **IN_PROGRESS** |
@@ -179,7 +179,7 @@ Quy ước trạng thái:
 - **FR Supported:** Toàn bộ giao diện tương ứng 34 FRs (Auth screens, Category pages, Recipe browsing/detail/wizard, Search UI, Author dashboard).
 - **NFR Owned:** `NFR-PERF-005` (Core Web Vitals), `NFR-USE-001` (Responsive), `NFR-USE-002` (Accessibility a11y), `NFR-USE-003` (Error UX), `NFR-USE-004` (Loading states), `NFR-SEO-001` (JSON-LD), `NFR-SEO-002` (Meta / Open Graph).
 - **CONS Affected:** `CONS-003` (Next.js App Router, không Pages Router).
-- **Routes Managed:** `/`, `/recipes`, `/recipes/[slug]`, `/authors/[id]`, `/categories`, `/categories/[slug]`, `/auth/login`, `/auth/register`, `/dashboard`, `/dashboard/recipes`, `/dashboard/recipes/new`, `/dashboard/recipes/[id]/edit`, `/dashboard/categories`, `/profile`, `/search`.
+- **Routes Managed:** `/`, `/recipes`, `/recipes/[slug]`, `/authors/[id]`, `/categories`, `/categories/[slug]`, `/auth/login`, `/auth/register`, `/dashboard`, `/dashboard/recipes`, `/dashboard/recipes/new`, `/dashboard/recipes/[id]/edit`, `/dashboard/categories`, `/dashboard/users` (Admin-only, read-only repository addition), `/profile`, `/search`.
 - **Dependencies:** TV1 (API Contracts Auth & Tokens), TV2 (API Contracts Recipes & Search), TV4 (API Contracts Categories & Image URLs).
 - **Conflicts liên quan:** `CONFLICT-003` (Sorting query string), `CONFLICT-009` (Display name), `CONFLICT-010` (Register redirect vs auto-login), `CONFLICT-012` (Pagination data shape), `CONFLICT-013` (Google OAuth login flow), `CONFLICT-022` (Browser version matrix).
 - **Technical Risks:** `TECH-RISK-010` (Next.js standalone build & runtime environment variables).

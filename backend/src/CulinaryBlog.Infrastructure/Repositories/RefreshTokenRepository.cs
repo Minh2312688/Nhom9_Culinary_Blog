@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Contracts.Authentication;
+using CulinaryBlog.Application.Common.Contracts;
 using CulinaryBlog.Domain.Entities;
 using CulinaryBlog.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -9,16 +10,32 @@ public class RefreshTokenRepository : IRefreshTokenRepository
 {
     private static readonly SemaphoreSlim InMemoryRotationLock = new(1, 1);
     private readonly ApplicationDbContext _context;
+    private readonly IAuditTrail _auditTrail;
 
-    public RefreshTokenRepository(ApplicationDbContext context)
+    public RefreshTokenRepository(ApplicationDbContext context, IAuditTrail auditTrail)
     {
         _context = context;
+        _auditTrail = auditTrail;
     }
 
     public async Task SaveRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken = default)
     {
-        await _context.RefreshTokens.AddAsync(token, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _context.RefreshTokens.AddAsync(token, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+            _auditTrail.LogSuccess("Auth.RefreshToken.Create", "RefreshToken", token.Id);
+        }
+        catch (OperationCanceledException exception)
+        {
+            _auditTrail.LogCanceled("Auth.RefreshToken.Create", "RefreshToken", token.Id, exception);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _auditTrail.LogFailure("Auth.RefreshToken.Create", "RefreshToken", token.Id, exception);
+            throw;
+        }
     }
 
     public Task<RefreshToken?> GetByHashAsync(string tokenHash, CancellationToken cancellationToken = default) =>
@@ -26,11 +43,58 @@ public class RefreshTokenRepository : IRefreshTokenRepository
 
     public async Task UpdateRefreshTokenAsync(RefreshToken token, CancellationToken cancellationToken = default)
     {
-        _context.RefreshTokens.Update(token);
-        await _context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            _context.RefreshTokens.Update(token);
+            await _context.SaveChangesAsync(cancellationToken);
+            _auditTrail.LogSuccess("Auth.RefreshToken.Update", "RefreshToken", token.Id);
+        }
+        catch (OperationCanceledException exception)
+        {
+            _auditTrail.LogCanceled("Auth.RefreshToken.Update", "RefreshToken", token.Id, exception);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _auditTrail.LogFailure("Auth.RefreshToken.Update", "RefreshToken", token.Id, exception);
+            throw;
+        }
     }
 
     public async Task<bool> TryRotateRefreshTokenAsync(RefreshToken current, RefreshToken replacement, CancellationToken cancellationToken = default)
+    {
+        const string action = "Auth.RefreshToken.Rotate";
+        try
+        {
+            var rotated = await TryRotateRefreshTokenCoreAsync(current, replacement, cancellationToken);
+            if (rotated)
+            {
+                _auditTrail.LogSuccess(action, "RefreshToken", current.Id);
+            }
+            else
+            {
+                _auditTrail.LogFailure(
+                    action,
+                    "RefreshToken",
+                    current.Id,
+                    new InvalidOperationException("Refresh token rotation was not applied."));
+            }
+
+            return rotated;
+        }
+        catch (OperationCanceledException exception)
+        {
+            _auditTrail.LogCanceled(action, "RefreshToken", current.Id, exception);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _auditTrail.LogFailure(action, "RefreshToken", current.Id, exception);
+            throw;
+        }
+    }
+
+    private async Task<bool> TryRotateRefreshTokenCoreAsync(RefreshToken current, RefreshToken replacement, CancellationToken cancellationToken)
     {
         if (!string.Equals(
                 _context.Database.ProviderName,

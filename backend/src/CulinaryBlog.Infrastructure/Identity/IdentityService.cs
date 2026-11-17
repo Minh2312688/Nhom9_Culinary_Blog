@@ -1,6 +1,7 @@
 using CulinaryBlog.Application.Contracts.Authentication;
 using CulinaryBlog.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace CulinaryBlog.Infrastructure.Identity;
 
@@ -219,6 +220,35 @@ public class IdentityService : IIdentityService
             true, user.Id, user.Email, user.DisplayName, user.AvatarUrl, user.Bio,
             user.EmailConfirmed, user.CreatedAt, user.IsActive,
             await _userManager.IsLockedOutAsync(user), await _userManager.GetRolesAsync(user));
+    }
+
+    public async Task<IReadOnlyList<UserProfileResult>> GetAllUserProfilesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var users = await _userManager.Users
+            .AsNoTracking()
+            .OrderBy(user => user.DisplayName)
+            .ThenBy(user => user.Email)
+            .ToListAsync(cancellationToken);
+
+        var profiles = new List<UserProfileResult>(users.Count);
+        foreach (var user in users)
+        {
+            profiles.Add(new UserProfileResult(
+                true,
+                user.Id,
+                user.Email,
+                user.DisplayName,
+                user.AvatarUrl,
+                user.Bio,
+                user.EmailConfirmed,
+                user.CreatedAt,
+                user.IsActive,
+                await _userManager.IsLockedOutAsync(user),
+                await _userManager.GetRolesAsync(user)));
+        }
+
+        return profiles;
     }
 
     public async Task<UserProfileResult?> UpdateUserProfileAsync(

@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Files;
+using CulinaryBlog.Application.Common.Contracts;
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Application.Contracts.Storage;
@@ -18,22 +19,46 @@ public sealed class RecipeImageProcessingJob
     private readonly IRecipeCache cache;
     private readonly RecipeImageProcessor processor;
     private readonly ILogger<RecipeImageProcessingJob> logger;
+    private readonly IAuditTrail auditTrail;
 
     public RecipeImageProcessingJob(
         IApplicationDbContext context,
         IFileStorageService storage,
         IRecipeCache cache,
         RecipeImageProcessor processor,
-        ILogger<RecipeImageProcessingJob> logger)
+        ILogger<RecipeImageProcessingJob> logger,
+        IAuditTrail auditTrail)
     {
         this.context = context;
         this.storage = storage;
         this.cache = cache;
         this.processor = processor;
         this.logger = logger;
+        this.auditTrail = auditTrail;
     }
 
     public async Task ProcessAsync(Guid imageId, CancellationToken cancellationToken)
+    {
+        const string action = "RecipeImage.ProcessVariants";
+        Guid? entityId = imageId == Guid.Empty ? null : imageId;
+        try
+        {
+            await ProcessCoreAsync(imageId, cancellationToken);
+            auditTrail.LogSuccess(action, "RecipeImage", entityId);
+        }
+        catch (OperationCanceledException exception)
+        {
+            auditTrail.LogCanceled(action, "RecipeImage", entityId, exception);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            auditTrail.LogFailure(action, "RecipeImage", entityId, exception);
+            throw;
+        }
+    }
+
+    private async Task ProcessCoreAsync(Guid imageId, CancellationToken cancellationToken)
     {
         if (imageId == Guid.Empty)
         {

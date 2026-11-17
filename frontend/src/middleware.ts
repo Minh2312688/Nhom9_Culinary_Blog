@@ -36,7 +36,8 @@ const authMiddleware = auth((request) => {
   }
 
   if (
-    request.nextUrl.pathname.startsWith("/dashboard/categories") &&
+    (request.nextUrl.pathname.startsWith("/dashboard/categories") ||
+      request.nextUrl.pathname.startsWith("/dashboard/users")) &&
     !request.auth.user.roles?.includes("Admin")
   ) {
     const dashboardUrl = request.nextUrl.clone();

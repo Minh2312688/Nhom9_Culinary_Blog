@@ -3,6 +3,7 @@ import {
   changePasswordApi,
   forgotPasswordApi,
   getProfileApi,
+  getAdminUsersApi,
   resetPasswordApi,
   updateProfileApi,
 } from "@/lib/auth-api";
@@ -18,6 +19,7 @@ import type {
   ResetPasswordRequest,
   UpdateProfileRequest,
   UserProfile,
+  AdminUser,
 } from "@/lib/auth-api";
 import { queryKeys } from "./query-keys";
 
@@ -26,6 +28,14 @@ export function useProfile(userId: string, enabled = true) {
     queryKey: queryKeys.profile.detail(userId),
     queryFn: ({ signal }) => getProfileApi(signal),
     enabled: enabled && Boolean(userId),
+  });
+}
+
+export function useAdminUsers(enabled = true) {
+  return useQuery<AdminUser[], ApiError>({
+    queryKey: queryKeys.admin.users(),
+    queryFn: ({ signal }) => getAdminUsersApi(signal),
+    enabled,
   });
 }
 

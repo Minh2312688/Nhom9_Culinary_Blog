@@ -1127,6 +1127,8 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **Priority:** Must Have (M)
 - **Purpose:** Mọi HTTP request và MediatR command/query được log kèm CorrelationId, phương thức, thời gian xử lý, userId; cảnh báo khi thực thi > 500ms.
 - **Preconditions:** Serilog đã được khởi tạo trong `Program.cs`.
+- **Automated test coverage:** [`SerilogRequestLoggingTests.cs`](../../backend/tests/CulinaryBlog.Integration.Tests/Observability/SerilogRequestLoggingTests.cs) contains integration cases asserting authenticated/anonymous request-summary fields, Debug logging for successful health requests, Error logging for an unmapped endpoint exception, and absence of sentinel bearer-token/password/configuration values from captured sink events. These cases are documented as test coverage, not as a test run performed during this documentation update.
+- **Audit test coverage:** [`AuditLoggingBehaviorTests.cs`](../../backend/tests/CulinaryBlog.Application.Tests/Common/AuditLoggingBehaviorTests.cs) covers command success/failure/cancellation, validation failure, query exclusion, and sensitive-value redaction. [`AuditTrailTests.cs`](../../backend/tests/CulinaryBlog.Application.Tests/Common/AuditTrailTests.cs) and [`RefreshTokenRepositoryAuditTests.cs`](../../backend/tests/CulinaryBlog.Application.Tests/Infrastructure/Authentication/RefreshTokenRepositoryAuditTests.cs) cover audit metadata/redaction and refresh-token create outcomes. Test cases are present; this documentation update did not run them.
 - **Inputs:** `HttpContext`, MediatR Requests.
 - **Outputs:** JSON log events xuất ra Console, File rolling hàng ngày, và Seq server.
 - **Happy path:** 1. `CorrelationIdMiddleware` đọc hoặc sinh mới `X-Correlation-ID` header $\rightarrow$ 2. Đẩy CorrelationId vào Serilog `LogContext` $\rightarrow$ 3. `LoggingBehavior` log bắt đầu và kết thúc request $\rightarrow$ 4. Cảnh báo Warning nếu elapsed > 500ms.
@@ -1332,6 +1334,8 @@ Hệ thống có tổng cộng **64 yêu cầu** được đánh mã tường mi
 - **Technology:** ASP.NET Core AuthorizationHandler (`RecipeAuthorizationHandler`), Serilog.
 - **Affected modules:** Application Layer.
 - **Owner(s):** TV1, TV2.
+- **Audit implementation:** `AuditLoggingBehavior` records all MediatR `*Command` successes, failures and cancellations with user ID and UTC timestamp; it omits request payloads and exception messages. Validation failures are included; queries are excluded.
+- **Audit scope:** `IAuditTrail` additionally records selected refresh-token repository operations and recipe-image variant processing. Requests rejected before MediatR are not covered by the command behavior; this is not evidence that every HTTP write path is audited.
 - **Verification method:** Unit tests và Integration tests với tài khoản Author khác để xác nhận bị chặn HTTP 403 Forbidden.
 - **Related FR:** `FR-RCP-004`, `FR-RCP-005`, `FR-RCP-006`, `FR-RCP-007`, `FR-RCP-008..010`.
 - **Conflict:** Không.
@@ -1808,6 +1812,7 @@ Base URL: `/api/v1`. Toàn bộ response chuẩn hóa JSON theo envelope `{ data
 | 5 | Auth | `POST` | `/auth/logout` | `{ refreshToken }` | (Empty body) | Bearer JWT | 204 No Content | 401: Unauthorized | `FR-AUTH-005` | Không |
 | 6 | Auth | `GET` | `/auth/me` | (None) | `200: { id, email, displayName, avatarUrl, bio, roles }` | Bearer JWT | 200 OK | 401: Unauthorized | `FR-AUTH-006` | Không |
 | 7 | Auth | `PATCH` | `/auth/me` | `{ displayName?, avatarUrl?, bio? }` | `200: { id, email, displayName, avatarUrl, bio }` | Bearer JWT | 200 OK | 400: validation, 401: Unauthorized | `FR-AUTH-007` | `CONFLICT-009` (FullName/UserName vs DisplayName/Bio) |
+| — | Admin | `GET` | `/admin/users` | (None) | `200: AdminUserDto[]` (id, email, displayName, emailConfirmed, createdAt, isActive, isLockedOut, roles) | Bearer + Admin | 200 OK | 401: Unauthorized, 403: Forbidden | Repository addition; not an endpoint specified by an FR in the original SRS | — |
 | 8 | Category | `GET` | `/categories` | (None) | `200: [{ id, name, slug, description, imageUrl, recipeCount }]` | Không | 200 OK | — | `FR-CAT-001` | `CONFLICT-020` |
 | 9 | Category | `GET` | `/categories/{slug}` | Query: `?page=1&pageSize=10&sortBy=...` | `200: { category, recipes: PagedResult }` | Không | 200 OK | 404: Category not found | `FR-CAT-002` | `CONFLICT-012` |
 | 10 | Category | `POST` | `/categories` | `{ name, description?, imageUrl? }` | `201: { id, name, slug, description }` | Bearer + Admin | 201 Created | 400: validation, 403: Forbidden, 409: name đã tồn tại | `FR-CAT-003` | Không |
@@ -1841,7 +1846,7 @@ Base URL: `/api/v1`. Toàn bộ response chuẩn hóa JSON theo envelope `{ data
 
 Hệ thống frontend được xây dựng trên nền tảng **Next.js App Router (React 19)** theo mô hình kết hợp Single Page Application (SPA), Server-Side Rendering (SSR), và Incremental Static Regeneration (ISR).
 
-### 10.1. Danh mục 15 Routes / Màn hình giao diện
+### 10.1. Danh mục Routes / Màn hình giao diện
 
 | Route / Màn hình | Mục đích & Nội dung | Loại Rendering | Yêu cầu Authentication | Quyền hạn (Role) | SEO / Metadata | Owner |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -1858,6 +1863,7 @@ Hệ thống frontend được xây dựng trên nền tảng **Next.js App Rout
 | `/dashboard/recipes/new`| Wizard đa bước tạo công thức mới (Thông tin chung, nguyên liệu, các bước, upload ảnh) | CSR | Bắt buộc | Author, Admin | Noindex, Private | TV3 |
 | `/dashboard/recipes/[id]/edit` | Chỉnh sửa công thức đã có, quản lý gallery ảnh | CSR | Bắt buộc | Owner, Admin | Noindex, Private | TV3 |
 | `/dashboard/categories` | Quản lý danh mục (Thêm, sửa, xóa, sắp xếp orderIndex) | CSR | Bắt buộc | Admin | Noindex, Private | TV3 |
+| `/dashboard/users` | Xem danh sách tài khoản, vai trò, trạng thái và ngày tạo; chỉ đọc | CSR | Bắt buộc | Admin | Noindex, Private | Repository addition; not in original SRS |
 | `/profile` | Xem và cập nhật thông tin cá nhân (DisplayName, AvatarUrl, Bio) | CSR | Bắt buộc | All authenticated users | Noindex, Private | TV3 |
 | `/search` | Trang kết quả tìm kiếm Full-Text Search công thức nấu ăn | SSR | Không | Public | Meta description động | TV3 |
 

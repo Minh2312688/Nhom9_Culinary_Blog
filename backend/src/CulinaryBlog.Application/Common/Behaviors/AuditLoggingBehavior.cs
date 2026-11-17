@@ -6,10 +6,7 @@ using CulinaryBlog.Application.Contracts;
 namespace CulinaryBlog.Application.Common.Behaviors;
 
 /// <summary>
-/// Pipeline Behavior: chỉ audit các request implement IAuditCommand.
-/// Ghi audit SAU khi handler thành công. Handler nthrows lỗi thì KHÔNG audit và KHÔNG catch nuốt lỗi.
-/// UserId lấy từ ICurrentUserService. CorrelationId tự động có từ Serilog LogContext (O-02).
-/// Application KHÔNG dùngASP.NET HttpContext.
+/// Audits MediatR commands without logging request or exception payloads.
 /// </summary>
 public sealed class AuditLoggingBehavior<TRequest, TResponse>
     : IPipelineBehavior<TRequest, TResponse>
@@ -31,50 +28,73 @@ public sealed class AuditLoggingBehavior<TRequest, TResponse>
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
     {
-        // Chỉ audit các request implement IAuditCommand
-        if (request is not IAuditCommand audit)
+        if (!typeof(TRequest).Name.EndsWith("Command", StringComparison.Ordinal))
         {
             return await next(cancellationToken);
         }
 
+        var audit = request as IAuditCommand;
+        var auditAction = audit?.AuditAction ?? typeof(TRequest).Name;
+        var entityType = audit?.EntityType;
+        var entityId = audit?.EntityId;
+        var userId = _currentUserService.UserId;
+        TResponse response;
+
         try
         {
-            var response = await next(cancellationToken);
-
-            // Chỉ ghi audit sau khi handler THÀNH CÔNG
-            var entityId = ResolveEntityId(audit, response);
-
-            _logger.LogInformation(
-                "Audit {AuditAction} {EntityType} {EntityId} by {UserId} at {Timestamp} ({Outcome})",
-                audit.AuditAction,
-                audit.EntityType,
-                entityId,
-                _currentUserService.UserId,
-                DateTimeOffset.UtcNow,
-                "Success");
-
-            return response;
+            response = await next(cancellationToken);
         }
-        catch
+        catch (Exception exception)
         {
-            // Handler nthrows lỗi: KHÔNG audit, KHÔNG catch nuốt — để exception propagates
+            var outcome = exception is OperationCanceledException ? "Canceled" : "Failure";
+            var logLevel = exception is OperationCanceledException ? LogLevel.Information : LogLevel.Warning;
+            try
+            {
+                _logger.Log(
+                    logLevel,
+                    "Audit {AuditAction} {EntityType} {EntityId} by {UserId} at {Timestamp} ({Outcome}, {ExceptionType})",
+                    auditAction,
+                    entityType,
+                    entityId,
+                    userId,
+                    DateTimeOffset.UtcNow,
+                    outcome,
+                    exception.GetType().Name);
+            }
+            catch (Exception auditException)
+            {
+                var auditExceptionType = auditException.GetType().Name;
+                exception.Data["AuditLoggingFailureType"] = auditExceptionType;
+                System.Diagnostics.Trace.TraceError(
+                    "Audit logging failed for {0}; logger exception type {1}.",
+                    auditAction,
+                    auditExceptionType);
+            }
+
             throw;
         }
+
+        entityId ??= audit is null ? null : ResolveEntityId(audit, response);
+
+        _logger.LogInformation(
+            "Audit {AuditAction} {EntityType} {EntityId} by {UserId} at {Timestamp} ({Outcome})",
+            auditAction,
+            entityType,
+            entityId,
+            userId,
+            DateTimeOffset.UtcNow,
+            "Success");
+
+        return response;
     }
 
-    /// <summary>
-    /// Lấy EntityId: ưu tiên từ IAuditCommand (Publish/Delete đã có Id),
-    /// nếu null thì lấy từ response bằng reflection an toàn (Create: response.Id).
-    /// </summary>
     private static Guid? ResolveEntityId(IAuditCommand audit, TResponse response)
     {
-        // Ưu tiên giá trị từ command (Publish/Delete đã set Id)
         if (audit.EntityId.HasValue)
         {
             return audit.EntityId;
         }
 
-        // Create: response là RecipeDetailDto có property Id (Guid)
         if (response is null)
         {
             return null;
@@ -94,7 +114,6 @@ public sealed class AuditLoggingBehavior<TRequest, TResponse>
         }
         catch
         {
-            // Reflection an toàn: không có thì trả null
         }
 
         return null;

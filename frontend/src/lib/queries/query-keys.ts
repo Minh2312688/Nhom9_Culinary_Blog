@@ -30,6 +30,9 @@ export const queryKeys = {
   profile: {
     detail: (userId: string) => ["profile", userId] as const,
   },
+  admin: {
+    users: () => ["admin", "users"] as const,
+  },
   authors: {
     profile: (id: string, page: number) => ["authors", id, page] as const,
   },

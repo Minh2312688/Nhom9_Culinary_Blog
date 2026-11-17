@@ -4,6 +4,8 @@ using Mapster;
 using MapsterMapper;
 using FluentValidation;
 using CulinaryBlog.Application.Common.Behaviors;
+using CulinaryBlog.Application.Common.Contracts;
+using CulinaryBlog.Application.Common.Services;
 namespace CulinaryBlog.Application;
 public static class DependencyInjection
 {
@@ -15,11 +17,12 @@ services)
 services.AddMediatR(cfg =>
     {
         cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
+        cfg.AddOpenBehavior(typeof(AuditLoggingBehavior<,>));
         cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
         cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
-        cfg.AddOpenBehavior(typeof(AuditLoggingBehavior<,>));
     });
  services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+ services.AddScoped<IAuditTrail, AuditTrail>();
  // Cấu hình Mapster — tự động đăng ký TypeAdapterConfig
  var config = TypeAdapterConfig.GlobalSettings;
  config.Scan(Assembly.GetExecutingAssembly());

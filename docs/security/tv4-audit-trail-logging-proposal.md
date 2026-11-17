@@ -1,11 +1,11 @@
 # Đề Xuất Tích Hợp: Ghi Nhận Nhật Ký Kiểm Toán (Audit Trail Logging)
 
-> **Trạng thái hiện tại (17/11/2026):** `AuditLoggingBehavior` đã được đăng ký
-> vào MediatR. Behavior chỉ ghi log thành công cho commands implement
-> `IAuditCommand` (hiện thấy Create, Publish, Delete Recipe); request không
-> implement marker và command thất bại không tạo audit event. Vì vậy không nên
-> diễn giải đây là audit coverage cho mọi HTTP write operation. Mẫu code dưới
-> đây là proposal lịch sử, không phải code đang chạy.
+> **Trạng thái hiện tại (17/11/2026):** `AuditLoggingBehavior` ghi audit cho
+> mọi MediatR request có tên `*Command`, gồm Auth, Category và Recipe commands.
+> Event được ghi cho thành công, thất bại (kèm loại exception) và hủy; lỗi được
+> rethrow. Behavior nằm ngoài validation để ghi nhận cả validation failure.
+> Chỉ metadata được ghi, không có command payload, exception message hay
+> credentials. `IAuditCommand` hiện là metadata bổ sung tùy chọn.
 
 **Dự án:** Culinary Blog – Phát triển Ứng dụng Web Nâng cao (Nhóm 9)
 **Tiêu chuẩn đối chiếu:** SRS v1.0.0 §4.2 trang 42 – `NFR-SEC-006`
@@ -26,11 +26,23 @@ Mục §4.2 trang 42 (`NFR-SEC-006`) yêu cầu:
 
 1. **Module Serilog:** Do TV4 quản lý cấu hình trong `CulinaryBlog.Infrastructure`.
 2. **Ngữ cảnh người dùng (Current User Context):** TV1 đã xây dựng abstraction `ICurrentUserService` nạp `UserId`, `IsAdmin`, `IsAuthenticated` từ `IHttpContextAccessor`.
-3. **Cơ chế ghi log hiện tại:** Serilog ghi log hệ thống và HTTP requests, nhưng chưa có middleware hoặc pipeline behavior chuyên biệt tự động gắn `UserId` và `Timestamp` vào metadata của mọi Write Command.
+3. **Cơ chế ghi log hiện tại:** `AuditLoggingBehavior` dùng `ILogger` (được cấu hình qua Serilog trong API) để ghi action, `UserId`, UTC timestamp và outcome cho mọi MediatR `*Command`. Query được bỏ qua; request payload và exception message không được ghi.
 
 ---
 
-## 3. Thiết Kế Đề Xuất Cho TV4
+## 3. Cơ Chế Đang Triển Khai
+
+- `AuditLoggingBehavior` nhận diện command theo quy ước tên `*Command`; không phụ thuộc vào marker `IAuditCommand`, vì vậy command mới được audit tự động.
+- Audit behavior đăng ký trước `ValidationBehavior`, nên bao phủ command validation thất bại cũng như lỗi từ handler.
+- Thành công ghi `Information`; thất bại ghi `Warning`; cancellation ghi `Information`. Lỗi được rethrow.
+- Event có action, entity metadata nếu command implement `IAuditCommand`, user ID (có thể null với command ẩn danh), timestamp UTC và outcome. Với failure chỉ ghi tên loại exception, không ghi exception object/message hay request payload.
+- Request bị chặn trước MediatR (ví dụ lỗi HTTP binding/authorization) không thuộc audit command pipeline.
+- `IAuditTrail` cũng được gọi riêng cho thao tác tạo/cập nhật/xoay vòng refresh token và job xử lý variants ảnh. Đây là các điểm tích hợp cụ thể, không phải audit tổng quát cho mọi HTTP write hoặc mọi ghi dữ liệu trong hệ thống.
+- Test coverage hiện có: [`AuditLoggingBehaviorTests.cs`](../../backend/tests/CulinaryBlog.Application.Tests/Common/AuditLoggingBehaviorTests.cs), [`AuditTrailTests.cs`](../../backend/tests/CulinaryBlog.Application.Tests/Common/AuditTrailTests.cs) và [`RefreshTokenRepositoryAuditTests.cs`](../../backend/tests/CulinaryBlog.Application.Tests/Infrastructure/Authentication/RefreshTokenRepositoryAuditTests.cs). Các file xác nhận test cases có trong repository; không hàm ý đã chạy lại trong lần cập nhật tài liệu.
+
+## 4. Thiết Kế Ban Đầu (Lịch Sử)
+
+> Code và kế hoạch phối hợp bên dưới lưu lại proposal ban đầu; implementation hiện tại được mô tả ở mục 3.
 
 ### Phương Án: MediatR Pipeline Behavior (`AuditLoggingBehavior`)
 Thực hiện intercept mọi command (write operation) trước/sau khi thực thi:
@@ -92,6 +104,6 @@ public sealed class AuditLoggingBehavior<TRequest, TResponse> : IPipelineBehavio
 
 ---
 
-## 4. Kế Hoạch Phối Hợp
-- TV4 xem xét đề xuất và tiến hành đăng ký `AuditLoggingBehavior` vào MediatR pipeline trong `CulinaryBlog.Application/DependencyInjection.cs` hoặc cấu hình Serilog Enricher.
-- TV1 sẵn sàng hỗ trợ TV4 kiểm thử unit/integration test cho cơ chế audit log.
+## 5. Xác Minh
+
+`dotnet test backend\tests\CulinaryBlog.Application.Tests\CulinaryBlog.Application.Tests.csproj --no-restore` đạt 813/813. Coverage audit kiểm tra command có/không có `IAuditCommand`, `LogoutCommand` không lộ refresh token, success/failure/cancellation, validation failure qua MediatR, query exclusion, và không log password hay exception message.

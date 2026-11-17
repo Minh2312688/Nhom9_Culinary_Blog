@@ -178,6 +178,7 @@ app.MapRecipeImageEndpoints();
 app.MapAuthorEndpoints();
 app.MapSystemEndpoints();
 app.MapAuthEndpoints();
+app.MapAdminUserEndpoints();
 
 // Apply the unified PostgreSQL schema and optionally seed local sample data.
 if (app.Environment.IsDevelopment())

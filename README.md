@@ -76,11 +76,12 @@ Các thành phần được tích hợp theo tiến độ module tương ứng:
 - Các thư viện khác được tích hợp theo từng module.
 
 Các màn hình chính hiện có: trang chủ, danh sách/chi tiết công thức, danh mục,
-tìm kiếm, hồ sơ, xác thực và dashboard quản lý công thức/danh mục. Recipe
-Editor hỗ trợ nhập thông tin chung, nguyên liệu, bước chế biến và xem lại trước
-khi lưu; ảnh và dinh dưỡng được quản lý cùng công thức. Chi tiết công thức hiển
-thị tác giả/ngày xuất bản khi có, ảnh, nguyên liệu, các bước và thông tin dinh
-dưỡng khi dữ liệu có sẵn.
+tìm kiếm, hồ sơ, xác thực và dashboard quản lý công thức/danh mục/người dùng.
+Trang quản lý người dùng chỉ dành cho Admin và chỉ xem, không sửa vai trò hay
+trạng thái tài khoản. Recipe Editor hỗ trợ nhập thông tin chung, nguyên liệu,
+bước chế biến và xem lại trước khi lưu; ảnh và dinh dưỡng được quản lý cùng
+công thức. Chi tiết công thức hiển thị tác giả/ngày xuất bản khi có, ảnh,
+nguyên liệu, các bước và thông tin dinh dưỡng khi dữ liệu có sẵn.
 
 Dashboard của tác giả hiển thị công thức Published cùng Draft/Archived của
 chính họ. Dashboard Admin chỉ hiển thị công thức Published; Admin không được

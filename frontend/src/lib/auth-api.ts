@@ -14,6 +14,17 @@ export interface UserProfile {
   roles: string[];
 }
 
+export interface AdminUser {
+  id: string;
+  email: string;
+  displayName: string;
+  emailConfirmed: boolean;
+  createdAt: string;
+  isActive: boolean;
+  isLockedOut: boolean;
+  roles: string[];
+}
+
 async function request<T>(
   url: string,
   init: RequestInit,
@@ -79,6 +90,14 @@ export function getProfileApi(signal?: AbortSignal): Promise<UserProfile> {
     "/auth/me",
     { method: "GET", signal },
     "Không thể tải thông tin trang cá nhân.",
+  );
+}
+
+export function getAdminUsersApi(signal?: AbortSignal): Promise<AdminUser[]> {
+  return privateRequest(
+    "/admin/users",
+    { method: "GET", signal },
+    "Không thể tải danh sách người dùng.",
   );
 }
 

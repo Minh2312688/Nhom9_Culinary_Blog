@@ -49,11 +49,14 @@ public sealed class SampleRecipeSeederTests : IAsyncLifetime
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(container!.GetConnectionString()));
             services.AddIdentityCore<ApplicationUser>()
+                .AddRoles<IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
 
             await using var serviceProvider = services.BuildServiceProvider();
             await using var scope = serviceProvider.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             await context.Database.MigrateAsync();
 
             var storage = new Mock<IFileStorageService>();
@@ -68,10 +71,13 @@ public sealed class SampleRecipeSeederTests : IAsyncLifetime
 
             await Lab02DataSeeder.SeedAsync(
                 context,
-                scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>(),
+                userManager,
+                roleManager,
                 storage.Object,
                 sampleDataPath,
                 NullLogger.Instance);
+
+            (await roleManager.RoleExistsAsync("Author")).Should().BeTrue();
 
             var recipe = await context.Recipes
                 .Include(item => item.Images)
@@ -85,7 +91,8 @@ public sealed class SampleRecipeSeederTests : IAsyncLifetime
             await context.SaveChangesAsync();
             await Lab02DataSeeder.SeedAsync(
                 context,
-                scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>(),
+                userManager,
+                roleManager,
                 storage.Object,
                 sampleDataPath,
                 NullLogger.Instance);
@@ -102,7 +109,8 @@ public sealed class SampleRecipeSeederTests : IAsyncLifetime
             nutritionStillExists.Should().BeFalse();
             await Lab02DataSeeder.SeedAsync(
                 context,
-                scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>(),
+                userManager,
+                roleManager,
                 storage.Object,
                 sampleDataPath,
                 NullLogger.Instance);
@@ -122,7 +130,8 @@ public sealed class SampleRecipeSeederTests : IAsyncLifetime
             nutritionExistsAfterHardDelete.Should().BeFalse();
             await Lab02DataSeeder.SeedAsync(
                 context,
-                scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>(),
+                userManager,
+                roleManager,
                 storage.Object,
                 sampleDataPath,
                 NullLogger.Instance);
@@ -155,11 +164,14 @@ public sealed class SampleRecipeSeederTests : IAsyncLifetime
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(container!.GetConnectionString()));
             services.AddIdentityCore<ApplicationUser>()
+                .AddRoles<IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
 
             await using var serviceProvider = services.BuildServiceProvider();
             await using var scope = serviceProvider.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             await context.Database.MigrateAsync();
             var existingImageCategory = Category.Create("Món Việt");
             existingImageCategory.ImageUrl = "https://media.example.test/categories/custom.webp";
@@ -179,7 +191,8 @@ public sealed class SampleRecipeSeederTests : IAsyncLifetime
 
             await Lab02DataSeeder.SeedAsync(
                 context,
-                scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>(),
+                userManager,
+                roleManager,
                 storage.Object,
                 sampleDataPath,
                 NullLogger.Instance);

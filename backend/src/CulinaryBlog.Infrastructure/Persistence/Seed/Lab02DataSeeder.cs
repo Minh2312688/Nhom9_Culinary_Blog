@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using CulinaryBlog.Domain.Constants;
 using CulinaryBlog.Application.Common.Files;
 using CulinaryBlog.Application.Contracts.Storage;
 using CulinaryBlog.Domain.Entities;
@@ -50,6 +51,7 @@ public static class Lab02DataSeeder
     public static async Task SeedAsync(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
+        RoleManager<IdentityRole> roleManager,
         IFileStorageService storage,
         string sampleDataDirectory,
         ILogger logger,
@@ -69,7 +71,7 @@ public static class Lab02DataSeeder
 
         foreach (var sample in recipes)
         {
-            var author = await EnsureAuthorAsync(userManager, sample.Author);
+            var author = await EnsureAuthorAsync(userManager, roleManager, sample.Author);
             var slug = Slugify(sample.Title);
             var recipe = await context.Recipes
                 .IgnoreQueryFilters()
@@ -219,29 +221,51 @@ public static class Lab02DataSeeder
 
     private static async Task<ApplicationUser> EnsureAuthorAsync(
         UserManager<ApplicationUser> userManager,
+        RoleManager<IdentityRole> roleManager,
         string displayName)
     {
-        var email = $"sample.{Slugify(displayName).Replace('-', '.')}@culinaryblog.local";
-        var author = await userManager.FindByEmailAsync(email);
-        if (author is not null)
+        if (!await roleManager.RoleExistsAsync(AppRoles.Author))
         {
-            return author;
+            var roleCreateResult = await roleManager.CreateAsync(new IdentityRole(AppRoles.Author));
+            if (!roleCreateResult.Succeeded)
+            {
+                var errors = string.Join(", ", roleCreateResult.Errors.Select(error => error.Description));
+                throw new InvalidOperationException($"Failed to create Author role: {errors}");
+            }
         }
 
-        author = new ApplicationUser
+        var email = $"sample.{Slugify(displayName).Replace('-', '.')}@culinaryblog.local";
+        var author = await userManager.FindByEmailAsync(email);
+        if (author is null)
         {
-            Id = Guid.NewGuid().ToString(),
-            UserName = email,
-            Email = email,
-            EmailConfirmed = true,
-            DisplayName = displayName.Trim(),
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-        var result = await userManager.CreateAsync(author);
-        if (!result.Succeeded)
+            author = new ApplicationUser
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserName = email,
+                Email = email,
+                EmailConfirmed = true,
+                DisplayName = displayName.Trim(),
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            var createResult = await userManager.CreateAsync(author, "Admin123!");
+            if (!createResult.Succeeded)
+            {
+                var errors = string.Join(", ", createResult.Errors.Select(error => error.Description));
+                throw new InvalidOperationException(
+                    $"Failed to create sample author '{displayName}': {errors}");
+            }
+        }
+
+        if (!await userManager.IsInRoleAsync(author, AppRoles.Author))
         {
-            var errors = string.Join(", ", result.Errors.Select(error => error.Description));
-            throw new InvalidOperationException($"Failed to create sample author '{displayName}': {errors}");
+            var roleResult = await userManager.AddToRoleAsync(author, AppRoles.Author);
+            if (!roleResult.Succeeded)
+            {
+                var errors = string.Join(", ", roleResult.Errors.Select(error => error.Description));
+                throw new InvalidOperationException(
+                    $"Failed to assign Author role to '{displayName}': {errors}");
+            }
         }
 
         return author;

@@ -218,6 +218,7 @@ if (app.Environment.IsDevelopment())
             await CulinaryBlog.Infrastructure.Persistence.Seed.Lab02DataSeeder.SeedAsync(
                 db,
                 userManager,
+                scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Identity.RoleManager<Microsoft.AspNetCore.Identity.IdentityRole>>(),
                 fileStorage,
                 sampleDataDirectory,
                 logger);

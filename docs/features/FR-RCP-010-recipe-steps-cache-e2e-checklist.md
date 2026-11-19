@@ -1,11 +1,15 @@
 # Checklist Triển Khai: Bước Nấu Có Cấu Trúc, Cache Redis, Xóa Ảnh & E2E Testing
 
-> **Trạng thái hiện tại (17/11/2026):** Backend step commands, editor bước có cấu
+> **Ghi nhận trạng thái tại 17/11/2026:** Backend step commands, editor bước có cấu
 > trúc, detail UI, cache invalidation và PostgreSQL Testcontainers tests đều có
 > trong repository. Test results phía dưới là lịch sử, không được chạy lại trong
 > lần cập nhật tài liệu này. Step/ingredient/image mutations hiện chỉ dành cho
 > chủ sở hữu; Admin không được sửa nested data. Riêng migration regression
 > đạt 2/2 ngày 2026-11-17.
+>
+> **Cập nhật quyền (19/11/2026):** Admin hiện được quản lý nested data của mọi
+> recipe; Author vẫn chỉ được quản lý recipe của mình. Quyền Admin bị từ chối
+> ghi bên dưới là ghi nhận lịch sử, không còn mô tả policy hiện tại.
 
 > **Trạng thái:** `[x]` Đã hoàn thành (Completed)  
 > **Người phụ trách:** Dương Văn Minh (TV2 – MSSV: 2312688)  

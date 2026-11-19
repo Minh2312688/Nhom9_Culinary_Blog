@@ -84,8 +84,11 @@ công thức. Chi tiết công thức hiển thị tác giả/ngày xuất bản
 nguyên liệu, các bước và thông tin dinh dưỡng khi dữ liệu có sẵn.
 
 Dashboard của tác giả hiển thị công thức Published cùng Draft/Archived của
-chính họ. Dashboard Admin chỉ hiển thị công thức Published; Admin không được
-xem Draft/Archived qua danh sách hoặc trang chi tiết riêng tư.
+chính họ. Admin có thể quản lý công thức của mọi tác giả ở mọi trạng thái:
+xem danh sách và chi tiết riêng tư, tạo, sửa, xuất bản, lưu trữ, xóa, và quản
+lý nguyên liệu, bước nấu cùng ảnh. Danh sách này dùng API quản trị riêng;
+danh sách/tìm kiếm công khai vẫn chỉ trả công thức Published. Các shortcut
+quản trị trên trang tổng quan Admin được giữ nguyên.
 
 Chạy frontend từ thư mục `frontend`:
 

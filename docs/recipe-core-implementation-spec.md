@@ -1,8 +1,8 @@
 # Đặc tả triển khai Recipe Core và dữ liệu báo cáo
 
-> **Trạng thái hiện tại: 17/11/2026.** Tài liệu này gồm ghi nhận báo cáo và đặc
-> tả backend/frontend qua nhiều thời điểm. Mục mang ngày cũ là lịch sử; các
-> quyền hiện tại, sample seed và giới hạn còn lại được cập nhật theo code/tests.
+> **Trạng thái hiện tại: 19/11/2026.** Tài liệu này gồm ghi nhận báo cáo và đặc
+> tả backend/frontend qua nhiều thời điểm. Mục mang ngày cũ là lịch sử; quyền
+> hiện tại, sample seed và giới hạn còn lại được cập nhật theo code/tests.
 
 ## Phạm vi
 
@@ -143,10 +143,10 @@ Các quyết định trong plan được dùng làm hợp đồng hiện tại:
 |---|---|
 | Xóa | Soft delete: gọi `Remove` sẽ được `ApplicationDbContext.SaveChangesAsync` chuyển thành `IsDeleted = true`. |
 | Trạng thái | `Draft = 0`, `Published = 1`, `Archived = 2`. |
-| Hiển thị danh sách | Anonymous và Admin chỉ thấy Published; tác giả thấy Published cùng Draft/Archived của chính họ. |
-| Hiển thị chi tiết công khai theo slug | Published cho anonymous; recipe chưa Published chỉ tác giả xem được, Admin bị từ chối. |
-| Xem chi tiết riêng tư theo ID | Tác giả xem recipe của mình; Admin chỉ xem Published, không xem Draft/Archived. |
-| Mutation | Update/publish/archive và ingredient/step/image operations chỉ owner; Admin có thể tạo recipe và chỉ xóa được Published recipe theo policy hiện tại. |
+| Hiển thị danh sách | Khách và Admin dùng danh sách/tìm kiếm thông thường chỉ thấy Published; Author đã đăng nhập còn thấy các trạng thái của recipe mình. API quản trị riêng cho Admin trả mọi trạng thái của tất cả tác giả. |
+| Hiển thị chi tiết công khai theo slug | Published cho anonymous; recipe chưa Published chỉ tác giả sở hữu xem được qua route slug. |
+| Xem chi tiết riêng tư theo ID | Author xem recipe của mình; Admin xem recipe ở mọi trạng thái của tất cả tác giả. |
+| Mutation | Author quản lý recipe của mình; Admin quản lý recipe của mọi tác giả, gồm tạo/sửa/xuất bản/lưu trữ/xóa và ingredient/step/image operations. |
 | Sort | Dùng `sortBy` và `sortOrder`, không dùng prefix `-`. |
 | Pagination | Dùng `PaginatedResult<T>` dạng phẳng: `items`, `totalCount`, `page`, `pageSize`, `totalPages`, `hasNextPage`, `hasPreviousPage`. |
 | Concurrency | RowVersion không khớp trả HTTP 409 Conflict. |
@@ -249,8 +249,15 @@ Handler áp dụng visibility trước, sau đó filter, count, sort và Skip/Ta
 Handler đọc cache trước. Cache miss sẽ query recipe cùng Ingredients, Steps,
 Images và Nutrition bằng eager loading với `AsSplitQuery()` để tránh nhân chéo
 dữ liệu từ nhiều collection. Recipe không tồn tại trả 404. Recipe không
-Published chỉ cho owner xem; Admin không được đọc Draft/Archived qua route này.
+Published chỉ cho owner xem qua route slug; Admin dùng route chi tiết riêng tư
+theo ID để xem Draft/Archived.
 Kết quả hợp lệ được cache 5 phút.
+
+### GET `/api/v1/admin/recipes`
+
+Route yêu cầu `AdminPolicy` và trả danh sách mọi trạng thái của tất cả tác giả.
+Đây là endpoint quản trị; `GET /api/v1/recipes/` và các route public/search
+không thay đổi visibility và vẫn chỉ trả Published cho Admin.
 
 ### POST `/api/v1/recipes`
 
@@ -268,28 +275,32 @@ Validation chính:
 
 ### PUT `/api/v1/recipes/{id}`
 
-Yêu cầu authorization. Route id được gán vào command, nên client không thể cập nhật nhầm resource khác route. Body phải chứa `RowVersion` byte array. Handler tải recipe, chỉ cho owner sửa (Admin bị từ chối), đặt `OriginalValue` của RowVersion rồi lưu. EF concurrency exception được đổi thành `ConcurrencyException`, middleware trả 409.
+Yêu cầu authorization. Route id được gán vào command, nên client không thể cập nhật nhầm resource khác route. Body phải chứa `RowVersion` byte array. Owner sửa recipe của mình; Admin được sửa recipe của mọi tác giả. Handler đặt `OriginalValue` của RowVersion rồi lưu. EF concurrency exception được đổi thành `ConcurrencyException`, middleware trả 409.
 
-Update hiện thay thế các ingredient/step đang có bằng tập nested mới và giữ các entity cũ ở trạng thái soft-deleted. Nutrition được thay thế theo payload. Chỉ owner được update; Admin bị từ chối.
+Update hiện thay thế các ingredient/step đang có bằng tập nested mới và giữ các entity cũ ở trạng thái soft-deleted. Nutrition được thay thế theo payload.
 
 ### PATCH `/api/v1/recipes/{id}/publish`
 
-Yêu cầu owner. Admin không được publish/archive recipe qua các handler hiện tại. Chỉ chuyển sang Published khi recipe có ít nhất một ingredient và một step. Vi phạm điều kiện trả 400.
+Yêu cầu owner hoặc Admin. Chỉ chuyển sang Published khi recipe có ít nhất một ingredient và một step. Vi phạm điều kiện trả 400.
 
 ### PATCH `/api/v1/recipes/{id}/archive`
 
-Yêu cầu owner. Admin không được chuyển status sang Archived.
+Yêu cầu owner hoặc Admin để chuyển trạng thái sang Archived.
 
 ### DELETE `/api/v1/recipes/{id}`
 
-Owner được xóa recipe của mình; Admin chỉ được xóa recipe Published. `DbContext` biến delete thành soft delete, vì vậy record vẫn còn trong database nhưng không xuất hiện qua query thông thường. API trả 204.
+Owner được xóa recipe của mình; Admin được xóa recipe của mọi tác giả ở mọi trạng thái. `DbContext` biến delete thành soft delete, vì vậy record vẫn còn trong database nhưng không xuất hiện qua query thông thường. API trả 204.
 
-Ingredient, step và image mutations yêu cầu owner; Admin không được sửa nested
-resources dù có quyền quản trị category hoặc xóa Published recipe.
+Ingredient, step và image mutations cho phép owner thao tác trên recipe của
+mình hoặc Admin thao tác trên mọi recipe.
 
 ## 5. Authorization và lỗi
 
-`CurrentUserService` lấy user id từ `ClaimTypes.NameIdentifier` hoặc claim `sub`, và Admin từ role claim. Application layer vẫn kiểm tra quyền tại handler, không chỉ dựa vào endpoint authorization.
+`Program.cs` đăng ký `AdminPolicy` (role Admin) và `AuthorPolicy` (role Author
+hoặc Admin), rồi bật authentication/authorization middleware trước khi map các
+endpoint. `CurrentUserService` lấy user id từ `ClaimTypes.NameIdentifier` hoặc
+claim `sub`, và Admin từ role claim. Application layer vẫn kiểm tra quyền tại
+handler, không chỉ dựa vào endpoint authorization.
 
 Các lỗi được middleware ánh xạ:
 

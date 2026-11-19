@@ -5,12 +5,16 @@
 > **Ngày lập:** 28/10/2026  
 > **Trạng thái:** [x] Đã hoàn thành (Completed - Verified with 7/7 E2E tests passing, 138/138 integration tests passing)
 
-> **Cập nhật trạng thái 17/11/2026:** Implementation và tests được ghi nhận
+> **Ghi nhận trạng thái tại 17/11/2026:** Implementation và tests được ghi nhận
 > trong repository. Các kết quả trên là evidence lịch sử, không được chạy lại
 > trong lần cập nhật tài liệu này. Chỉ chủ sở hữu có thể sửa steps, ingredients
 > và images; Admin chỉ được xem Published recipe và không có quyền sửa các
 > nested resources. `PostgresMigrationTests` có regression nâng cấp dữ liệu
 > legacy; migration test suite đạt 2/2 ngày 2026-11-17.
+>
+> **Cập nhật quyền 19/11/2026:** Admin hiện được xem và quản lý recipe mọi tác
+> giả ở mọi trạng thái, bao gồm steps, ingredients và images. Author vẫn chỉ
+> quản lý recipe của mình. Danh sách/tìm kiếm công khai vẫn giới hạn Published.
 
 ---
 
@@ -40,7 +44,7 @@ Theo SRS (§3.3 trang 35–36, §7.3 trang 57, §8.5 trang 65 và SRS-AUDIT), t�
      - Hiển thị đúng dữ liệu trên giao diện chi tiết.
      - Chỉnh sửa công thức, cập nhật dinh dưỡng, thêm/bớt/đổi thứ tự bước.
      - Upload ảnh, đặt ảnh chính, xóa ảnh.
-     - Kiểm tra quyền truy cập (Guest, Admin và non-owner bị chặn; Owner được phép).
+     - Kiểm tra quyền truy cập: Guest và non-owner không có quyền bị chặn; Owner quản lý recipe của mình; Admin được quản lý recipe của mọi tác giả.
      - Kiểm tra dọn dẹp ảnh và xóa công thức.
 
 ---

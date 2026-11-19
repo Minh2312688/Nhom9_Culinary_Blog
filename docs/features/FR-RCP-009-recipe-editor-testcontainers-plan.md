@@ -1,10 +1,9 @@
 # Kế hoạch Triển khai Chi tiết: FR-RCP-009, UI Recipe Editor & PostgreSQL Testcontainers
 
-> **Trạng thái hiện tại (17/11/2026):** Các hạng mục FR-RCP-009, editor dinh
+> **Ghi nhận trạng thái tại 17/11/2026:** Các hạng mục FR-RCP-009, editor dinh
 > dưỡng/ảnh/nguyên liệu và PostgreSQL Testcontainers đã được triển khai theo
-> checklist liên kết. Đây vẫn là kế hoạch lịch sử; các câu khẳng định cũ về
-> quyền Admin trên ảnh/nested data đã bị thay thế: hiện chỉ chủ sở hữu được
-> sửa ingredients, steps và images. Kết quả test ghi trong kế hoạch không được
+> checklist liên kết. Đây vẫn là kế hoạch lịch sử; tại thời điểm ghi chú, policy
+> chỉ cho chủ sở hữu sửa ingredients, steps và images. Kết quả test ghi trong kế hoạch không được
 > chạy lại trong lần cập nhật tài liệu này, ngoại trừ `PostgresMigrationTests`
 > (2/2 đạt ngày 2026-11-17). Test nâng cấp dữ liệu legacy hiện nằm trong
 > `backend/tests/CulinaryBlog.Integration.Tests/Persistence/PostgresMigrationTests.cs`;
@@ -12,6 +11,10 @@
 >
 > Các mô tả về khoảng trống kỹ thuật ở mục 1 ghi lại baseline tại thời điểm
 > lập kế hoạch, không phải tình hình hiện tại.
+>
+> **Cập nhật quyền (19/11/2026):** Admin hiện có thể quản lý recipe của mọi tác
+> giả, bao gồm ảnh, nguyên liệu và bước nấu. Ghi chú 17/11 cùng các bước kiểm
+> tra quyền bên dưới phản ánh policy tại thời điểm triển khai checklist.
 
 > **Tài liệu:** Kế hoạch kỹ thuật chi tiết (Technical Implementation Plan)  
 > **Người thực hiện:** Dương Văn Minh (TV2 – MSSV: 2312688)  

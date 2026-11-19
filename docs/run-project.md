@@ -123,9 +123,15 @@ Chi tiết công thức hiển thị ảnh chính và gallery ảnh phụ, thờ
 độ khó, nguyên liệu theo thứ tự, các bước có tiêu đề/thời lượng/ảnh minh họa và
 dinh dưỡng theo khẩu phần khi dữ liệu có sẵn. Nếu thiếu nguyên liệu hoặc bước,
 trang hiển thị trạng thái rỗng thay vì danh sách trống. Tác giả xem công thức
-chưa xuất bản trong `/dashboard/recipes/{id}`; trang public `/recipes/{slug}`
-chỉ tải công thức Published. Dashboard Admin chỉ liệt kê công thức Published
-và không mở được chi tiết Draft/Archived.
+chưa xuất bản của mình trong `/dashboard/recipes/{id}`; trang public
+`/recipes/{slug}` chỉ hiển thị công thức Published hoặc công thức chưa xuất bản
+của chính tác giả. Dashboard Admin dùng danh sách quản trị
+`GET /api/v1/admin/recipes` để xem mọi trạng thái của tất cả tác giả; Admin có
+thể mở chi tiết riêng tư theo ID và thực hiện đầy đủ thao tác quản lý công
+thức. Danh sách/tìm kiếm công khai vẫn chỉ trả công thức Published. Cấu hình
+`Program.cs` đăng ký `AdminPolicy` chỉ cho Admin và `AuthorPolicy` cho Author
+hoặc Admin; quyền sở hữu recipe được kiểm tra thêm ở Application handlers.
+Các shortcut quản trị trên trang tổng quan Admin không thay đổi.
 
 ## 3. Chạy thử Welcome Email
 

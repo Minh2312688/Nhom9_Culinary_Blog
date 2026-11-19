@@ -215,6 +215,17 @@ export async function getMyRecipes(
   });
 }
 
+export async function getAdminRecipes(
+  signal: AbortSignal,
+  pageSize = 12,
+  page = 1,
+): Promise<PaginatedResult<RecipeSummary>> {
+  return privateRequest(`/admin/recipes?page=${page}&pageSize=${pageSize}`, {
+    method: "GET",
+    signal,
+  });
+}
+
 export async function getPrivateRecipe(
   id: string,
   signal?: AbortSignal,

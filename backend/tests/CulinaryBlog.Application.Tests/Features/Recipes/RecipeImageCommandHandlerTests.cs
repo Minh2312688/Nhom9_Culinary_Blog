@@ -264,17 +264,21 @@ public sealed class RecipeImageCommandHandlerTests
     }
 
     [Fact]
-    public async Task ImageCommands_RejectAdminEdits()
+    public async Task ImageCommands_AllowAdminEditsToAnotherAuthorsRecipe()
     {
-        await using var fixture = await RecipeImageFixture.CreateAsync(imageCount: 1);
+        await using var fixture = await RecipeImageFixture.CreateAsync(imageCount: 2);
         fixture.User.IsAdmin = true;
         fixture.User.Id = "administrator";
-        var image = await fixture.Db.RecipeImages.SingleAsync();
+        var image = await fixture.Db.RecipeImages.OrderBy(item => item.OrderIndex).LastAsync();
         var handler = new SetPrimaryRecipeImageCommandHandler(
             fixture.Db, fixture.User, new RecordingRecipeCache());
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
-            handler.Handle(new SetPrimaryRecipeImageCommand(fixture.Recipe.Id, image.Id), CancellationToken.None));
+        await handler.Handle(
+            new SetPrimaryRecipeImageCommand(fixture.Recipe.Id, image.Id), CancellationToken.None);
+
+        var images = await fixture.Db.RecipeImages.OrderBy(item => item.OrderIndex).ToArrayAsync();
+        Assert.False(images[0].IsPrimary);
+        Assert.True(images[1].IsPrimary);
     }
 
     private static UploadRecipeImageCommand UploadCommand(Guid recipeId) => new(

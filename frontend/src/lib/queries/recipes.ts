@@ -1,13 +1,14 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   getMyRecipes,
+  getAdminRecipes,
   getPrivateRecipe,
   getRecipe,
   getRecipes,
   searchRecipes,
   type RecipeDetail,
 } from "@/lib/recipes-api";
-import { queryKeys } from "./query-keys";
+import { queryKeys, type RecipeAccessScope } from "./query-keys";
 
 export function useRecipes(
   params: { page: number; pageSize: number; enabled?: boolean },
@@ -50,7 +51,7 @@ export function useDashboardRecipes(
   return useQuery({
     queryKey: queryKeys.dashboard.recipes(userId, page, scope),
     queryFn: ({ signal }) => scope === "all"
-      ? getRecipes(signal, 12, page)
+      ? getAdminRecipes(signal, 12, page)
       : getMyRecipes(signal, 12, page),
     enabled: enabled && Boolean(userId),
     placeholderData: keepPreviousData,
@@ -61,9 +62,14 @@ export function useMyRecipes(userId: string, page: number, enabled = true) {
   return useDashboardRecipes(userId, page, "mine", enabled);
 }
 
-export function useRecipeForEdit(userId: string, id: string, enabled = true) {
+export function useRecipeForEdit(
+  userId: string,
+  id: string,
+  enabled = true,
+  accessScope: RecipeAccessScope = "owner",
+) {
   return useQuery({
-    queryKey: queryKeys.dashboard.recipeDetail(userId, id),
+    queryKey: queryKeys.dashboard.recipeDetail(userId, id, accessScope),
     queryFn: ({ signal }) => getPrivateRecipe(id, signal),
     enabled: enabled && Boolean(id),
   });

@@ -14,15 +14,16 @@ import {
   type RecipeInput,
   type RecipeStep,
 } from "@/lib/recipes-api";
-import { queryKeys } from "./query-keys";
+import { queryKeys, type RecipeAccessScope } from "./query-keys";
 
 async function invalidateRecipeQueries(
   userId: string,
   recipeId: string,
   queryClient: ReturnType<typeof useQueryClient>,
+  accessScope: RecipeAccessScope,
   options: { recipe?: RecipeDetail; slug?: string; includePublic?: boolean } = {},
 ) {
-  const detailKey = queryKeys.dashboard.recipeDetail(userId, recipeId);
+  const detailKey = queryKeys.dashboard.recipeDetail(userId, recipeId, accessScope);
   if (options.recipe) queryClient.setQueryData(detailKey, options.recipe);
   const recipe = options.recipe ?? queryClient.getQueryData<RecipeDetail>(detailKey);
   const isPublic = options.includePublic
@@ -48,51 +49,53 @@ async function invalidateRecipeQueries(
   await Promise.all(invalidations);
 }
 
-export function useCreateRecipe(userId: string) {
+export function useCreateRecipe(userId: string, accessScope: RecipeAccessScope = "owner") {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createRecipe,
-    onSuccess: (recipe) => invalidateRecipeQueries(userId, recipe.id, queryClient, { recipe }),
+    onSuccess: (recipe) =>
+      invalidateRecipeQueries(userId, recipe.id, queryClient, accessScope, { recipe }),
   });
 }
 
-export function useUpdateRecipe(userId: string) {
+export function useUpdateRecipe(userId: string, accessScope: RecipeAccessScope = "owner") {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: RecipeInput & { rowVersion: string } }) =>
       updateRecipe(id, payload),
-    onSuccess: (recipe) => invalidateRecipeQueries(userId, recipe.id, queryClient, { recipe }),
+    onSuccess: (recipe) =>
+      invalidateRecipeQueries(userId, recipe.id, queryClient, accessScope, { recipe }),
   });
 }
 
-export function useDeleteRecipe(userId: string) {
+export function useDeleteRecipe(userId: string, accessScope: RecipeAccessScope = "owner") {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id }: { id: string; slug?: string }) => deleteRecipe(id),
     onSuccess: (_result, { id, slug }) =>
-      invalidateRecipeQueries(userId, id, queryClient, { slug, includePublic: true }),
+      invalidateRecipeQueries(userId, id, queryClient, accessScope, { slug, includePublic: true }),
   });
 }
 
-export function usePublishRecipe(userId: string) {
+export function usePublishRecipe(userId: string, accessScope: RecipeAccessScope = "owner") {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id }: { id: string; slug?: string }) => publishRecipe(id),
     onSuccess: (_result, { id, slug }) =>
-      invalidateRecipeQueries(userId, id, queryClient, { slug, includePublic: true }),
+      invalidateRecipeQueries(userId, id, queryClient, accessScope, { slug, includePublic: true }),
   });
 }
 
-export function useArchiveRecipe(userId: string) {
+export function useArchiveRecipe(userId: string, accessScope: RecipeAccessScope = "owner") {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id }: { id: string; slug?: string }) => archiveRecipe(id),
     onSuccess: (_result, { id, slug }) =>
-      invalidateRecipeQueries(userId, id, queryClient, { slug, includePublic: true }),
+      invalidateRecipeQueries(userId, id, queryClient, accessScope, { slug, includePublic: true }),
   });
 }
 
-export function useUploadRecipeImage(userId: string) {
+export function useUploadRecipeImage(userId: string, accessScope: RecipeAccessScope = "owner") {
   const queryClient = useQueryClient();
   return useMutation<RecipeImageUploadResult, Error, {
     recipeId: string;
@@ -103,36 +106,36 @@ export function useUploadRecipeImage(userId: string) {
     mutationFn: ({ recipeId, file, isPrimary, altText }) =>
       uploadRecipeImage(recipeId, file, isPrimary, altText),
     onSuccess: (_result, { recipeId }) =>
-      invalidateRecipeQueries(userId, recipeId, queryClient),
+      invalidateRecipeQueries(userId, recipeId, queryClient, accessScope),
   });
 }
 
-export function useUploadRecipeStepImage(userId: string) {
+export function useUploadRecipeStepImage(userId: string, accessScope: RecipeAccessScope = "owner") {
   const queryClient = useQueryClient();
   return useMutation<RecipeStep, Error, { recipeId: string; stepId: string; file: File }>({
     mutationFn: ({ recipeId, stepId, file }) =>
       uploadRecipeStepImage(recipeId, stepId, file),
     onSuccess: (_result, { recipeId }) =>
-      invalidateRecipeQueries(userId, recipeId, queryClient),
+      invalidateRecipeQueries(userId, recipeId, queryClient, accessScope),
   });
 }
 
-export function useSetPrimaryRecipeImage(userId: string) {
+export function useSetPrimaryRecipeImage(userId: string, accessScope: RecipeAccessScope = "owner") {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recipeId, imageId }: { recipeId: string; imageId: string }) =>
       setPrimaryRecipeImage(recipeId, imageId),
     onSuccess: (_result, { recipeId }) =>
-      invalidateRecipeQueries(userId, recipeId, queryClient),
+      invalidateRecipeQueries(userId, recipeId, queryClient, accessScope),
   });
 }
 
-export function useDeleteRecipeImage(userId: string) {
+export function useDeleteRecipeImage(userId: string, accessScope: RecipeAccessScope = "owner") {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ recipeId, imageId }: { recipeId: string; imageId: string }) =>
       deleteRecipeImage(recipeId, imageId),
     onSuccess: (_result, { recipeId }) =>
-      invalidateRecipeQueries(userId, recipeId, queryClient),
+      invalidateRecipeQueries(userId, recipeId, queryClient, accessScope),
   });
 }

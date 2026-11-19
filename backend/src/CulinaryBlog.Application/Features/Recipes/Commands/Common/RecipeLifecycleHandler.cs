@@ -99,7 +99,7 @@ public sealed class RecipeLifecycleHandler :
             .Include(x => x.Images)
             .SingleOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NotFoundException(nameof(Recipe), id);
-        if (currentUser.IsAdmin || recipe.AuthorId != currentUser.UserId)
+        if (!currentUser.IsAdmin && recipe.AuthorId != currentUser.UserId)
             throw new ForbiddenAccessException();
         return recipe;
     }
@@ -112,9 +112,7 @@ public sealed class RecipeLifecycleHandler :
             .Include(x => x.Images)
             .SingleOrDefaultAsync(x => x.Id == id, ct)
             ?? throw new NotFoundException(nameof(Recipe), id);
-        if (currentUser.IsAdmin
-            ? recipe.Status != RecipeStatus.Published
-            : recipe.AuthorId != currentUser.UserId)
+        if (!currentUser.IsAdmin && recipe.AuthorId != currentUser.UserId)
         {
             throw new ForbiddenAccessException();
         }

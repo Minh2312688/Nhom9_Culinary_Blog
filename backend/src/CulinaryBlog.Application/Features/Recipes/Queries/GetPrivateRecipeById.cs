@@ -26,9 +26,8 @@ public sealed class GetPrivateRecipeByIdQueryHandler(
             .SingleOrDefaultAsync(item => item.Id == request.Id, cancellationToken)
             ?? throw new NotFoundException(nameof(Recipe), request.Id);
 
-        if (currentUser.IsAdmin
-            ? recipe.Status != RecipeStatus.Published
-            : (!currentUser.IsAuthenticated || recipe.AuthorId != currentUser.UserId))
+        if (!currentUser.IsAdmin &&
+            (!currentUser.IsAuthenticated || recipe.AuthorId != currentUser.UserId))
         {
             throw new ForbiddenAccessException();
         }

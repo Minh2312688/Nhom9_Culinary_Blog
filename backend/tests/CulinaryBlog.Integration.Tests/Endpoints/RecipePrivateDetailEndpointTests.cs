@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using CulinaryBlog.Application.Common.Models;
 using CulinaryBlog.Application.DTOs.Recipes;
 using CulinaryBlog.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -362,6 +363,46 @@ public sealed class RecipePrivateDetailEndpointTests
 
         var anonymousResponse = await factory.CreateClient()
             .GetAsync($"/api/v1/recipes/{recipeId}");
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminRecipeList_IncludesDraftsAndRequiresAdminRole()
+    {
+        await using var factory = new CategoryWebApplicationFactory();
+        var recipeId = Guid.NewGuid();
+
+        await factory.SeedAsync(async db =>
+        {
+            var category = Category.Create("Test category");
+            db.Categories.Add(category);
+            db.Recipes.Add(new Recipe
+            {
+                Id = recipeId,
+                Title = "Another author's draft",
+                Slug = "another-authors-draft",
+                CategoryId = category.Id,
+                AuthorId = "test-author",
+                Status = RecipeStatus.Draft
+            });
+            await db.SaveChangesAsync();
+        });
+
+        var adminResponse = await factory.CreateClientAs("Admin")
+            .GetAsync("/api/v1/admin/recipes");
+
+        Assert.Equal(HttpStatusCode.OK, adminResponse.StatusCode);
+        var recipes = await adminResponse.Content
+            .ReadFromJsonAsync<PaginatedResult<RecipeSummaryDto>>();
+        Assert.NotNull(recipes);
+        Assert.Contains(recipes.Items, recipe => recipe.Id == recipeId);
+
+        var authorResponse = await factory.CreateClientAs("Author")
+            .GetAsync("/api/v1/admin/recipes");
+        Assert.Equal(HttpStatusCode.Forbidden, authorResponse.StatusCode);
+
+        var anonymousResponse = await factory.CreateClient()
+            .GetAsync("/api/v1/admin/recipes");
         Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
     }
 

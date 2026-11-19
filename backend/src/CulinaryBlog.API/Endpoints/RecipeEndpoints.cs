@@ -3,6 +3,7 @@ using CulinaryBlog.Application.Common.Models;
 using CulinaryBlog.Application.DTOs.Recipes;
 using CulinaryBlog.Application.Features.Recipes.Commands;
 using CulinaryBlog.Application.Features.Recipes.Queries;
+using CulinaryBlog.Domain.Constants;
 using CulinaryBlog.API.Contracts.Recipes;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -16,6 +17,18 @@ public static class RecipeEndpoints
     public static IEndpointRouteBuilder MapRecipeEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/v1/recipes").WithTags("Recipes");
+
+        endpoints.MapGet("/api/v1/admin/recipes", async (
+            int? page, int? pageSize, ISender sender, CancellationToken ct) =>
+                Results.Ok(await sender.Send(new GetRecipesQuery(
+                    Page: page ?? 1,
+                    PageSize: pageSize ?? 12,
+                    IncludeUnpublished: true), ct)))
+            .RequireAuthorization(AppPolicies.AdminPolicy)
+            .WithName("GetAdminRecipes")
+            .Produces<PaginatedResult<RecipeSummaryDto>>(200)
+            .ProducesProblem(401)
+            .ProducesProblem(403);
 
         group.MapGet("/", async ([AsParameters] GetRecipesQuery query, ISender sender, CancellationToken ct) =>
             Results.Ok(await sender.Send(query, ct)))

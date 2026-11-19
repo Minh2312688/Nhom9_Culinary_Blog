@@ -13,7 +13,7 @@ namespace CulinaryBlog.Application.Tests.Features.Recipes;
 public sealed class AdminRecipeMutationTests
 {
     [Fact]
-    public async Task CreateRecipe_AdminIsForbidden()
+    public async Task CreateRecipe_AdminCanCreateRecipe()
     {
         await using var db = CreateDb();
         var category = Category.Create("Soup");
@@ -29,13 +29,15 @@ public sealed class AdminRecipeMutationTests
             user.Object,
             Mock.Of<IRecipeCache>());
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() => handler.Handle(
+        var result = await handler.Handle(
             new CreateRecipeCommand("Soup", null, category.Id, 10, 20, 2, "Easy"),
-            CancellationToken.None));
+            CancellationToken.None);
+
+        Assert.Equal("administrator", result.AuthorId);
     }
 
     [Fact]
-    public async Task UpdateRecipe_AdminIsForbiddenEvenForAnotherAuthor()
+    public async Task UpdateRecipe_AdminCanUpdateAnotherAuthorsRecipe()
     {
         await using var db = CreateDb();
         var category = Category.Create("Soup");
@@ -52,35 +54,41 @@ public sealed class AdminRecipeMutationTests
 
         var handler = new UpdateRecipeCommandHandler(db, CreateAdminUser().Object, Mock.Of<IRecipeCache>());
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() => handler.Handle(
+        var result = await handler.Handle(
             new UpdateRecipeCommand(recipe.Id, "Changed", null, category.Id, 10, 20, 2, "Easy", recipe.RowVersion),
-            CancellationToken.None));
+            CancellationToken.None);
+
+        Assert.Equal("Changed", result.Title);
     }
 
     [Fact]
-    public async Task AddRecipeIngredient_AdminIsForbidden()
+    public async Task AddRecipeIngredient_AdminCanUpdateAnotherAuthorsRecipe()
     {
         await using var db = CreateDb();
         var recipe = await AddRecipeAsync(db);
         var handler = new AddRecipeIngredientCommandHandler(
             db, CreateAdminUser().Object, Mock.Of<IRecipeCache>());
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() => handler.Handle(
+        var result = await handler.Handle(
             new AddRecipeIngredientCommand(recipe.Id, "Flour", 1, "cup", null, 0),
-            CancellationToken.None));
+            CancellationToken.None);
+
+        Assert.Equal("Flour", result.Name);
     }
 
     [Fact]
-    public async Task AddRecipeStep_AdminIsForbidden()
+    public async Task AddRecipeStep_AdminCanUpdateAnotherAuthorsRecipe()
     {
         await using var db = CreateDb();
         var recipe = await AddRecipeAsync(db);
         var handler = new AddRecipeStepCommandHandler(
             db, CreateAdminUser().Object, Mock.Of<IRecipeCache>());
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() => handler.Handle(
+        var result = await handler.Handle(
             new AddRecipeStepCommand(recipe.Id, "Mix", "Mix ingredients.", null, null),
-            CancellationToken.None));
+            CancellationToken.None);
+
+        Assert.Equal("Mix ingredients.", result.Description);
     }
 
     private static ApplicationDbContext CreateDb() =>

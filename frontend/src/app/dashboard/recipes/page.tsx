@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useDashboardRecipes } from "@/lib/queries/recipes";
-import { useDeleteRecipe, usePublishRecipe } from "@/lib/queries/recipe-mutations";
+import {
+  useArchiveRecipe,
+  useDeleteRecipe,
+  usePublishRecipe,
+} from "@/lib/queries/recipe-mutations";
 import { useFeedback } from "../../feedback";
 import { ErrorNotice, LoadingSkeleton, Pagination, SectionTitle } from "../../site-ui";
 import styles from "../../site-ui.module.css";
@@ -23,8 +27,10 @@ export default function DashboardRecipesPage() {
     isAdmin ? "all" : "mine",
     initialized && sessionStatus === "authenticated",
   );
-  const deleteRecipeMutation = useDeleteRecipe(userId);
-  const publishRecipeMutation = usePublishRecipe(userId);
+  const recipeAccessScope = isAdmin ? "admin" : "owner";
+  const deleteRecipeMutation = useDeleteRecipe(userId, recipeAccessScope);
+  const publishRecipeMutation = usePublishRecipe(userId, recipeAccessScope);
+  const archiveRecipeMutation = useArchiveRecipe(userId, recipeAccessScope);
   const result = recipesQuery.data ?? null;
   const loading = !initialized || sessionStatus === "loading" || recipesQuery.isFetching;
   const error = actionError ?? (
@@ -66,6 +72,19 @@ export default function DashboardRecipesPage() {
     }
   }
 
+  async function handleArchive(id: string) {
+    try {
+      const recipe = result?.items.find((item) => item.id === id);
+      await archiveRecipeMutation.mutateAsync({ id, slug: recipe?.slug });
+      setActionError(null);
+      showToast("Đã lưu trữ công thức.", "success");
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "Không thể lưu trữ công thức.";
+      setActionError(message);
+      showToast(message, "error");
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!window.confirm("Bạn có chắc muốn xóa công thức này?")) return;
     try {
@@ -93,36 +112,38 @@ export default function DashboardRecipesPage() {
           eyebrow="QUẢN LÝ NỘI DUNG"
           title={isAdmin ? "Quản lý công thức" : "Công thức của tôi"}
           description={isAdmin
-            ? "Xem và xóa công thức đã xuất bản của tất cả tác giả."
+            ? "Tạo, cập nhật và quản lý công thức của tất cả tác giả."
             : "Lưu bản nháp, cập nhật hoặc xuất bản nội dung."}
         />
         <div className={styles.toolbar}>
           <h2>{result?.totalCount ?? 0} công thức</h2>
-          {!isAdmin && <Link className={styles.button} href="/dashboard/recipes/new">Tạo công thức</Link>}
+          <Link className={styles.button} href="/dashboard/recipes/new">Tạo công thức</Link>
         </div>
         {loading && <LoadingSkeleton variant="cards" />}
         {error && <ErrorNotice><span data-error-summary>{error}</span></ErrorNotice>}
         {!loading && !error && result?.items.length === 0 && (
           <section className={`${styles.notice} ${styles.emptyState}`} aria-label="Chưa có công thức">
-            <p>Bạn chưa có công thức nào.</p>
+            <p>{isAdmin ? "Chưa có công thức nào." : "Bạn chưa có công thức nào."}</p>
           </section>
         )}
         {!!result?.items.length && <div style={{ overflowX: "auto" }}>
           <table className={styles.table}>
-            <thead><tr><th>Tên món</th>{!isAdmin && <th>Trạng thái</th>}<th>Thời gian nấu</th><th>Thao tác</th></tr></thead>
+            <thead><tr><th>Tên món</th><th>Trạng thái</th><th>Thời gian nấu</th><th>Thao tác</th></tr></thead>
             <tbody>{result.items.map((recipe) => (
               <tr key={recipe.id}>
                 <td><strong>{recipe.title}</strong></td>
-                {!isAdmin && <td><span className={styles.status}>{statusLabel(recipe.status)}</span></td>}
+                <td><span className={styles.status}>{statusLabel(recipe.status)}</span></td>
                 <td>{recipe.cookTimeMinutes} phút</td>
                 <td>
                   <div className={`${styles.actions} ${styles.tableActions}`}>
-                    <Link href={isAdmin || recipe.status === 1 || recipe.status === "Published"
+                    <Link href={recipe.status === 1 || recipe.status === "Published"
                       ? `/recipes/${encodeURIComponent(recipe.slug)}`
                       : `/dashboard/recipes/${encodeURIComponent(recipe.id)}`}>Xem</Link>
-                    {!isAdmin && <Link href={`/dashboard/recipes/${recipe.id}/edit`}>Sửa</Link>}
-                    {!isAdmin && (recipe.status === 0 || recipe.status === "Draft") &&
+                    <Link href={`/dashboard/recipes/${recipe.id}/edit`}>Sửa</Link>
+                    {(recipe.status === 0 || recipe.status === "Draft") &&
                       <button type="button" onClick={() => void handlePublish(recipe.id)}>Xuất bản</button>}
+                    {isAdmin && (recipe.status === 1 || recipe.status === "Published") &&
+                      <button type="button" onClick={() => void handleArchive(recipe.id)}>Lưu trữ</button>}
                     <button type="button" onClick={() => void handleDelete(recipe.id)}>Xóa</button>
                   </div>
                 </td>

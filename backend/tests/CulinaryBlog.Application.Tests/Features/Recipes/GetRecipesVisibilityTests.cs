@@ -52,7 +52,7 @@ public sealed class GetRecipesVisibilityTests
     }
 
     [Fact]
-    public async Task AdminList_OnlyIncludesPublishedRecipesFromEveryAuthor()
+    public async Task AdminPublicList_OnlyIncludesPublishedRecipes()
     {
         await using var fixture = await RecipeListFixture.CreateAsync();
         var result = await fixture.GetRecipesAsync(null, true);

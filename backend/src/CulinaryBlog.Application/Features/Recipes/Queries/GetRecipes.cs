@@ -1,4 +1,5 @@
 using CulinaryBlog.Application.Common.Models;
+using CulinaryBlog.Application.Common.Exceptions;
 using CulinaryBlog.Application.Contracts;
 using CulinaryBlog.Application.Contracts.Persistence;
 using CulinaryBlog.Application.DTOs.Recipes;
@@ -23,7 +24,8 @@ public sealed record GetRecipesQuery(
     string? SortBy = null,
     string? SortOrder = null,
     string? Search = null,
-    bool OnlyMine = false) : IRequest<PaginatedResult<RecipeSummaryDto>>;
+    bool OnlyMine = false,
+    bool IncludeUnpublished = false) : IRequest<PaginatedResult<RecipeSummaryDto>>;
 
 public sealed class GetRecipesQueryValidator : AbstractValidator<GetRecipesQuery>
 {
@@ -79,6 +81,9 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
 
     public async Task<PaginatedResult<RecipeSummaryDto>> Handle(GetRecipesQuery request, CancellationToken cancellationToken)
     {
+        if (request.IncludeUnpublished && !currentUser.IsAdmin)
+            throw new ForbiddenAccessException();
+
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
             var terms = Regex.Matches(request.Search, @"[\p{L}\p{N}]+")
@@ -125,17 +130,17 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
         }
 
         var query = recipes.Query.AsNoTracking();
-        if (currentUser.IsAdmin)
+        if (currentUser.IsAdmin && !request.IncludeUnpublished)
         {
             query = query.Where(x => x.Status == RecipeStatus.Published);
         }
-        else if (request.OnlyMine)
+        else if (!currentUser.IsAdmin && request.OnlyMine)
         {
             query = currentUser.UserId is null
                 ? query.Where(_ => false)
                 : query.Where(x => x.AuthorId == currentUser.UserId);
         }
-        else
+        else if (!currentUser.IsAdmin)
         {
             query = query.Where(x => x.Status == RecipeStatus.Published ||
                 (currentUser.UserId != null && x.AuthorId == currentUser.UserId));
@@ -212,7 +217,7 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
     {
         var scope = currentUser.IsAdmin ? "admin" : currentUser.UserId is null ? "guest" : $"user:{currentUser.UserId}";
         var material = string.Join('|',
-            "v2",
+            "v3",
             request.Page.ToString(CultureInfo.InvariantCulture),
             request.PageSize.ToString(CultureInfo.InvariantCulture),
             request.CategoryId?.ToString("N") ?? string.Empty,
@@ -222,6 +227,7 @@ public sealed class GetRecipesQueryHandler : IRequestHandler<GetRecipesQuery, Pa
             request.SortBy?.Trim().ToLowerInvariant() ?? "createdat",
             request.SortOrder?.Trim().ToLowerInvariant() ?? "desc",
             request.OnlyMine.ToString(),
+            request.IncludeUnpublished.ToString(),
             scope);
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material))).ToLowerInvariant();
         return $"recipes:list:{hash}";

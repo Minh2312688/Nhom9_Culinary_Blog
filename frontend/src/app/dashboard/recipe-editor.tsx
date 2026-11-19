@@ -119,23 +119,24 @@ type RecipeEditorFormValues = z.infer<typeof recipeEditorSchema>;
 export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
-  const isAdmin = session?.user.roles?.includes("Admin") ?? false;
   const userId = session?.user.id ?? "";
+  const recipeAccessScope = session?.user.roles?.includes("Admin") ? "admin" : "owner";
   const { showToast } = useFeedback();
   const params = useParams<{ id?: string }>();
   const recipeId = params?.id;
-  const categoriesQuery = useCategories(sessionStatus !== "loading" && !isAdmin);
+  const categoriesQuery = useCategories(sessionStatus !== "loading");
   const recipeQuery = useRecipeForEdit(
     userId,
     recipeId ?? "",
-    editing && sessionStatus !== "loading" && !isAdmin,
+    editing && sessionStatus !== "loading",
+    recipeAccessScope,
   );
-  const createRecipeMutation = useCreateRecipe(userId);
-  const updateRecipeMutation = useUpdateRecipe(userId);
-  const uploadRecipeImageMutation = useUploadRecipeImage(userId);
-  const uploadRecipeStepImageMutation = useUploadRecipeStepImage(userId);
-  const setPrimaryRecipeImageMutation = useSetPrimaryRecipeImage(userId);
-  const deleteRecipeImageMutation = useDeleteRecipeImage(userId);
+  const createRecipeMutation = useCreateRecipe(userId, recipeAccessScope);
+  const updateRecipeMutation = useUpdateRecipe(userId, recipeAccessScope);
+  const uploadRecipeImageMutation = useUploadRecipeImage(userId, recipeAccessScope);
+  const uploadRecipeStepImageMutation = useUploadRecipeStepImage(userId, recipeAccessScope);
+  const setPrimaryRecipeImageMutation = useSetPrimaryRecipeImage(userId, recipeAccessScope);
+  const deleteRecipeImageMutation = useDeleteRecipeImage(userId, recipeAccessScope);
   const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
   const recipe = editing ? recipeQuery.data ?? null : null;
   const {
@@ -354,12 +355,10 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
 
   useEffect(() => {
     if (sessionStatus === "loading") return;
-    if (isAdmin) {
-      setError("Tài khoản quản trị chỉ được xem và xóa công thức đã xuất bản.");
-    } else if (editing && !recipeId) {
+    if (editing && !recipeId) {
       setError("Không thể xác định công thức cần chỉnh sửa.");
     }
-  }, [editing, isAdmin, recipeId, sessionStatus]);
+  }, [editing, recipeId, sessionStatus]);
 
   useEffect(() => {
     const reason = categoriesQuery.error ?? (editing ? recipeQuery.error : null);
@@ -370,10 +369,8 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   }, [categoriesQuery.error, editing, recipeQuery.error, showToast]);
 
   const loading = sessionStatus === "loading"
-    || (!isAdmin && (
-      categoriesQuery.isPending
-      || (editing && Boolean(recipeId) && recipeQuery.isPending)
-    ));
+    || categoriesQuery.isPending
+    || (editing && Boolean(recipeId) && recipeQuery.isPending);
 
   async function reloadRecipe() {
     setIsConflict(false);
@@ -915,16 +912,6 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
         {message}
       </span>
     ) : null;
-  }
-
-  if (sessionStatus !== "loading" && isAdmin) {
-    return (
-      <main className={styles.content}>
-        <SectionTitle eyebrow="QUẢN LÝ CÔNG THỨC" title="Không có quyền chỉnh sửa" />
-        <ErrorNotice>Tài khoản quản trị chỉ được xem và xóa công thức đã xuất bản.</ErrorNotice>
-        <Link href="/dashboard/recipes">Quay lại danh sách công thức</Link>
-      </main>
-    );
   }
 
   return (

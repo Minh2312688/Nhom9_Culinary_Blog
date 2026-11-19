@@ -12,7 +12,7 @@ namespace CulinaryBlog.Application.Tests.Features.Recipes;
 public sealed class GetPrivateRecipeByIdQueryHandlerTests
 {
     [Fact]
-    public async Task Handle_AdminCannotReadDraftById()
+    public async Task Handle_AdminCanReadDraftById()
     {
         var recipe = new Recipe
         {
@@ -34,7 +34,9 @@ public sealed class GetPrivateRecipeByIdQueryHandlerTests
                 repository.Query == db.Recipes),
             currentUser.Object);
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
-            handler.Handle(new GetPrivateRecipeByIdQuery(recipe.Id), CancellationToken.None));
+        var result = await handler.Handle(
+            new GetPrivateRecipeByIdQuery(recipe.Id), CancellationToken.None);
+
+        Assert.Equal(recipe.Id, result.Id);
     }
 }

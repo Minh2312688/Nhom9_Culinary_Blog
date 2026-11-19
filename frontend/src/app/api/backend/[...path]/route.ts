@@ -120,6 +120,9 @@ function allowedMethods(segments: string[]): HttpMethod[] | null {
   if (segments.length === 2 && resource === "admin" && first === "users") {
     return ["GET"];
   }
+  if (segments.length === 2 && resource === "admin" && first === "recipes") {
+    return ["GET"];
+  }
 
   return null;
 }

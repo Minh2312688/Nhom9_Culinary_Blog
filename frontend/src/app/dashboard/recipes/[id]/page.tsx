@@ -11,10 +11,12 @@ export default function DashboardRecipeViewPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id;
   const { data: session, status: sessionStatus } = useSession();
+  const recipeAccessScope = session?.user.roles?.includes("Admin") ? "admin" : "owner";
   const recipeQuery = useRecipeForEdit(
     session?.user.id ?? "",
     id ?? "",
     Boolean(id) && sessionStatus !== "loading",
+    recipeAccessScope,
   );
   const recipe = recipeQuery.data;
   const error = !id

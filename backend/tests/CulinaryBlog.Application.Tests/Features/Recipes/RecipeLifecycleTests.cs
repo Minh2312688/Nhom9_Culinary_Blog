@@ -43,31 +43,32 @@ public sealed class RecipeLifecycleTests
     }
 
     [Fact]
-    public async Task AdminCannotPublishOrArchiveRecipes()
+    public async Task AdminCanPublishAndArchiveAnotherAuthorsRecipes()
     {
         await using var fixture = await RecipeLifecycleFixture.CreateAsync();
         fixture.User.IsAdmin = true;
         fixture.User.UserId = "administrator";
         var handler = fixture.CreateHandler();
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
-            handler.Handle(new PublishRecipeCommand(fixture.Recipe.Id), CancellationToken.None));
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
-            handler.Handle(new ArchiveRecipeCommand(fixture.Recipe.Id), CancellationToken.None));
+        await handler.Handle(new PublishRecipeCommand(fixture.Recipe.Id), CancellationToken.None);
+        Assert.Equal(RecipeStatus.Published, fixture.Recipe.Status);
+
+        await handler.Handle(new ArchiveRecipeCommand(fixture.Recipe.Id), CancellationToken.None);
+        Assert.Equal(RecipeStatus.Archived, fixture.Recipe.Status);
     }
 
     [Fact]
-    public async Task AdminCannotDeleteUnpublishedRecipe()
+    public async Task AdminCanDeleteUnpublishedRecipe()
     {
         await using var fixture = await RecipeLifecycleFixture.CreateAsync();
         fixture.User.IsAdmin = true;
         fixture.User.UserId = "administrator";
 
-        await Assert.ThrowsAsync<ForbiddenAccessException>(() =>
-            fixture.CreateHandler().Handle(new DeleteRecipeCommand(fixture.Recipe.Id), CancellationToken.None));
+        await fixture.CreateHandler().Handle(
+            new DeleteRecipeCommand(fixture.Recipe.Id), CancellationToken.None);
 
         var recipe = await fixture.Db.Recipes.IgnoreQueryFilters().SingleAsync(item => item.Id == fixture.Recipe.Id);
-        Assert.False(recipe.IsDeleted);
+        Assert.True(recipe.IsDeleted);
         fixture.Storage.Verify(service => service.DeleteAsync(
             It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }

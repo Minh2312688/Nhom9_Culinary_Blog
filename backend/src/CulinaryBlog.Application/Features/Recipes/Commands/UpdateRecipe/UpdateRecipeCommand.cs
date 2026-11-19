@@ -115,7 +115,7 @@ public sealed class UpdateRecipeCommandHandler : IRequestHandler<UpdateRecipeCom
 
     private void EnsureOwner(Recipe recipe)
     {
-        if (currentUser.IsAdmin || recipe.AuthorId != currentUser.UserId)
+        if (!currentUser.IsAdmin && recipe.AuthorId != currentUser.UserId)
             throw new ForbiddenAccessException();
     }
 }

@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { signInAsByApi } from "./support/auth";
-import { clearMockApiRequests, queueMockApiResponse } from "./support/mock-api";
+import {
+  clearMockApiRequests,
+  getMockApiRequests,
+  queueMockApiResponse,
+} from "./support/mock-api";
 
 const users = [
   {
@@ -65,6 +69,112 @@ test("Admin dashboard shows system management shortcuts instead of author action
   await expect(dashboard.getByRole("link", { name: /Danh mục/ })).toHaveAttribute("href", "/dashboard/categories");
   await expect(dashboard.getByRole("link", { name: /Người dùng/ })).toHaveAttribute("href", "/dashboard/users");
   await expect(dashboard.getByRole("link", { name: /Tạo công thức/ })).toHaveCount(0);
+});
+
+test("Admin can open the recipe authoring form", async ({ page }) => {
+  await signInAsByApi(page, "admin@example.com");
+  await page.goto("/dashboard/recipes/new");
+
+  await expect(page.getByRole("heading", { level: 1, name: "Tạo công thức mới" })).toBeVisible();
+  await expect(page.locator("#title")).toBeVisible();
+});
+
+test("Admin can create and edit recipes from the management list", async ({ page }) => {
+  await page.goto("/auth/login?callbackUrl=/dashboard/recipes");
+  await queueMockApiResponse(page, {
+    method: "GET",
+    path: "/api/v1/admin/recipes",
+    status: 200,
+    body: {
+      items: [{
+        id: "draft-recipe",
+        title: "Admin-managed draft",
+        slug: "admin-managed-draft",
+        description: null,
+        difficulty: "Easy",
+        cookTimeMinutes: 10,
+        servings: 2,
+        status: "Draft",
+        categoryId: "category-1",
+        authorId: "author-1",
+        publishedAt: null,
+        rowVersion: "v1",
+      }],
+      totalCount: 1,
+      page: 1,
+      pageSize: 12,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    },
+  });
+  await signInAsByApi(page, "admin@example.com");
+
+  const dashboard = page.locator("main");
+  const recipe = page.getByRole("row", { name: /Admin-managed draft/ });
+
+  await expect(dashboard.getByRole("link", { name: /Tạo công thức/ })).toBeVisible();
+  await expect(recipe.getByRole("link", { name: "Sửa" })).toHaveAttribute(
+    "href",
+    "/dashboard/recipes/draft-recipe/edit",
+  );
+  await expect(recipe.getByRole("button", { name: "Xuất bản" })).toBeVisible();
+  const requests = await getMockApiRequests(page);
+  expect(requests.find((request) => request.path === "/api/v1/admin/recipes")).toMatchObject({
+    method: "GET",
+    authorizationPresent: true,
+  });
+});
+
+test("Admin can archive a published recipe", async ({ page }) => {
+  await signInAsByApi(page, "admin@example.com");
+  await queueMockApiResponse(page, {
+    method: "GET",
+    path: "/api/v1/admin/recipes",
+    status: 200,
+    times: 2,
+    body: {
+      items: [{
+        id: "published-recipe",
+        title: "Admin-managed published recipe",
+        slug: "admin-managed-published-recipe",
+        description: null,
+        difficulty: "Easy",
+        cookTimeMinutes: 10,
+        servings: 2,
+        status: "Published",
+        categoryId: "category-1",
+        authorId: "author-1",
+        publishedAt: "2026-01-01T00:00:00Z",
+        rowVersion: "v1",
+      }],
+      totalCount: 1,
+      page: 1,
+      pageSize: 12,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    },
+  });
+  await queueMockApiResponse(page, {
+    method: "PATCH",
+    path: "/api/v1/recipes/published-recipe/archive",
+    status: 204,
+  });
+  await page.goto("/dashboard/recipes");
+
+  const recipe = page.getByRole("row", { name: /Admin-managed published recipe/ });
+  await recipe.getByRole("button", { name: "Lưu trữ" }).click();
+
+  await expect(page.getByText("Đã lưu trữ công thức.")).toBeVisible();
+  const requests = await getMockApiRequests(page);
+  const archiveRequest = requests.find((request) =>
+    request.method === "PATCH" &&
+    request.path === "/api/v1/recipes/published-recipe/archive",
+  );
+  expect(archiveRequest).toMatchObject({
+    authorizationPresent: true,
+  });
 });
 
 test("Author cannot access user management", async ({ page }) => {

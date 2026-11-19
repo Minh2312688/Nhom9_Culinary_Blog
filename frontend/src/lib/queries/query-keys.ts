@@ -1,3 +1,5 @@
+export type RecipeAccessScope = "admin" | "owner";
+
 export const queryKeys = {
   recipes: {
     all: ["recipes"] as const,
@@ -23,8 +25,8 @@ export const queryKeys = {
     recipes: (userId: string, page: number, scope: "mine" | "all" = "mine") =>
       [...queryKeys.dashboard.recipeLists(userId), page, scope] as const,
     recipeDetails: (userId: string) => ["dashboard", userId, "recipe-detail"] as const,
-    recipeDetail: (userId: string, id: string) =>
-      [...queryKeys.dashboard.recipeDetails(userId), id] as const,
+    recipeDetail: (userId: string, id: string, scope: RecipeAccessScope = "owner") =>
+      [...queryKeys.dashboard.recipeDetails(userId), id, scope] as const,
     categories: (userId: string) => ["dashboard", userId, "categories"] as const,
   },
   profile: {

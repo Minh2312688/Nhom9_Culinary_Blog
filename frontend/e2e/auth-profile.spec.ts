@@ -74,22 +74,29 @@ test.describe("Auth.js Profile and logout", () => {
     }));
   });
 
-  test("signed-in users have a direct link to their recipe dashboard", async ({ page }) => {
+  test("signed-in users open the dashboard overview from the main navigation", async ({ page }) => {
     await signInAs(page);
     await page.goto("/");
 
-    await expect(page.getByRole("link", { name: "Công thức của tôi" }))
-      .toHaveAttribute("href", "/dashboard/recipes");
+    const dashboardLink = page.getByRole("link", { name: "Công thức của tôi" });
+    await expect(dashboardLink).toHaveAttribute("href", "/dashboard");
+    await dashboardLink.click();
+
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Bảng điều khiển" })).toBeVisible();
   });
 
-  test("admins see Admin instead of the recipe link label", async ({ page }) => {
+  test("admins open the dashboard overview from the Admin navigation link", async ({ page }) => {
     await signInAsByApi(page, "admin@example.com");
     await page.goto("/");
 
-    await expect(page.getByTestId("nav-my-recipes"))
-      .toHaveText("Admin");
-    await expect(page.getByTestId("nav-my-recipes"))
-      .toHaveAttribute("href", "/dashboard/recipes");
+    const dashboardLink = page.getByTestId("nav-my-recipes");
+    await expect(dashboardLink).toHaveText("Admin");
+    await expect(dashboardLink).toHaveAttribute("href", "/dashboard");
+    await dashboardLink.click();
+
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Bảng điều khiển" })).toBeVisible();
   });
 
   test("UI sign-out clears the Auth.js cookie when backend logout returns 503", async ({ page }) => {

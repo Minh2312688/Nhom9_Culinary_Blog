@@ -36,7 +36,7 @@ export function SiteHeader() {
         <Link href="/search">Tìm kiếm</Link>
         {loggedIn ? (
           <>
-            <Link href="/dashboard/recipes" data-testid="nav-my-recipes">
+            <Link href="/dashboard" data-testid="nav-my-recipes">
               {isAdmin ? "Admin" : "Công thức của tôi"}
             </Link>
             <Link

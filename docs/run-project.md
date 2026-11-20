@@ -25,7 +25,7 @@ curl.exe http://localhost:5000/
 ```
 
 Khi API chạy trong `Development`, ứng dụng tự áp dụng migration của
-`ApplicationDbContext`. Seed mặc định tạo danh mục và 20 công thức từ
+`ApplicationDbContext`. Seed mặc định tạo danh mục và 51 công thức từ
 `tools/sample-data/20_cong_thuc_mon_an.json`; ảnh trong
 `tools/sample-data/images/` được tải lên MinIO. Compose mount thư mục dữ liệu
 chỉ đọc vào API container. Identity, refresh token và dữ liệu blog cùng nằm

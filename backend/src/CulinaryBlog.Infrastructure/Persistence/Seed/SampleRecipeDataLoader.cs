@@ -46,13 +46,13 @@ public static class SampleRecipeDataLoader
             throw new InvalidDataException("A sample recipe has a missing title, category, author, or valid difficulty.");
         }
 
-        if (recipe.Nutrition is null ||
-            recipe.Nutrition.Calories is null or < 0 ||
-            recipe.Nutrition.Protein is null or < 0 ||
-            recipe.Nutrition.Carbohydrates is null or < 0 ||
-            recipe.Nutrition.Fat is null or < 0 ||
-            recipe.Nutrition.Fiber is null or < 0 ||
-            recipe.Nutrition.Sodium is null or < 0)
+        if (recipe.Nutrition is not null &&
+            (recipe.Nutrition.Calories is null or < 0 ||
+             recipe.Nutrition.Protein is null or < 0 ||
+             recipe.Nutrition.Carbohydrates is null or < 0 ||
+             recipe.Nutrition.Fat is null or < 0 ||
+             recipe.Nutrition.Fiber is null or < 0 ||
+             recipe.Nutrition.Sodium is null or < 0))
         {
             throw new InvalidDataException(
                 $"Sample recipe '{recipe.Title}' must include non-negative values for all nutrition fields.");

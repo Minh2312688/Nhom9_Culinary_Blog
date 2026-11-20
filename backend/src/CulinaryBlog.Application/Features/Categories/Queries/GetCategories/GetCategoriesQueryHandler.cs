@@ -22,15 +22,15 @@ public sealed class GetCategoriesQueryHandler(
             var refreshedItems = new List<CategoryDto>(cached.Items.Count);
             foreach (var item in cached.Items)
             {
-                var categoryId = await context.Categories.AsNoTracking()
+                var category = await context.Categories.AsNoTracking()
                     .Where(category => category.Id == item.Id || category.Slug == item.Slug)
-                    .Select(category => (Guid?)category.Id)
+                    .Select(category => new { category.Id, category.ImageUrl })
                     .FirstOrDefaultAsync(cancellationToken);
-                var count = categoryId.HasValue
-                    ? await context.Recipes.CountAsync(recipe => recipe.CategoryId == categoryId.Value &&
+                var count = category is not null
+                    ? await context.Recipes.CountAsync(recipe => recipe.CategoryId == category.Id &&
                         recipe.Status == RecipeStatus.Published, cancellationToken)
                     : 0;
-                refreshedItems.Add(item with { RecipeCount = count });
+                refreshedItems.Add(item with { ImageUrl = category?.ImageUrl, RecipeCount = count });
             }
 
             return new PaginatedResult<CategoryDto>(refreshedItems, cached.TotalCount, cached.Page, cached.PageSize);

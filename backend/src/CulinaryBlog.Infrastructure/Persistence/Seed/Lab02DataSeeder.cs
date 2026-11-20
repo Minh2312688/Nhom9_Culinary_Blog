@@ -45,6 +45,7 @@ public static class Lab02DataSeeder
             ["mon-khia"] = "Món khía",
             ["mon-quay"] = "Món quay",
             ["mon-sup"] = "Món súp",
+            ["mon-an-vat"] = "Món ăn vặt",
             ["thuc-uong"] = "Thức uống"
         };
 
@@ -85,15 +86,15 @@ public static class Lab02DataSeeder
                 context.Recipes.Add(recipe);
                 await context.SaveChangesAsync(cancellationToken);
             }
-            else if (recipe.Nutrition is null)
+            else if (recipe.Nutrition is null && sample.Nutrition is not null)
             {
-                recipe.Nutrition = CreateNutrition(sample);
+                recipe.Nutrition = CreateNutrition(sample.Nutrition);
                 context.RecipeNutritions.Add(recipe.Nutrition);
                 await context.SaveChangesAsync(cancellationToken);
             }
-            else if (recipe.Nutrition.IsDeleted)
+            else if (recipe.Nutrition is { IsDeleted: true } nutrition && sample.Nutrition is not null)
             {
-                RestoreNutrition(recipe.Nutrition, sample);
+                RestoreNutrition(nutrition, sample.Nutrition);
                 await context.SaveChangesAsync(cancellationToken);
             }
 
@@ -288,7 +289,7 @@ public static class Lab02DataSeeder
             CookTimeMinutes = sample.CookTimeMinutes,
             Servings = sample.Servings,
             Difficulty = Enum.Parse<RecipeDifficulty>(sample.Difficulty, true),
-            Nutrition = CreateNutrition(sample),
+            Nutrition = sample.Nutrition is null ? null : CreateNutrition(sample.Nutrition),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -321,25 +322,25 @@ public static class Lab02DataSeeder
         return recipe;
     }
 
-    private static RecipeNutrition CreateNutrition(SampleRecipeData sample)
+    private static RecipeNutrition CreateNutrition(SampleRecipeNutrition sample)
         => new()
         {
-            Calories = sample.Nutrition!.Calories!.Value,
-            Protein = sample.Nutrition.Protein!.Value,
-            Carbohydrates = sample.Nutrition.Carbohydrates!.Value,
-            Fat = sample.Nutrition.Fat!.Value,
-            Fiber = sample.Nutrition.Fiber!.Value,
-            Sodium = sample.Nutrition.Sodium!.Value
+            Calories = sample.Calories!.Value,
+            Protein = sample.Protein!.Value,
+            Carbohydrates = sample.Carbohydrates!.Value,
+            Fat = sample.Fat!.Value,
+            Fiber = sample.Fiber!.Value,
+            Sodium = sample.Sodium!.Value
         };
 
-    private static void RestoreNutrition(RecipeNutrition nutrition, SampleRecipeData sample)
+    private static void RestoreNutrition(RecipeNutrition nutrition, SampleRecipeNutrition sample)
     {
-        nutrition.Calories = sample.Nutrition!.Calories!.Value;
-        nutrition.Protein = sample.Nutrition.Protein!.Value;
-        nutrition.Carbohydrates = sample.Nutrition.Carbohydrates!.Value;
-        nutrition.Fat = sample.Nutrition.Fat!.Value;
-        nutrition.Fiber = sample.Nutrition.Fiber!.Value;
-        nutrition.Sodium = sample.Nutrition.Sodium!.Value;
+        nutrition.Calories = sample.Calories!.Value;
+        nutrition.Protein = sample.Protein!.Value;
+        nutrition.Carbohydrates = sample.Carbohydrates!.Value;
+        nutrition.Fat = sample.Fat!.Value;
+        nutrition.Fiber = sample.Fiber!.Value;
+        nutrition.Sodium = sample.Sodium!.Value;
         nutrition.IsDeleted = false;
     }
 

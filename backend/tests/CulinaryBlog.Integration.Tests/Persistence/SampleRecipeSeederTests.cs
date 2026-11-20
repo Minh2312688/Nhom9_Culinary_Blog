@@ -149,6 +149,60 @@ public sealed class SampleRecipeSeederTests : IAsyncLifetime
     }
 
     [DockerPostgresFact]
+    public async Task SeedAsync_persists_recipe_without_nutrition_and_uses_sample_category_name()
+    {
+        container.Should().NotBeNull();
+        var sampleDataPath = CreateSampleDataDirectory(includeNutrition: false, categorySlug: "mon-an-vat");
+        try
+        {
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseNpgsql(container!.GetConnectionString()));
+            services.AddIdentityCore<ApplicationUser>()
+                .AddRoles<IdentityRole>()
+                .AddEntityFrameworkStores<ApplicationDbContext>();
+
+            await using var serviceProvider = services.BuildServiceProvider();
+            await using var scope = serviceProvider.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+            await context.Database.MigrateAsync();
+
+            var storage = new Mock<IFileStorageService>();
+            storage.Setup(service => service.UploadAsync(
+                    It.IsAny<FileUploadRequest>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new FileUploadResult(
+                    "sample/main.webp",
+                    "http://localhost:9000/culinary-blog/recipes/sample/main.webp",
+                    "image/webp",
+                    1));
+
+            await Lab02DataSeeder.SeedAsync(
+                context,
+                userManager,
+                roleManager,
+                storage.Object,
+                sampleDataPath,
+                NullLogger.Instance);
+
+            var recipe = await context.Recipes
+                .Include(item => item.Nutrition)
+                .SingleAsync(item => item.Slug == "sample-recipe");
+            recipe.Nutrition.Should().BeNull();
+
+            var category = await context.Categories.SingleAsync(item => item.Slug == "mon-an-vat");
+            category.Name.Should().Be("Món ăn vặt");
+        }
+        finally
+        {
+            Directory.Delete(sampleDataPath, recursive: true);
+        }
+    }
+
+    [DockerPostgresFact]
     public async Task SeedAsync_uploads_matching_category_image_without_overwriting_existing_image()
     {
         container.Should().NotBeNull();
@@ -213,7 +267,9 @@ public sealed class SampleRecipeSeederTests : IAsyncLifetime
         }
     }
 
-    private static string CreateSampleDataDirectory()
+    private static string CreateSampleDataDirectory(
+        bool includeNutrition = true,
+        string categorySlug = "mon-test")
     {
         var sampleDataPath = Path.Combine(Path.GetTempPath(), $"sample-seed-{Guid.NewGuid():N}");
         var imageDirectory = Path.Combine(sampleDataPath, "images", "sample-recipe");
@@ -222,18 +278,18 @@ public sealed class SampleRecipeSeederTests : IAsyncLifetime
         File.WriteAllBytes(Path.Combine(imageDirectory, "main.webp"), [1]);
         File.WriteAllText(
             Path.Combine(sampleDataPath, "20_cong_thuc_mon_an.json"),
-            """
+            $$"""
             [
               {
                 "title": "Sample Recipe",
                 "description": "A test recipe.",
-                "categorySlug": "mon-test",
+                "categorySlug": "{{categorySlug}}",
                 "author": "Test Author",
                 "prepTimeMinutes": 1,
                 "cookTimeMinutes": 2,
                 "servings": 1,
                 "difficulty": "Easy",
-                "nutrition": { "calories": 310, "protein": 18.5, "carbohydrates": 36, "fat": 10.2, "fiber": 4.1, "sodium": 680 },
+                {{(includeNutrition ? "\"nutrition\": { \"calories\": 310, \"protein\": 18.5, \"carbohydrates\": 36, \"fat\": 10.2, \"fiber\": 4.1, \"sodium\": 680 }," : "\"nutrition\": null,")}}
                 "ingredients": [{ "name": "Ingredient", "quantity": 1, "unit": "piece", "orderIndex": 0 }],
                 "steps": [{ "stepNumber": 1, "description": "Cook it." }],
                 "folder": "sample_recipe",

@@ -60,12 +60,14 @@ public sealed class SampleRecipeDataLoaderTests
     }
 
     [Fact]
-    public void Load_rejects_sample_recipe_without_nutrition()
+    public void Load_accepts_sample_recipe_without_nutrition()
     {
         var sampleDataPath = CreateSampleDataDirectory(includeImage: true, includeNutrition: false);
         try
         {
-            Assert.Throws<InvalidDataException>(() => SampleRecipeDataLoader.Load(sampleDataPath));
+            var recipe = Assert.Single(SampleRecipeDataLoader.Load(sampleDataPath));
+
+            Assert.Null(recipe.Nutrition);
         }
         finally
         {

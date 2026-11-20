@@ -210,4 +210,35 @@ public class GetCategoriesQueryHandlerRecipeCountTests
         result.Items[0].RecipeCount.Should().Be(1);
         cache.SetCalls.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task Handle_CacheHit_ShouldRefreshImageUrlFromCurrentCategory()
+    {
+        await using var context = await CategoriesTestData.SeedDefaultAsync();
+        var category = await context.Categories.SingleAsync(c => c.Slug == "banh-ngot");
+        category.ImageUrl = "https://media.example.test/categories/banh-ngot.webp";
+        await context.SaveChangesAsync();
+
+        var request = new GetCategoriesQuery();
+        var cachedResult = new PaginatedResult<CategoryDto>(
+            [new CategoryDto(
+                category.Id,
+                category.Name,
+                category.Slug,
+                category.Description,
+                null,
+                category.OrderIndex,
+                category.CreatedAt)],
+            1,
+            1,
+            request.PageSize);
+        var cache = new FakeCategoryCache();
+        cache.Seed(CategoryCacheKeys.ForList(request), cachedResult);
+        var handler = new GetCategoriesQueryHandler(context, cache);
+
+        var result = await handler.Handle(request, CancellationToken.None);
+
+        result.Items.Should().ContainSingle();
+        result.Items[0].ImageUrl.Should().Be(category.ImageUrl);
+    }
 }

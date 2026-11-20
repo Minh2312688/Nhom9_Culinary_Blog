@@ -16,7 +16,12 @@ docker compose ps
 docker compose logs api
 ```
 
-PostgreSQL tạo database và role `POSTGRES_USER` khi volume được khởi tạo lần đầu. API chạy ở Development, tự áp dụng toàn bộ migration của `ApplicationDbContext`; `Seed__Enabled=true` tạo danh mục và 20 công thức từ `tools/sample-data/20_cong_thuc_mon_an.json`, đồng thời tải các ảnh trong `tools/sample-data/images/` lên MinIO. `RandomDataSeeder` không được gọi tự động khi API khởi động. API: `http://localhost:5000`.
+PostgreSQL tạo database và role `POSTGRES_USER` khi volume được khởi tạo lần
+đầu. API chạy ở Development, tự áp dụng migration của `ApplicationDbContext`.
+`Seed__Enabled=true` tạo danh mục và 51 công thức từ
+`tools/sample-data/20_cong_thuc_mon_an.json`, đồng thời tải ảnh từ
+`tools/sample-data/images/` lên MinIO. `RandomDataSeeder` không được gọi tự
+động khi API khởi động. API: `http://localhost:5000`.
 
 PostgreSQL được publish trên máy host tại `localhost:5433` (cổng container vẫn
 là `5432`, và API trong Compose kết nối bằng `postgres:5432`). Cổng host `5433`
@@ -83,9 +88,9 @@ docker compose exec postgres psql -U culinary -d culinary_blog -c 'SELECT COUNT(
 docker compose exec postgres psql -U culinary -d culinary_blog -c 'SELECT * FROM "__EFMigrationsHistory" ORDER BY "MigrationId";'
 ```
 
-Kỳ vọng sau sample seed: có ít nhất 20 categories và 20 công thức mẫu; tài
-khoản mới đăng ký xuất hiện trong `AspNetUsers`. Seeder không xóa dữ liệu cũ,
-nên tổng số recipe có thể cao hơn 20. Dataset báo cáo ngẫu nhiên 100 recipe
+Kỳ vọng sau sample seed trên database sạch: có ít nhất 20 categories và 51
+công thức mẫu; tài khoản mới đăng ký xuất hiện trong `AspNetUsers`. Seeder không xóa dữ liệu cũ,
+nên tổng số recipe có thể cao hơn 51. Dataset báo cáo ngẫu nhiên 100 recipe
 không phải seed mặc định của API. Identity và dữ liệu công thức cùng nằm trong
 một database, dùng một migration history.
 

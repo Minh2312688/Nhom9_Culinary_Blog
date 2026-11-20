@@ -74,20 +74,29 @@ thời gian. Khi các container đã chạy:
 container, volumes và network dùng tiền tố `culinary_blog_`; volume được
 Compose scope theo project name để các project khác nhau không dùng chung dữ
 liệu. Ở Development, API tự áp dụng EF migration khi khởi động;
-`Seed__Enabled=true` bật seed danh mục và 20 công thức từ
+`Seed__Enabled=true` bật seed danh mục và 51 công thức từ
 `tools/sample-data/20_cong_thuc_mon_an.json`, đồng thời tải ảnh trong
 `tools/sample-data/images/` lên MinIO. Nếu API chưa sẵn sàng, đợi
 PostgreSQL/Redis/MinIO healthy rồi xem log ở bước dưới. Healthcheck chờ API mở
 cổng sau migration/seed; Compose chỉ khởi động frontend khi API healthy.
 Seed không xóa dữ liệu cũ; database đã có 100 công thức giả lập từ phiên bản
 trước có thể vẫn giữ nguyên chúng. `RandomDataSeeder` không được API tự gọi;
-seed mặc định của Compose dùng sample JSON. Dùng `docker compose down -v` rồi
-khởi động lại nếu chủ động muốn tạo database development mới chỉ với bộ dữ
-liệu JSON; lệnh này xóa toàn bộ dữ liệu trong các volume của project.
+seed mặc định của Compose dùng sample JSON. Để chạy lại seed sau khi cập nhật
+JSON hoặc code seeder:
 
-Nutrition trong JSON là giá trị ước tính để tham khảo trên mỗi khẩu phần, không
-thay thế tư vấn chuyên môn. Seeder bổ sung dinh dưỡng còn thiếu nhưng không ghi
-đè giá trị dinh dưỡng đã có.
+```powershell
+docker compose up --build -d api
+docker compose logs --tail 100 api
+```
+
+Seeder bổ sung công thức/ảnh còn thiếu và không ghi đè dữ liệu hiện có. Chỉ dùng
+`docker compose down -v` rồi khởi động lại nếu chủ động muốn tạo database
+development mới chỉ với bộ dữ liệu JSON; lệnh này xóa toàn bộ dữ liệu trong các
+volume của project.
+
+Nutrition của 20 công thức ban đầu là giá trị ước tính để tham khảo trên mỗi
+khẩu phần, không thay thế tư vấn chuyên môn. 31 công thức mới không có số liệu
+dinh dưỡng nên được seed với nutrition trống.
 
 Có thể áp dụng migration thủ công từ host sau khi PostgreSQL Compose sẵn sàng.
 Connection string `Postgres` cần dùng host port `5433`; lấy database/user/password

@@ -63,11 +63,15 @@ public sealed class SampleRecipeSeederTests : IAsyncLifetime
             storage.Setup(service => service.UploadAsync(
                     It.IsAny<FileUploadRequest>(),
                     It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new FileUploadResult(
-                    "sample/main.webp",
-                    "http://localhost:9000/culinary-blog/recipes/sample/main.webp",
-                    "image/webp",
-                    1));
+                .ReturnsAsync((FileUploadRequest request, CancellationToken _) =>
+                {
+                    var objectName = $"sample/{Guid.NewGuid():N}.webp";
+                    return new FileUploadResult(
+                        objectName,
+                        $"http://localhost:9000/culinary-blog/recipes/{objectName}",
+                        "image/webp",
+                        1);
+                });
 
             await Lab02DataSeeder.SeedAsync(
                 context,
@@ -81,9 +85,53 @@ public sealed class SampleRecipeSeederTests : IAsyncLifetime
 
             var recipe = await context.Recipes
                 .Include(item => item.Images)
+                .Include(item => item.Steps)
                 .Include(item => item.Nutrition)
                 .SingleAsync(item => item.Slug == "sample-recipe");
             recipe.Images.Should().ContainSingle(image => image.IsPrimary);
+            recipe.Images.Where(image => image.StepNumber == 1).Should().HaveCount(2);
+            recipe.Images.Where(image => image.StepNumber == 2).Should().ContainSingle();
+            recipe.Steps.Single(step => step.StepNumber == 1).ImageUrl.Should()
+                .Be(recipe.Images.Single(image => image.StepNumber == 1 && image.OrderIndex == 2).OriginalUrl);
+            recipe.Steps.Single(step => step.StepNumber == 2).ImageUrl.Should()
+                .Be(recipe.Images.Single(image => image.StepNumber == 2).OriginalUrl);
+            recipe.Images.Single(image => image.OrderIndex == 1).StepNumber.Should().BeNull();
+
+            foreach (var image in recipe.Images.Where(image => image.StepNumber.HasValue))
+            {
+                image.StepNumber = null;
+            }
+            await context.SaveChangesAsync();
+
+            recipe.Steps.Single(step => step.StepNumber == 1).IsDeleted = true;
+            context.RecipeSteps.Add(new CulinaryBlog.Domain.Entities.RecipeStep
+            {
+                RecipeId = recipe.Id,
+                StepNumber = 1,
+                Description = "Updated step.",
+                ImageUrl = null
+            });
+            await context.SaveChangesAsync();
+            context.ChangeTracker.Clear();
+
+            await Lab02DataSeeder.SeedAsync(
+                context,
+                userManager,
+                roleManager,
+                storage.Object,
+                sampleDataPath,
+                NullLogger.Instance);
+            recipe = await context.Recipes
+                .Include(item => item.Images)
+                .Include(item => item.Steps)
+                .Include(item => item.Nutrition)
+                .SingleAsync(item => item.Slug == "sample-recipe");
+            recipe.Images.Where(image => image.OrderIndex is 2 or 3 or 4)
+                .Select(image => image.StepNumber)
+                .Should().BeEquivalentTo(new int?[] { 1, 1, 2 });
+            recipe.Steps.Single(step => step.StepNumber == 1).ImageUrl.Should()
+                .Be(recipe.Images.Single(image => image.StepNumber == 1 && image.OrderIndex == 2).OriginalUrl);
+
             recipe.Nutrition.Should().NotBeNull();
             recipe.Nutrition!.Calories.Should().Be(310);
 
@@ -276,6 +324,10 @@ public sealed class SampleRecipeSeederTests : IAsyncLifetime
         Directory.CreateDirectory(imageDirectory);
         Directory.CreateDirectory(Path.Combine(sampleDataPath, "images", "danhmuc"));
         File.WriteAllBytes(Path.Combine(imageDirectory, "main.webp"), [1]);
+        File.WriteAllBytes(Path.Combine(imageDirectory, "step1-preview.webp"), [1]);
+        File.WriteAllBytes(Path.Combine(imageDirectory, "step1-1.webp"), [1]);
+        File.WriteAllBytes(Path.Combine(imageDirectory, "step1-2.webp"), [1]);
+        File.WriteAllBytes(Path.Combine(imageDirectory, "step2.webp"), [1]);
         File.WriteAllText(
             Path.Combine(sampleDataPath, "20_cong_thuc_mon_an.json"),
             $$"""
@@ -291,9 +343,18 @@ public sealed class SampleRecipeSeederTests : IAsyncLifetime
                 "difficulty": "Easy",
                 {{(includeNutrition ? "\"nutrition\": { \"calories\": 310, \"protein\": 18.5, \"carbohydrates\": 36, \"fat\": 10.2, \"fiber\": 4.1, \"sodium\": 680 }," : "\"nutrition\": null,")}}
                 "ingredients": [{ "name": "Ingredient", "quantity": 1, "unit": "piece", "orderIndex": 0 }],
-                "steps": [{ "stepNumber": 1, "description": "Cook it." }],
+                "steps": [
+                  { "stepNumber": 1, "title": "Cook", "description": "Cook it.", "imageAsset": "step1-1.webp" },
+                  { "stepNumber": 2, "title": "Serve", "description": "Serve it." }
+                ],
                 "folder": "sample_recipe",
-                "images": [{ "file": "main.webp", "altText": "Finished recipe", "isPrimary": true, "orderIndex": 0 }]
+                "images": [
+                  { "file": "main.webp", "altText": "Finished recipe", "isPrimary": true, "orderIndex": 0 },
+                  { "file": "step1-preview.webp", "altText": "Not a numbered step image", "isPrimary": false, "orderIndex": 1 },
+                  { "file": "step1-1.webp", "altText": "Cooking step 1", "isPrimary": false, "orderIndex": 2 },
+                  { "file": "step1-2.webp", "altText": "Cooking step 2", "isPrimary": false, "orderIndex": 3 },
+                  { "file": "step2.webp", "altText": "Cooking step 2", "isPrimary": false, "orderIndex": 4 }
+                ]
               }
             ]
             """,

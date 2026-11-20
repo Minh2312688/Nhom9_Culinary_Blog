@@ -148,6 +148,8 @@ test("uploads a selected image when editing an existing category", async ({ page
     buffer: Buffer.from("sample-image"),
   });
   await expect(page.getByRole("img", { name: "Món chính" })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Món chính" })).toHaveCSS("width", "320px");
+  await expect(page.getByRole("img", { name: "Món chính" })).toHaveCSS("height", "200px");
   await page.getByRole("button", { name: "Cập nhật" }).click();
 
   await expect(page.locator("[role='status']").filter({ hasText: "Đã cập nhật danh mục." })).toBeVisible();

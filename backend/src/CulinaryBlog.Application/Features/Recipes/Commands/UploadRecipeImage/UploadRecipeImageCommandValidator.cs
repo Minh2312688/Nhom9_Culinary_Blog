@@ -10,5 +10,8 @@ public sealed class UploadRecipeImageCommandValidator : AbstractValidator<Upload
         RuleFor(x => x.Content).NotNull();
         RuleFor(x => x.FileName).NotEmpty().MaximumLength(255);
         RuleFor(x => x.AltText).MaximumLength(200);
+        RuleFor(x => x.StepNumber)
+            .GreaterThan(0)
+            .When(x => x.StepNumber.HasValue);
     }
 }

@@ -222,6 +222,14 @@ if (app.Environment.IsDevelopment())
                 fileStorage,
                 sampleDataDirectory,
                 logger);
+
+            var recipeCache = scope.ServiceProvider.GetRequiredService<IRecipeCache>();
+            var recipeSlugs = await db.Recipes.Select(recipe => recipe.Slug).ToListAsync();
+            foreach (var slug in recipeSlugs)
+            {
+                await recipeCache.RemoveAsync($"recipes:slug:{slug.ToLowerInvariant()}");
+            }
+            await recipeCache.RemoveByPrefixAsync("recipes:");
         }
     }
 }

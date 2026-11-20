@@ -19,7 +19,8 @@ public sealed record UploadRecipeImageCommand(
     string? ContentType,
     long Length,
     string? AltText,
-    bool IsPrimary = false) : IRequest<RecipeImageUploadDto>;
+    bool IsPrimary = false,
+    int? StepNumber = null) : IRequest<RecipeImageUploadDto>;
 
 public sealed class UploadRecipeImageCommandHandler(
     IApplicationDbContext context,
@@ -38,6 +39,14 @@ public sealed class UploadRecipeImageCommandHandler(
     {
         var recipe = await RecipeImageAccess.GetOwnedRecipeAsync(
             context, currentUser, request.RecipeId, cancellationToken);
+        if (request.StepNumber is int stepNumber &&
+            !await context.RecipeSteps.AnyAsync(
+                step => step.RecipeId == recipe.Id && step.StepNumber == stepNumber,
+                cancellationToken))
+        {
+            throw new ValidationException($"Recipe step {stepNumber} does not exist.");
+        }
+
         var images = await context.RecipeImages
             .Where(image => image.RecipeId == recipe.Id)
             .OrderBy(image => image.OrderIndex)
@@ -55,7 +64,7 @@ public sealed class UploadRecipeImageCommandHandler(
             request.Length,
             StorageFolders.ForRecipe(recipe.Id)), cancellationToken);
 
-        var isPrimary = request.IsPrimary || images.Count == 0;
+        var isPrimary = request.IsPrimary || (request.StepNumber is null && images.Count == 0);
         if (isPrimary)
         {
             foreach (var existing in images) existing.IsPrimary = false;
@@ -67,7 +76,8 @@ public sealed class UploadRecipeImageCommandHandler(
             OriginalUrl = uploaded.Url,
             AltText = request.AltText?.Trim(),
             IsPrimary = isPrimary,
-            OrderIndex = images.Count == 0 ? 0 : images.Max(existing => existing.OrderIndex) + 1
+            OrderIndex = images.Count == 0 ? 0 : images.Max(existing => existing.OrderIndex) + 1,
+            StepNumber = request.StepNumber
         };
         context.RecipeImages.Add(image);
 
@@ -102,6 +112,7 @@ public sealed class UploadRecipeImageCommandHandler(
                 image.Id);
         }
 
-        return new RecipeImageUploadDto(image.Id, image.OriginalUrl, image.AltText, image.IsPrimary);
+        return new RecipeImageUploadDto(
+            image.Id, image.OriginalUrl, image.AltText, image.IsPrimary, image.StepNumber);
     }
 }

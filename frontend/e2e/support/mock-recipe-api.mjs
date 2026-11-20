@@ -251,6 +251,61 @@ const initialRecipes = [
       sodium: 680,
     },
   }),
+  createInitialRecipe({
+    id: "recipe-step-image-gallery",
+    title: "Công thức có ảnh từng bước",
+    slug: "step-image-gallery",
+    steps: [
+      {
+        id: "step-gallery-1",
+        stepNumber: 1,
+        title: "Sơ chế",
+        description: "Sơ chế nguyên liệu.",
+        durationMinutes: null,
+        imageUrl: "https://storage.example.test/recipes/a71f.webp",
+      },
+      {
+        id: "step-gallery-2",
+        stepNumber: 2,
+        title: "Nấu",
+        description: "Nấu chín.",
+        durationMinutes: null,
+        imageUrl: null,
+      },
+    ],
+    images: [
+      {
+        id: "step-image-1-1",
+        originalUrl: "https://storage.example.test/recipes/a71f.webp",
+        mediumUrl: null,
+        thumbnailUrl: null,
+        altText: "Sơ chế lần 1",
+        isPrimary: false,
+        orderIndex: 1,
+        stepNumber: 1,
+      },
+      {
+        id: "step-image-1-2",
+        originalUrl: "https://storage.example.test/recipes/b82a.webp",
+        mediumUrl: null,
+        thumbnailUrl: null,
+        altText: "Sơ chế lần 2",
+        isPrimary: false,
+        orderIndex: 2,
+        stepNumber: 1,
+      },
+      {
+        id: "step-image-2",
+        originalUrl: "https://storage.example.test/recipes/c93b.webp",
+        mediumUrl: null,
+        thumbnailUrl: null,
+        altText: "Nấu",
+        isPrimary: false,
+        orderIndex: 3,
+        stepNumber: 2,
+      },
+    ],
+  }),
 ];
 
 for (const r of initialRecipes) {
@@ -869,8 +924,11 @@ const server = createServer(async (request, response) => {
     }
     const body = await readBody(request);
     const primaryField = body.toString("utf8").match(/name="isPrimary"\r\n\r\n(true|false)\r\n/i);
-    const isPrimary = r.images.length === 0 || primaryField?.[1].toLowerCase() === "true";
-    const imageId = `img-${Date.now()}`;
+    const stepNumberField = body.toString("utf8").match(/name="stepNumber"\r\n\r\n(\d+)\r\n/i);
+    const stepNumber = stepNumberField ? Number(stepNumberField[1]) : null;
+    const isPrimary = primaryField?.[1].toLowerCase() === "true"
+      || (stepNumber === null && r.images.length === 0);
+    const imageId = `img-${Date.now()}-${r.images.length}`;
     const newImage = {
       id: imageId,
       originalUrl: `https://storage.example.test/${imageId}.avif`,
@@ -879,6 +937,7 @@ const server = createServer(async (request, response) => {
       altText: "Ảnh công thức",
       isPrimary,
       orderIndex: r.images.length,
+      stepNumber,
     };
     if (isPrimary) r.images.forEach((img) => (img.isPrimary = false));
     r.images.push(newImage);
@@ -889,6 +948,7 @@ const server = createServer(async (request, response) => {
       mediumUrl: newImage.mediumUrl,
       altText: newImage.altText,
       isPrimary: newImage.isPrimary,
+      stepNumber: newImage.stepNumber,
     });
     return;
   }

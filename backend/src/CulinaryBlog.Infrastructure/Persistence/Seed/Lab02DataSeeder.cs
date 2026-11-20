@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using CulinaryBlog.Domain.Constants;
 using CulinaryBlog.Application.Common.Files;
 using CulinaryBlog.Application.Contracts.Storage;
@@ -77,6 +78,7 @@ public static class Lab02DataSeeder
             var recipe = await context.Recipes
                 .IgnoreQueryFilters()
                 .Include(item => item.Images)
+                .Include(item => item.Steps.Where(step => !step.IsDeleted))
                 .Include(item => item.Nutrition)
                 .SingleOrDefaultAsync(item => item.Slug == slug, cancellationToken);
 
@@ -353,7 +355,60 @@ public static class Lab02DataSeeder
     {
         foreach (var image in sample.Images.OrderBy(item => item.OrderIndex))
         {
-            if (recipe.Images.Any(existing => existing.OrderIndex == image.OrderIndex))
+            var stepNumber = FindStepNumber(image.File, sample.Steps);
+            var existingImage = recipe.Images.SingleOrDefault(
+                item => item.OrderIndex == image.OrderIndex);
+            if (stepNumber.HasValue)
+            {
+                var step = recipe.Steps.SingleOrDefault(item => item.StepNumber == stepNumber.Value);
+                var hasChanges = false;
+                if (existingImage is null)
+                {
+                    var stepImagePath = Path.Combine(sample.ImageDirectory, image.File);
+                    await using var stepStream = File.OpenRead(stepImagePath);
+                    var uploadedStepImage = await storage.UploadAsync(
+                        new FileUploadRequest(
+                            stepStream,
+                            image.File,
+                            GetContentType(image.File),
+                            stepStream.Length,
+                            StorageFolders.ForRecipe(recipe.Id)),
+                        cancellationToken);
+
+                    existingImage = new RecipeImage
+                    {
+                        RecipeId = recipe.Id,
+                        OriginalUrl = uploadedStepImage.Url,
+                        AltText = image.AltText,
+                        IsPrimary = false,
+                        OrderIndex = image.OrderIndex,
+                        StepNumber = stepNumber.Value,
+                        VariantStatus = RecipeImageVariantStatus.Pending
+                    };
+                    context.RecipeImages.Add(existingImage);
+                    hasChanges = true;
+                }
+                else if (existingImage.StepNumber != stepNumber.Value)
+                {
+                    existingImage.StepNumber = stepNumber.Value;
+                    hasChanges = true;
+                }
+
+                if (step is not null && string.IsNullOrWhiteSpace(step.ImageUrl))
+                {
+                    step.ImageUrl = existingImage.OriginalUrl;
+                    hasChanges = true;
+                }
+
+                if (hasChanges)
+                {
+                    await context.SaveChangesAsync(cancellationToken);
+                }
+
+                continue;
+            }
+
+            if (existingImage is not null)
             {
                 continue;
             }
@@ -392,6 +447,35 @@ public static class Lab02DataSeeder
             ".jpg" or ".jpeg" => "image/jpeg",
             _ => "application/octet-stream"
         };
+
+    private static int? FindStepNumber(string fileName, IReadOnlyList<SampleRecipeStep> steps)
+    {
+        var exactMatch = steps.FirstOrDefault(step =>
+            !string.IsNullOrWhiteSpace(step.ImageAsset) &&
+            string.Equals(step.ImageAsset, fileName, StringComparison.OrdinalIgnoreCase));
+        if (exactMatch is not null)
+        {
+            return exactMatch.StepNumber;
+        }
+
+        var stem = Path.GetFileNameWithoutExtension(fileName);
+        var match = Regex.Match(
+            stem,
+            @"^step(?<stepNumber>[1-9][0-9]*)(?:-[1-9][0-9]*)?$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (!match.Success ||
+            !int.TryParse(
+                match.Groups["stepNumber"].Value,
+                NumberStyles.None,
+                CultureInfo.InvariantCulture,
+                out var stepNumber) ||
+            !steps.Any(step => step.StepNumber == stepNumber))
+        {
+            return null;
+        }
+
+        return stepNumber;
+    }
 
     private static string Slugify(string value)
     {

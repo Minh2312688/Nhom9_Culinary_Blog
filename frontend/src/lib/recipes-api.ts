@@ -59,6 +59,7 @@ export interface RecipeDetail extends RecipeSummary {
     altText: string | null;
     isPrimary: boolean;
     orderIndex: number;
+    stepNumber: number | null;
   }>;
   nutrition: {
     calories: number;
@@ -384,6 +385,7 @@ export interface RecipeImageUploadResult {
   mediumUrl: string | null;
   altText: string | null;
   isPrimary: boolean;
+  stepNumber?: number | null;
 }
 
 export async function uploadRecipeImage(
@@ -391,11 +393,13 @@ export async function uploadRecipeImage(
   file: File,
   isPrimary = false,
   altText?: string,
+  stepNumber?: number,
 ): Promise<RecipeImageUploadResult> {
   const form = new FormData();
   form.append("file", file);
   form.append("isPrimary", String(isPrimary));
   if (altText) form.append("altText", altText);
+  if (stepNumber !== undefined) form.append("stepNumber", String(stepNumber));
   return privateRequest(`/recipes/${encodeURIComponent(recipeId)}/images`, {
     method: "POST",
     body: form,

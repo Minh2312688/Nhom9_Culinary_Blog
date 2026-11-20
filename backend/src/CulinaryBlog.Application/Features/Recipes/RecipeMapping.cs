@@ -28,7 +28,8 @@ internal static class RecipeMapping
         recipe.Steps.OrderBy(x => x.StepNumber).Select(x => new RecipeStepDto(
             x.Id, x.StepNumber, x.Title, x.Description, x.DurationMinutes, x.ImageUrl)).ToList(),
         recipe.Images.OrderBy(x => x.OrderIndex).Select(x => new RecipeImageDto(
-            x.Id, x.OriginalUrl, x.MediumUrl, x.ThumbnailUrl, x.AltText, x.IsPrimary, x.OrderIndex)).ToList(),
+            x.Id, x.OriginalUrl, x.MediumUrl, x.ThumbnailUrl, x.AltText, x.IsPrimary, x.OrderIndex,
+            x.StepNumber)).ToList(),
         recipe.Nutrition is null ? null : new RecipeNutritionDto(
             recipe.Nutrition.Calories, recipe.Nutrition.Protein, recipe.Nutrition.Carbohydrates,
             recipe.Nutrition.Fat, recipe.Nutrition.Fiber, recipe.Nutrition.Sodium),

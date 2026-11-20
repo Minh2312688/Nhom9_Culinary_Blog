@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using CulinaryBlog.Application.DTOs.Auth;
+using CulinaryBlog.Application.DTOs.Recipes;
+using CulinaryBlog.Domain.Entities;
 using Xunit;
 
 namespace CulinaryBlog.Integration.Tests.Endpoints;
@@ -43,6 +45,93 @@ public sealed class RecipeImageEndpointsTests : IClassFixture<CustomAuthWebAppli
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.StartsWith("application/problem+json", response.Content.Headers.ContentType?.ToString());
         Assert.Contains("isPrimary", await response.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Upload_WithStepNumber_AssociatesImageWithRecipeStep()
+    {
+        await using var testFactory = new CategoryWebApplicationFactory();
+        var recipeId = Guid.NewGuid();
+
+        await testFactory.SeedAsync(async db =>
+        {
+            var category = Category.Create("Test category");
+            db.Categories.Add(category);
+            var recipe = new Recipe
+            {
+                Id = recipeId,
+                Title = "Recipe with step images",
+                Slug = "recipe-with-step-images",
+                CategoryId = category.Id,
+                AuthorId = "test-author",
+                Difficulty = RecipeDifficulty.Easy,
+                Servings = 2
+            };
+            recipe.Steps.Add(new RecipeStep
+            {
+                StepNumber = 1,
+                Description = "Prepare ingredients."
+            });
+            recipe.Steps.Add(new RecipeStep
+            {
+                StepNumber = 2,
+                Description = "Prepare ingredients."
+            });
+            db.Recipes.Add(recipe);
+            await db.SaveChangesAsync();
+        });
+
+        using var form = new MultipartFormDataContent();
+        form.Add(new ByteArrayContent([0xff, 0xd8, 0xff]), "file", "step-image.jpg");
+        form.Add(new StringContent("2"), "stepNumber");
+        var response = await testFactory.CreateClientAs("Author")
+            .PostAsync($"/api/v1/recipes/{recipeId}/images", form);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var image = await response.Content.ReadFromJsonAsync<RecipeImageUploadDto>();
+        Assert.NotNull(image);
+        Assert.Equal(2, image.StepNumber);
+        Assert.False(image.IsPrimary);
+        Assert.Equal(2, testFactory.Query(db => db.RecipeImages.Single().StepNumber));
+    }
+
+    [Fact]
+    public async Task Upload_WithUnknownStepNumber_Returns400WithoutSavingImage()
+    {
+        await using var testFactory = new CategoryWebApplicationFactory();
+        var recipeId = Guid.NewGuid();
+
+        await testFactory.SeedAsync(async db =>
+        {
+            var category = Category.Create("Test category");
+            db.Categories.Add(category);
+            var recipe = new Recipe
+            {
+                Id = recipeId,
+                Title = "Recipe with one step",
+                Slug = "recipe-with-one-step",
+                CategoryId = category.Id,
+                AuthorId = "test-author",
+                Difficulty = RecipeDifficulty.Easy,
+                Servings = 2
+            };
+            recipe.Steps.Add(new RecipeStep
+            {
+                StepNumber = 1,
+                Description = "Prepare ingredients."
+            });
+            db.Recipes.Add(recipe);
+            await db.SaveChangesAsync();
+        });
+
+        using var form = new MultipartFormDataContent();
+        form.Add(new ByteArrayContent([0xff, 0xd8, 0xff]), "file", "step-image.jpg");
+        form.Add(new StringContent("2"), "stepNumber");
+        var response = await testFactory.CreateClientAs("Author")
+            .PostAsync($"/api/v1/recipes/{recipeId}/images", form);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(testFactory.Query(db => db.RecipeImages.ToArray()));
     }
 
     private async Task<HttpClient> CreateAuthenticatedClientAsync()

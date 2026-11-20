@@ -12,4 +12,5 @@ public class RecipeImage : BaseEntity
     public string? AltText { get; set; }
     public bool IsPrimary { get; set; }
     public int OrderIndex { get; set; }
+    public int? StepNumber { get; set; }
 }

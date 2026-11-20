@@ -104,6 +104,21 @@ public static class SampleRecipeDataLoader
             }
         }
 
+        foreach (var step in recipe.Steps)
+        {
+            if (string.IsNullOrWhiteSpace(step.ImageAsset))
+            {
+                continue;
+            }
+
+            if (!recipe.Images.Any(image =>
+                    string.Equals(image.File, step.ImageAsset, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidDataException(
+                    $"Sample recipe '{recipe.Title}' step {step.StepNumber} references missing image asset '{step.ImageAsset}'.");
+            }
+        }
+
         recipe.ImageDirectory = imageDirectory;
     }
 
@@ -160,6 +175,7 @@ public sealed class SampleRecipeStep
     public string? Title { get; init; }
     public string Description { get; init; } = string.Empty;
     public int? DurationMinutes { get; init; }
+    public string? ImageAsset { get; init; }
 }
 
 public sealed class SampleRecipeImage

@@ -102,9 +102,10 @@ export function useUploadRecipeImage(userId: string, accessScope: RecipeAccessSc
     file: File;
     isPrimary?: boolean;
     altText?: string;
+    stepNumber?: number;
   }>({
-    mutationFn: ({ recipeId, file, isPrimary, altText }) =>
-      uploadRecipeImage(recipeId, file, isPrimary, altText),
+    mutationFn: ({ recipeId, file, isPrimary, altText, stepNumber }) =>
+      uploadRecipeImage(recipeId, file, isPrimary, altText, stepNumber),
     onSuccess: (_result, { recipeId }) =>
       invalidateRecipeQueries(userId, recipeId, queryClient, accessScope),
   });

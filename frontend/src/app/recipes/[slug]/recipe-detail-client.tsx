@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRecipe } from "@/lib/queries/recipes";
 import type { RecipeDetail } from "@/lib/recipes-api";
+import { getRecipeStepImageUrls } from "@/lib/recipe-step-images";
 import { ErrorNotice, SitePage } from "../../site-ui";
 import styles from "../../site-ui.module.css";
 
@@ -18,13 +19,17 @@ export function RecipeDetailClient({
     .sort((first, second) => Number(second.isPrimary) - Number(first.isPrimary) ||
       first.orderIndex - second.orderIndex);
   const primaryImage = images.find((image) => image.isPrimary) ?? images[0];
-  const secondaryImages = images.filter((image) => image.id !== primaryImage?.id);
   const ingredients = recipe.ingredients
     .slice()
     .sort((first, second) => first.orderIndex - second.orderIndex);
   const steps = recipe.steps
     .slice()
     .sort((first, second) => (first.stepNumber ?? 0) - (second.stepNumber ?? 0));
+  const stepImageUrls = new Set(
+    steps.flatMap((step, index) => getRecipeStepImageUrls(step, index, recipe.images)),
+  );
+  const secondaryImages = images.filter((image) =>
+    image.id !== primaryImage?.id && !stepImageUrls.has(image.originalUrl));
 
   return (
     <SitePage>
@@ -93,14 +98,17 @@ export function RecipeDetailClient({
                   )}
                 </div>
                 <div style={{ marginTop: "4px" }}>{step.description}</div>
-                {step.imageUrl && (
-                  <div style={{ marginTop: "8px" }}>
+                {getRecipeStepImageUrls(step, index, recipe.images).length > 0 && (
+                  <div className={styles.stepImageGallery}>
+                    {getRecipeStepImageUrls(step, index, recipe.images).map((imageUrl, imageIndex) => (
                     <img
-                      src={step.imageUrl}
-                      alt={step.title ?? `Hình minh họa bước ${step.stepNumber ?? index + 1}`}
-                      style={{ maxWidth: "320px", maxHeight: "200px", borderRadius: "6px", objectFit: "cover", border: "1px solid var(--line)" }}
+                      key={imageUrl}
+                      className={styles.stepImage}
+                      src={imageUrl}
+                      alt={`Hình ${imageIndex + 1} minh họa ${step.title ?? `bước ${step.stepNumber ?? index + 1}`}`}
                       loading="lazy"
                     />
+                    ))}
                   </div>
                 )}
               </li>

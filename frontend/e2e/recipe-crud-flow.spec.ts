@@ -87,6 +87,35 @@ test.describe("FR-RCP-010: E2E Recipe CRUD, Structured Steps, Nutrition & Image 
     await expect(page.getByText("Bước 1 / 4: Thông tin chung")).toBeVisible();
   });
 
+  test("new recipe cover image preview stays compact in the editor and review", async ({ page }) => {
+    await signInForRecipeTest(page);
+    await page.goto("/dashboard/recipes/new");
+    await expect(page.locator("#categoryId option")).toHaveCount(4, { timeout: 10_000 });
+    await page.locator("#title").fill("Công thức ảnh đại diện");
+    await page.locator("#categoryId").selectOption({ label: "Món chính" });
+    await page.locator("#imageFile").setInputFiles({
+      name: "cover.webp",
+      mimeType: "image/webp",
+      buffer: Buffer.from("sample-image"),
+    });
+
+    const editorPreview = page.getByRole("img", { name: "Công thức ảnh đại diện" });
+    await expect(editorPreview).toHaveCSS("width", "320px");
+    await expect(editorPreview).toHaveCSS("height", "200px");
+
+    await page.getByRole("button", { name: "Tiếp theo" }).click();
+    await page.getByRole("button", { name: "Thêm nguyên liệu" }).click();
+    await page.getByRole("textbox", { name: "Tên nguyên liệu 1" }).fill("Cà chua");
+    await page.getByRole("button", { name: "Tiếp theo" }).click();
+    await page.getByRole("button", { name: "+ Thêm bước nấu" }).click();
+    await page.locator("#step-desc-0").fill("Nấu chín nguyên liệu.");
+    await page.getByRole("button", { name: "Xem lại" }).click();
+
+    const reviewPreview = page.locator("#review-image-heading").locator("..").locator("img");
+    await expect(reviewPreview).toHaveCSS("width", "320px");
+    await expect(reviewPreview).toHaveCSS("height", "200px");
+  });
+
   test("failed recipe detail loading does not show a blank editor or create a recipe", async ({ page }) => {
     await signInForRecipeTest(page);
     await queueMockApiResponse(page, {
@@ -107,7 +136,7 @@ test.describe("FR-RCP-010: E2E Recipe CRUD, Structured Steps, Nutrition & Image 
     )).toBe(false);
   });
 
-  test("step image is selected from a file instead of entered as a URL", async ({ page }) => {
+  test("step images can be selected in batches and individually removed before creation", async ({ page }) => {
     await signInForRecipeTest(page);
     await page.goto("/dashboard/recipes/new");
     await expect(page.locator("#categoryId option")).toHaveCount(4, { timeout: 10_000 });
@@ -118,28 +147,135 @@ test.describe("FR-RCP-010: E2E Recipe CRUD, Structured Steps, Nutrition & Image 
     await page.getByRole("textbox", { name: "Tên nguyên liệu 1" }).fill("Cà chua");
     await page.getByRole("button", { name: "Tiếp theo" }).click();
     await page.getByRole("button", { name: "+ Thêm bước nấu" }).click();
-    await page.locator("#step-image-file-0").setInputFiles({
-      name: "buoc-nau.webp",
-      mimeType: "image/webp",
-      buffer: Buffer.from("sample-image"),
-    });
+    await page.locator("#step-desc-0").fill("Trộn các nguyên liệu.");
+    const stepImageInput = page.locator("#step-image-file-0");
+    await expect(stepImageInput).toHaveAttribute("multiple", "");
+    await stepImageInput.setInputFiles([
+      {
+        name: "buoc-nau-1.webp",
+        mimeType: "image/webp",
+        buffer: Buffer.from("sample-image-1"),
+      },
+      {
+        name: "buoc-nau-2.webp",
+        mimeType: "image/webp",
+        buffer: Buffer.from("sample-image-2"),
+      },
+    ]);
 
     await expect(page.locator("#step-image-0")).toHaveCount(0);
-    await expect(page.getByRole("img", { name: "Ảnh bước nấu 1" })).toBeVisible();
+    const selectedStepImages = page.getByTestId("step-image-files-0");
+    await expect(selectedStepImages.locator("img")).toHaveCount(2);
+    await expect(selectedStepImages).toHaveCSS("display", "flex");
+    await expect(selectedStepImages).toHaveCSS("flex-wrap", "wrap");
+    await expect(selectedStepImages.locator("img").first()).toHaveCSS("width", "120px");
+    await expect(selectedStepImages.locator("img").first()).toHaveCSS("height", "90px");
+    await selectedStepImages.getByRole("button", { name: "Xóa ảnh bước nấu 1 đã chọn 1" }).click();
+    await expect(selectedStepImages.locator("img")).toHaveCount(1);
+    await page.getByRole("button", { name: "Xem lại" }).click();
+    await expect(page.locator("#review-steps-heading").locator("..").locator("[class*='stepImageGallery'] img"))
+      .toHaveCount(1);
+    expect((await getMockApiRequests(page)).some((request) =>
+      request.method === "POST" && request.path.endsWith("/images"),
+    )).toBe(false);
+    await page.getByRole("button", { name: "Tạo bản nháp" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/recipes$/, { timeout: 10_000 });
+
+    const requests = await getMockApiRequests(page);
+    const uploads = requests.filter((request) =>
+      request.method === "POST" && request.path === "/api/v1/recipes/created-recipe-1/images",
+    );
+    expect(uploads).toHaveLength(1);
+  });
+
+  test("recipe detail groups multiple and single step images under the correct step", async ({ page }) => {
+    await page.goto("/recipes/step-image-gallery");
+
+    await expect(page.getByTestId("recipe-step-1").locator("img")).toHaveCount(2);
+    await expect(page.getByTestId("recipe-step-2").locator("img")).toHaveCount(1);
+    await expect(page.getByTestId("recipe-secondary-images")).toHaveCount(0);
+    const gallery = page.getByTestId("recipe-step-1").locator("[class*='stepImageGallery']");
+    await expect(gallery).toHaveCSS("display", "flex");
+    await expect(gallery).toHaveCSS("flex-wrap", "wrap");
+    await expect(gallery.locator("img").first()).toHaveCSS("width", "120px");
+    await expect(gallery.locator("img").first()).toHaveCSS("height", "90px");
   });
 
   test("editing a recipe uploads a selected step image after the update", async ({ page }) => {
     await signInForRecipeTest(page);
+    await queueMockApiResponse(page, {
+      method: "GET",
+      path: "/api/v1/recipes/recipe-1",
+      status: 200,
+      body: {
+        id: "recipe-1",
+        title: "Roasted tomato soup",
+        slug: "recipe-with-author",
+        description: "A simple soup.",
+        prepTimeMinutes: 10,
+        cookTimeMinutes: 30,
+        servings: 4,
+        difficulty: "Easy",
+        status: "Published",
+        categoryId: "category-1",
+        authorId: "author-1",
+        publishedAt: "2026-10-01T09:30:00Z",
+        rowVersion: "v1",
+        ingredients: [
+          { id: "ingredient-1", name: "Tomatoes", quantity: 4, unit: null, notes: null, orderIndex: 0 },
+        ],
+        steps: [
+          {
+            id: "step-1",
+            stepNumber: 1,
+            title: null,
+            description: "Roast the tomatoes.",
+            durationMinutes: null,
+            imageUrl: "https://storage.example.test/saved-step.webp",
+          },
+        ],
+        images: [
+          {
+            id: "image-step-1",
+            originalUrl: "https://storage.example.test/saved-step-gallery.webp",
+            mediumUrl: null,
+            thumbnailUrl: null,
+            altText: null,
+            isPrimary: false,
+            orderIndex: 1,
+            stepNumber: 1,
+          },
+        ],
+        nutrition: null,
+        author: { id: "author-1", displayName: "Recipe Author", avatarUrl: null },
+      },
+    });
     await page.goto("/dashboard/recipes/recipe-1/edit");
     await expect(page.locator("#title")).toHaveValue("Roasted tomato soup");
     await page.getByRole("button", { name: "Tiếp theo" }).click();
     await page.getByRole("button", { name: "Tiếp theo" }).click();
-    await page.locator("#step-image-file-0").setInputFiles({
-      name: "step-update.webp",
-      mimeType: "image/webp",
-      buffer: Buffer.from("sample-image"),
-    });
+    const savedStepImages = page.getByTestId("step-image-files-0");
+    await expect(savedStepImages.locator("img")).toHaveCount(2);
+    await expect(savedStepImages).toHaveCSS("display", "flex");
+    await expect(savedStepImages.locator("img").first()).toHaveCSS("width", "120px");
+    await expect(savedStepImages.locator("img").first()).toHaveCSS("height", "90px");
+    const stepImageInput = page.locator("#step-image-file-0");
+    await expect(stepImageInput).toHaveAttribute("multiple", "");
+    await stepImageInput.setInputFiles([
+      {
+        name: "step-update-1.webp",
+        mimeType: "image/webp",
+        buffer: Buffer.from("sample-image-1"),
+      },
+      {
+        name: "step-update-2.webp",
+        mimeType: "image/webp",
+        buffer: Buffer.from("sample-image-2"),
+      },
+    ]);
     await page.getByRole("button", { name: "Xem lại" }).click();
+    await expect(page.locator("#review-steps-heading").locator("..").locator("[class*='stepImageGallery'] img"))
+      .toHaveCount(4);
     await page.getByRole("button", { name: "Cập nhật công thức" }).click();
 
     await expect(page).toHaveURL(/\/dashboard\/recipes$/, { timeout: 10_000 });
@@ -147,13 +283,111 @@ test.describe("FR-RCP-010: E2E Recipe CRUD, Structured Steps, Nutrition & Image 
     expect(requests.find((request) =>
       request.method === "PUT" && request.path === "/api/v1/recipes/recipe-1",
     )).toBeDefined();
-    expect(requests.find((request) =>
-      request.method === "POST" &&
-      request.path === "/api/v1/recipes/recipe-1/steps/step-1/image",
-    )).toMatchObject({
+    const uploads = requests.filter((request) =>
+      request.method === "POST" && request.path === "/api/v1/recipes/recipe-1/images",
+    );
+    expect(uploads).toHaveLength(2);
+    expect(uploads[0]).toMatchObject({
       authorizationPresent: true,
       contentType: expect.stringContaining("multipart/form-data; boundary="),
     });
+  });
+
+  test("editing a recipe can mark a saved step image for deletion", async ({ page }) => {
+    page.on("dialog", (dialog) => void dialog.accept());
+    await signInForRecipeTest(page);
+    await queueMockApiResponse(page, {
+      method: "GET",
+      path: "/api/v1/recipes/recipe-1",
+      status: 200,
+      body: {
+        id: "recipe-1",
+        title: "Roasted tomato soup",
+        slug: "recipe-with-author",
+        description: "A simple soup.",
+        prepTimeMinutes: 10,
+        cookTimeMinutes: 30,
+        servings: 4,
+        difficulty: "Easy",
+        status: "Published",
+        categoryId: "category-1",
+        authorId: "author-1",
+        publishedAt: "2026-10-01T09:30:00Z",
+        rowVersion: "v1",
+        ingredients: [
+          { id: "ingredient-1", name: "Tomatoes", quantity: 4, unit: null, notes: null, orderIndex: 0 },
+        ],
+        steps: [
+          {
+            id: "step-1",
+            stepNumber: 1,
+            title: null,
+            description: "Roast the tomatoes.",
+            durationMinutes: null,
+            imageUrl: "https://storage.example.test/saved-step.webp",
+          },
+        ],
+        images: [
+          {
+            id: "image-step-1",
+            originalUrl: "https://storage.example.test/saved-step-gallery.webp",
+            mediumUrl: null,
+            thumbnailUrl: null,
+            altText: null,
+            isPrimary: false,
+            orderIndex: 1,
+            stepNumber: 1,
+          },
+        ],
+        nutrition: null,
+        author: { id: "author-1", displayName: "Recipe Author", avatarUrl: null },
+      },
+    });
+    await page.goto("/dashboard/recipes/recipe-1/edit");
+    await expect(page.locator("#title")).toHaveValue("Roasted tomato soup");
+    await page.getByRole("button", { name: /theo/i }).click();
+    await page.getByRole("button", { name: /theo/i }).click();
+
+    const savedStepImages = page.getByTestId("step-image-files-0");
+    await expect(savedStepImages.locator("img")).toHaveCount(2);
+    await expect(savedStepImages.getByTestId("btn-delete-step-image-image-step-1")).toHaveCount(1);
+    await savedStepImages.getByTestId("btn-delete-step-image-image-step-1").click();
+    await expect(savedStepImages.locator("img")).toHaveCount(1);
+
+    await page.getByRole("button", { name: /xem/i }).click();
+    await page.locator('button[type="submit"]').click();
+    await expect(page).toHaveURL(/\/dashboard\/recipes$/, { timeout: 10_000 });
+
+    const requests = await getMockApiRequests(page);
+    expect(requests.some((request) =>
+      request.method === "DELETE" && request.path === "/api/v1/recipes/recipe-1/images/image-step-1",
+    )).toBe(true);
+  });
+
+  test("canceling a recipe with selected step images does not save the recipe or images", async ({ page }) => {
+    await signInForRecipeTest(page);
+    await page.goto("/dashboard/recipes/new");
+    await expect(page.locator("#categoryId option")).toHaveCount(4, { timeout: 10_000 });
+    await page.locator("#title").fill("Công thức hủy khi chọn ảnh");
+    await page.getByRole("button", { name: "Tiếp theo" }).click();
+    await page.getByRole("button", { name: "Thêm nguyên liệu" }).click();
+    await page.getByRole("textbox", { name: "Tên nguyên liệu 1" }).fill("Cà chua");
+    await page.getByRole("button", { name: "Tiếp theo" }).click();
+    await page.getByRole("button", { name: "+ Thêm bước nấu" }).click();
+    await page.locator("#step-desc-0").fill("Trộn các nguyên liệu.");
+    await page.locator("#step-image-file-0").setInputFiles({
+      name: "step-cancel.webp",
+      mimeType: "image/webp",
+      buffer: Buffer.from("sample-image"),
+    });
+
+    await page.getByRole("link", { name: "Hủy" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/recipes$/);
+    const requests = await getMockApiRequests(page);
+    expect(requests.some((request) =>
+      request.method === "POST" &&
+      (request.path === "/api/v1/recipes" || request.path.endsWith("/images")),
+    )).toBe(false);
   });
 
   test("recipe row edit, publish, and delete actions stay centered on one line", async ({ page }) => {
@@ -648,8 +882,7 @@ test.describe("FR-RCP-010: E2E Recipe CRUD, Structured Steps, Nutrition & Image 
     expect(createBody?.steps?.[0]?.imageUrl ?? null).toBeNull();
     expect(requests.find((request) =>
       request.method === "POST" &&
-      request.path.startsWith("/api/v1/recipes/created-recipe-1/steps/") &&
-      request.path.endsWith("/image"),
+      request.path === "/api/v1/recipes/created-recipe-1/images",
     )).toMatchObject({
       authorizationPresent: true,
       contentType: expect.stringContaining("multipart/form-data; boundary="),
@@ -868,6 +1101,8 @@ test.describe("FR-RCP-010: E2E Recipe CRUD, Structured Steps, Nutrition & Image 
     const nutrition = main.locator("[data-testid='recipe-nutrition']");
     const secondaryImages = main.locator("[data-testid='recipe-secondary-images']");
     await expect(primaryImage).toHaveAttribute("src", "https://storage.example.test/primary.webp");
+    await expect(primaryImage).toHaveCSS("width", "720px");
+    await expect(primaryImage).toHaveCSS("height", "420px");
     await expect(secondaryImages.locator("img")).toHaveCount(1);
     expect(await title.evaluate((node) =>
       Boolean(node.compareDocumentPosition(document.querySelector("main [data-testid='recipe-primary-image']")!)

@@ -22,10 +22,10 @@ import {
   useSetPrimaryRecipeImage,
   useUpdateRecipe,
   useUploadRecipeImage,
-  useUploadRecipeStepImage,
 } from "@/lib/queries/recipe-mutations";
 import { getFormErrorDetails, useFeedback } from "../feedback";
 import { ErrorNotice, LoadingSkeleton, SectionTitle } from "../site-ui";
+import { getRecipeStepImageUrls } from "@/lib/recipe-step-images";
 import styles from "../site-ui.module.css";
 
 export interface StructuredStep {
@@ -35,8 +35,13 @@ export interface StructuredStep {
   description: string;
   durationMinutes: number | null;
   imageUrl: string | null;
-  imageFile?: File | null;
-  imagePreviewUrl?: string | null;
+  pendingImages?: PendingStepImage[];
+}
+
+interface PendingStepImage {
+  id: string;
+  file: File;
+  previewUrl: string;
 }
 
 function parseStepsText(text: string): StructuredStep[] {
@@ -50,8 +55,7 @@ function parseStepsText(text: string): StructuredStep[] {
       description,
       durationMinutes: null,
       imageUrl: null,
-      imageFile: null,
-      imagePreviewUrl: null,
+      pendingImages: [],
     }));
 }
 
@@ -62,6 +66,7 @@ interface ImageEntry {
   altText: string | null;
   isPrimary: boolean;
   orderIndex: number;
+  stepNumber: number | null;
 }
 
 interface PendingGalleryImage {
@@ -134,7 +139,6 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   const createRecipeMutation = useCreateRecipe(userId, recipeAccessScope);
   const updateRecipeMutation = useUpdateRecipe(userId, recipeAccessScope);
   const uploadRecipeImageMutation = useUploadRecipeImage(userId, recipeAccessScope);
-  const uploadRecipeStepImageMutation = useUploadRecipeStepImage(userId, recipeAccessScope);
   const setPrimaryRecipeImageMutation = useSetPrimaryRecipeImage(userId, recipeAccessScope);
   const deleteRecipeImageMutation = useDeleteRecipeImage(userId, recipeAccessScope);
   const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
@@ -202,7 +206,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   const [pendingPrimaryImageId, setPendingPrimaryImageId] = useState<string | null>(null);
   const [imageAltText, setImageAltText] = useState("");
   const [imageSetPrimary, setImageSetPrimary] = useState(false);
-  const uploadingImage = uploadRecipeImageMutation.isPending || uploadRecipeStepImageMutation.isPending;
+  const uploadingImage = uploadRecipeImageMutation.isPending;
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const [pendingImagePreviewUrl, setPendingImagePreviewUrl] = useState<string | null>(null);
   const [createdRecipeId, setCreatedRecipeId] = useState<string | null>(null);
@@ -219,13 +223,34 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
       altText: image.altText,
       isPrimary: false,
       orderIndex: images.length + index,
+      stepNumber: null,
     })),
   ].map((image) => ({ ...image, isPrimary: image.id === pendingPrimaryImageId }));
+  const pendingStepImageCount = structuredSteps.reduce(
+    (count, step) => count + (step.pendingImages?.length ?? 0),
+    0,
+  );
+  const reservedImageCount =
+    visibleImages.length + pendingStepImageCount + Number(Boolean(pendingImageFile));
+  const reviewImages = [
+    ...visibleImages,
+    ...structuredSteps.flatMap((step, stepIndex) =>
+      (step.pendingImages ?? []).map((image, imageIndex) => ({
+        id: image.id,
+        originalUrl: image.previewUrl,
+        thumbnailUrl: image.previewUrl,
+        altText: null,
+        isPrimary: false,
+        orderIndex: images.length + pendingGalleryImages.length + imageIndex,
+        stepNumber: step.stepNumber ?? stepIndex + 1,
+      })),
+    ),
+  ];
   const hasPendingGalleryChanges = pendingGalleryImages.length > 0
     || pendingImageDeletes.length > 0
     || pendingPrimaryImageId !== (images.find((image) => image.isPrimary)?.id ?? null);
   const hasPendingImageUploads = Boolean(
-    pendingImageFile || structuredSteps.some((step) => step.imageFile),
+    pendingImageFile || structuredSteps.some((step) => (step.pendingImages?.length ?? 0) > 0),
   );
   const reviewSteps = structuredSteps.length > 0
     ? structuredSteps
@@ -256,7 +281,9 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
 
   useEffect(() => {
     const currentUrls = new Set(
-      structuredSteps.flatMap((step) => step.imagePreviewUrl ? [step.imagePreviewUrl] : []),
+      structuredSteps.flatMap((step) =>
+        (step.pendingImages ?? []).map((image) => image.previewUrl),
+      ),
     );
     for (const url of stepPreviewUrlsRef.current) {
       if (!currentUrls.has(url)) URL.revokeObjectURL(url);
@@ -303,8 +330,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
           description: st.description ?? "",
           durationMinutes: st.durationMinutes ?? null,
           imageUrl: st.imageUrl ?? null,
-          imageFile: null,
-          imagePreviewUrl: null,
+          pendingImages: [],
         })),
       );
       setValue("steps", sorted.map((item) => item.description).join("\n"));
@@ -332,6 +358,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
         altText: img.altText,
         isPrimary: img.isPrimary,
         orderIndex: img.orderIndex,
+        stepNumber: img.stepNumber,
       })),
     );
     setPendingGalleryImages([]);
@@ -435,8 +462,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
         description: "",
         durationMinutes: null,
         imageUrl: null,
-        imageFile: null,
-        imagePreviewUrl: null,
+        pendingImages: [],
       },
     ]);
     clearFieldError("steps");
@@ -451,20 +477,41 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   }
 
   function handleStepImageSelection(index: number, event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (file && file.size > 5 * 1024 * 1024) {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+    if (files.some((file) => file.size > 5 * 1024 * 1024)) {
       event.target.value = "";
       setError("Ảnh bước nấu không được vượt quá 5 MB.");
       showToast("Ảnh bước nấu không được vượt quá 5 MB.", "error");
       return;
     }
-    const imagePreviewUrl = file ? URL.createObjectURL(file) : null;
+    if (reservedImageCount + files.length > 10) {
+      event.target.value = "";
+      showToast("Đã đạt giới hạn 10 ảnh cho công thức.", "error");
+      return;
+    }
+
+    const pendingImages = files.map((file) => ({
+      id: `pending-step-${crypto.randomUUID()}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
     setStructuredSteps((current) => current.map((step, stepIndex) =>
       stepIndex === index
-        ? { ...step, imageFile: file ?? null, imagePreviewUrl }
+        ? { ...step, pendingImages: [...(step.pendingImages ?? []), ...pendingImages] }
         : step,
     ));
+    event.target.value = "";
+    setError(null);
     clearFieldError("steps");
+  }
+
+  function removePendingStepImage(stepIndex: number, imageId: string) {
+    setStructuredSteps((current) => current.map((step, index) =>
+      index === stepIndex
+        ? { ...step, pendingImages: (step.pendingImages ?? []).filter((image) => image.id !== imageId) }
+        : step,
+    ));
   }
 
   function updateStepField<K extends keyof StructuredStep>(
@@ -553,8 +600,8 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
-    if (visibleImages.length >= 10) {
-      showToast("Đã đạt giới hạn 10 ảnh.", "error");
+    if (reservedImageCount >= 10) {
+      showToast("Đã đạt giới hạn 10 ảnh cho công thức.", "error");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -588,6 +635,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
       altText: result.altText,
       isPrimary: result.isPrimary,
       orderIndex: current.length,
+      stepNumber: null,
     }]);
     setPendingImageFile(null);
     setImageAltText("");
@@ -606,6 +654,11 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
       setPendingImageFile(null);
       return;
     }
+    if (!pendingImageFile && reservedImageCount >= 10) {
+      showToast("Đã đạt giới hạn 10 ảnh cho công thức.", "error");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     setPendingImageFile(file);
     setError(null);
   }
@@ -613,7 +666,8 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
   async function applyPendingGalleryChanges(targetRecipeId: string): Promise<boolean> {
     const deletesLastImage = pendingImageDeletes.length > 0
       && pendingImageDeletes.length === images.length
-      && pendingGalleryImages.length === 0;
+      && pendingGalleryImages.length === 0
+      && !hasPendingImageUploads;
     let primaryImageId = pendingPrimaryImageId;
     let currentImages = [...images];
 
@@ -635,6 +689,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
         altText: result.altText,
         isPrimary: result.isPrimary,
         orderIndex: currentImages.length,
+        stepNumber: null,
       };
       currentImages = result.isPrimary
         ? currentImages.map((image) => ({ ...image, isPrimary: false })).concat(uploadedImage)
@@ -675,32 +730,37 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
     return deletesLastImage;
   }
 
-  async function uploadPendingStepImages(targetRecipeId: string, savedSteps?: RecipeStep[]) {
+  async function uploadPendingStepImages(
+    targetRecipeId: string,
+    savedSteps?: RecipeStep[],
+  ) {
     for (let index = 0; index < structuredSteps.length; index += 1) {
       const step = structuredSteps[index];
-      if (!step.imageFile) continue;
-
-      const stepId = step.id ?? savedSteps?.[index]?.id;
-      if (!stepId) {
-        throw new Error(`Không xác định được bước ${index + 1} để tải ảnh lên.`);
+      for (const image of step.pendingImages ?? []) {
+        const stepNumber = savedSteps?.[index]?.stepNumber ?? step.stepNumber ?? index + 1;
+        const uploaded = await uploadRecipeImageMutation.mutateAsync({
+          recipeId: targetRecipeId,
+          file: image.file,
+          stepNumber,
+        });
+        setImages((current) => [...current, {
+          id: uploaded.imageId,
+          originalUrl: uploaded.originalUrl,
+          thumbnailUrl: uploaded.thumbnailUrl,
+          altText: uploaded.altText,
+          isPrimary: uploaded.isPrimary,
+          orderIndex: current.length,
+          stepNumber: uploaded.stepNumber ?? stepNumber,
+        }]);
+        setStructuredSteps((current) => current.map((item, itemIndex) =>
+          itemIndex === index
+            ? {
+              ...item,
+              pendingImages: (item.pendingImages ?? []).filter((pending) => pending.id !== image.id),
+            }
+            : item,
+        ));
       }
-
-      const updatedStep = await uploadRecipeStepImageMutation.mutateAsync({
-        recipeId: targetRecipeId,
-        stepId,
-        file: step.imageFile,
-      });
-      setStructuredSteps((current) => current.map((item, itemIndex) =>
-        itemIndex === index
-          ? {
-            ...item,
-            id: stepId,
-            imageUrl: updatedStep.imageUrl,
-            imageFile: null,
-            imagePreviewUrl: null,
-          }
-          : item,
-      ));
     }
   }
 
@@ -1384,15 +1444,81 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                     data-testid={`step-image-file-${idx}`}
                     type="file"
                     accept="image/*"
+                    multiple
                     onChange={(event) => handleStepImageSelection(idx, event)}
                   />
                 </label>
-                {(st.imagePreviewUrl || st.imageUrl) && (
-                  <img
-                    className={styles.recipeImage}
-                    src={st.imagePreviewUrl ?? st.imageUrl ?? undefined}
-                    alt={`Ảnh bước nấu ${idx + 1}`}
-                  />
+                {(getRecipeStepImageUrls(st, idx, visibleImages).length > 0
+                  || (st.pendingImages?.length ?? 0) > 0) && (
+                  <div
+                    className={styles.stepImageGallery}
+                    data-testid={`step-image-files-${idx}`}
+                  >
+                    {getRecipeStepImageUrls(st, idx, visibleImages).map((imageUrl, imageIndex) => {
+                      const savedImage = visibleImages.find((image) => image.originalUrl === imageUrl);
+                      return (
+                      <div key={imageUrl} style={{ position: "relative" }}>
+                        <img
+                          className={styles.stepImage}
+                          src={imageUrl}
+                          alt={`Ảnh bước nấu ${idx + 1} đã lưu ${imageIndex + 1}`}
+                        />
+                        {savedImage && (
+                          <button
+                            type="button"
+                            data-testid={`btn-delete-step-image-${savedImage.id}`}
+                            aria-label={`Xóa ảnh bước nấu ${idx + 1} đã lưu ${imageIndex + 1}`}
+                            title="Xóa ảnh"
+                            onClick={() => void handleDeleteImage(savedImage.id)}
+                            style={{
+                              position: "absolute",
+                              top: "4px",
+                              right: "4px",
+                              border: 0,
+                              borderRadius: "50%",
+                              width: "24px",
+                              height: "24px",
+                              cursor: "pointer",
+                              color: "#fff",
+                              background: "var(--color-error)",
+                            }}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                      );
+                    })}
+                    {st.pendingImages?.map((image, imageIndex) => (
+                      <div key={image.id} style={{ position: "relative" }}>
+                        <img
+                          className={styles.stepImage}
+                          src={image.previewUrl}
+                          alt={`Ảnh bước nấu ${idx + 1} đã chọn ${imageIndex + 1}`}
+                        />
+                        <button
+                          type="button"
+                          aria-label={`Xóa ảnh bước nấu ${idx + 1} đã chọn ${imageIndex + 1}`}
+                          title="Bỏ ảnh đã chọn"
+                          onClick={() => removePendingStepImage(idx, image.id)}
+                          style={{
+                            position: "absolute",
+                            top: "4px",
+                            right: "4px",
+                            border: 0,
+                            borderRadius: "50%",
+                            width: "24px",
+                            height: "24px",
+                            cursor: "pointer",
+                            color: "#fff",
+                            background: "var(--color-error)",
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             ))}
@@ -1719,7 +1845,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
               />
               {pendingImagePreviewUrl && (
                 <img
-                  className={styles.recipeImage}
+                  className={styles.recipeCoverPreview}
                   src={pendingImagePreviewUrl}
                   alt={imageAltText || title || "Ảnh công thức"}
                 />
@@ -1783,6 +1909,19 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                       <li key={`${step.id ?? "step"}-${index}`}>
                         {step.title.trim() && <strong>{step.title.trim()}: </strong>}
                         {step.description}
+                        {getRecipeStepImageUrls(step, index, reviewImages).length > 0 && (
+                          <div className={styles.stepImageGallery}>
+                            {getRecipeStepImageUrls(step, index, reviewImages).map((imageUrl, imageIndex) => (
+                              <img
+                                key={imageUrl}
+                                className={styles.stepImage}
+                                src={imageUrl}
+                                alt={`Hình ${imageIndex + 1} minh họa bước ${step.stepNumber ?? index + 1}`}
+                                loading="lazy"
+                              />
+                            ))}
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ol>
@@ -1805,7 +1944,7 @@ export function RecipeEditor({ editing = false }: { editing?: boolean }) {
                 {reviewImageUrl ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
-                    className={styles.recipeImage}
+                    className={styles.recipeCoverPreview}
                     src={reviewImageUrl}
                     alt={imageAltText || images.find((image) => image.isPrimary)?.altText || formValues.title}
                   />

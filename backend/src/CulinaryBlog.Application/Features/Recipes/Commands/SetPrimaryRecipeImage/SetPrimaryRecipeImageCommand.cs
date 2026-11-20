@@ -33,6 +33,7 @@ public sealed class SetPrimaryRecipeImageCommandHandler(
         await RecipeImageAccess.InvalidateRecipeCacheAsync(cache, recipe, cancellationToken);
 
         return new RecipeImageDto(selected.Id, selected.OriginalUrl, selected.MediumUrl,
-            selected.ThumbnailUrl, selected.AltText, selected.IsPrimary, selected.OrderIndex);
+            selected.ThumbnailUrl, selected.AltText, selected.IsPrimary, selected.OrderIndex,
+            selected.StepNumber);
     }
 }

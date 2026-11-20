@@ -407,6 +407,51 @@ public sealed class RecipePrivateDetailEndpointTests
     }
 
     [Fact]
+    public async Task GetById_ReturnsStepNumberForRecipeImages()
+    {
+        await using var factory = new CategoryWebApplicationFactory();
+        var recipeId = Guid.NewGuid();
+
+        await factory.SeedAsync(async db =>
+        {
+            var category = Category.Create("Test category");
+            db.Categories.Add(category);
+            db.Recipes.Add(new Recipe
+            {
+                Id = recipeId,
+                Title = "Recipe with step images",
+                Slug = "recipe-with-step-images",
+                CategoryId = category.Id,
+                AuthorId = "test-author",
+                Images =
+                [
+                    new RecipeImage
+                    {
+                        OriginalUrl = "https://media.example.test/a71f.webp",
+                        OrderIndex = 1,
+                        StepNumber = 1
+                    },
+                    new RecipeImage
+                    {
+                        OriginalUrl = "https://media.example.test/b82a.webp",
+                        OrderIndex = 2,
+                        StepNumber = 1
+                    }
+                ]
+            });
+            await db.SaveChangesAsync();
+        });
+
+        var response = await factory.CreateClientAs("Author")
+            .GetAsync($"/api/v1/recipes/{recipeId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var recipe = await response.Content.ReadFromJsonAsync<RecipeDetailDto>();
+        Assert.NotNull(recipe);
+        Assert.Equal(new int?[] { 1, 1 }, recipe.Images.Select(image => image.StepNumber));
+    }
+
+    [Fact]
     public async Task UploadStepImage_StoresImageOnOwnedStepWithoutCreatingRecipeGalleryImage()
     {
         await using var factory = new CategoryWebApplicationFactory();

@@ -18,6 +18,7 @@ public sealed class RecipeImageConfiguration : IEntityTypeConfiguration<RecipeIm
             .HasMaxLength(20)
             .HasDefaultValue(RecipeImageVariantStatus.Pending);
         builder.Property(image => image.AltText).HasMaxLength(200);
+        builder.Property(image => image.StepNumber);
         builder.HasQueryFilter(image => !image.IsDeleted);
     }
 }

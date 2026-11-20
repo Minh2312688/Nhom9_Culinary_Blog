@@ -45,11 +45,26 @@ public static class RecipeImageEndpoints
                 });
             }
 
+            int? stepNumber = null;
+            var stepNumberValue = form["stepNumber"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(stepNumberValue))
+            {
+                if (!int.TryParse(stepNumberValue, out var parsedStepNumber) || parsedStepNumber <= 0)
+                {
+                    return Results.ValidationProblem(new Dictionary<string, string[]>
+                    {
+                        ["stepNumber"] = ["The stepNumber field must be a positive integer."]
+                    });
+                }
+
+                stepNumber = parsedStepNumber;
+            }
+
             var isPrimary = bool.TryParse(primaryValue, out var parsedPrimary) && parsedPrimary;
             using var content = file.OpenReadStream();
             var result = await sender.Send(new UploadRecipeImageCommand(
                 id, content, file.FileName, file.ContentType, file.Length,
-                form["altText"].FirstOrDefault(), isPrimary), ct);
+                form["altText"].FirstOrDefault(), isPrimary, stepNumber), ct);
 
             return Results.Created($"/api/v1/recipes/{id}/images/{result.ImageId}", result);
         })
